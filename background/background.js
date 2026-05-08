@@ -1,5 +1,5 @@
 // Import config
-importScripts('config.js');
+importScripts('../config/config.js');
 
 // Initialize Firestore URL
 const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${config.firebase.projectId}/databases/(default)/documents`;

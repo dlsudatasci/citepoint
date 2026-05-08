@@ -1,0 +1,56 @@
+{
+    "manifest_version": 3,
+    "name": "YouTube Citation Extension",
+    "version": "1.1",
+    "description": "Add and manage citations for YouTube videos",
+    "action": {
+        "default_popup": "popup/popup.html",
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png"
+        }
+    },
+    "permissions": [
+        "activeTab",
+        "storage",
+        "tabs"
+    ],
+    "host_permissions": [
+        "https://firestore.googleapis.com/*",
+        "https://*.firebaseio.com/*",
+        "https://*.firebase.com/*"
+    ],
+    "content_scripts": [
+        {
+            "matches": ["*://www.youtube.com/*"],
+            "js": [
+                "utils/utils.js",
+                "content/api.js",
+                "content/username.js",
+                "content/citations.js",
+                "content/voting.js",
+                "content/forms.js",
+                "content/recording.js",
+                "content/report.js",
+                "content/panel.js",
+                "content/player.js",
+                "content/content.js"
+            ],
+            "css": ["styles/extension.css"]
+        }
+    ],
+    "background": {
+        "service_worker": "background/background.js"
+    },
+    "web_accessible_resources": [{
+        "resources": [
+            "forms/youtube_extension_citation.html",
+            "forms/youtube_extension_request.html",
+            "styles/extension.css",
+            "config/config.js",
+            "popup/popup.js",
+            "popup/popup.html"
+        ],
+        "matches": ["*://www.youtube.com/*"]
+    }]
+}
