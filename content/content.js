@@ -828,33 +828,6 @@ function showQuickTaskButtons(startTime, endTime) {
     quickTaskContainer.appendChild(requestQuickBtn);
 }
 
-function init() {
-    console.log('Initializing extension...');
-    
-    // Clear any existing controls first to prevent duplicates
-    const existingControls = document.getElementById('citation-controls');
-    if (existingControls) {
-        console.log('Removing existing citation controls');
-        existingControls.remove();
-    }
-    
-    insertCitationButtons();
-    observeTheaterMode();
-    
-    // Initialize forms if they exist
-    const citationForm = document.getElementById('citation-form');
-    if (citationForm) {
-        initializeCitationForm();
-    }
-    const requestForm = document.getElementById('request-form');
-    if (requestForm) {
-        initializeRequestForm();
-    }
-    
-    // Ensure recorded segments panel exists
-    setupRecordedSegmentsPanel();
-}
-
 // Function to initialize citation form
 async function initializeCitationForm() {
     console.log('Initializing citation form...');
@@ -1367,10 +1340,10 @@ async function loadCitations() {
                 noCitations.textContent = 'No citations found for this video.';
                 tempContainer.appendChild(noCitations);
             } else {
-                sortedCitations.forEach(citation => {
-                    const citationElement = createCitationElement(citation, userVotes[citation.id] || null);
-                    tempContainer.appendChild(citationElement);
-                });
+                const citationElements = await Promise.all(
+                    sortedCitations.map(citation => createCitationElement(citation, userVotes[citation.id] || null))
+                );
+                citationElements.forEach(el => tempContainer.appendChild(el));
             }
 
             // Update highlighting in the temporary container
@@ -1457,54 +1430,6 @@ async function loadCitations() {
 }
 
 // Helper function to update citations list
-function updateCitationsList(citations, container) {
-    if (!container) return;
-    
-    // Create a map of existing citation elements
-    const existingElements = new Map();
-    Array.from(container.children).forEach(child => {
-        if (child.classList.contains('citation-item')) {
-            const citationId = child.querySelector('.vote-controls')?.dataset.citationId;
-            if (citationId) existingElements.set(citationId, child);
-        }
-    });
-    
-    if (citations.length === 0) {
-        container.innerHTML = '<p>No citations found for this video.</p>';
-        return;
-    }
-
-    const fragment = document.createDocumentFragment();
-    
-    if (citations.length === 0) {
-        const noCitations = document.createElement('p');
-        noCitations.textContent = 'No citations found for this video.';
-        fragment.appendChild(noCitations);
-    } else {
-        citations.forEach(citation => {
-            let citationElement;
-            
-            // Reuse existing element if available
-            if (existingElements.has(citation.id)) {
-                citationElement = existingElements.get(citation.id);
-                existingElements.delete(citation.id);
-            } else {
-                citationElement = createCitationElement(citation, userVotes[citation.id] || null);
-            }
-
-            fragment.appendChild(citationElement);
-        });
-    }
-
-    // Remove any remaining old elements
-    existingElements.forEach(element => element.remove());
-
-    // Clear and update container
-    container.innerHTML = '';
-    container.appendChild(fragment);
-    updateHighlighting();
-}
-
 // Debounce function to limit the frequency of updates
 function debounce(func, wait) {
     let timeout;
@@ -1965,7 +1890,7 @@ async function initializeExtension() {
 document.addEventListener('yt-navigate-finish', initializeExtension);
 
 // Update the createCitationElement function to properly handle response citations
-function createCitationElement(citation, userVote) {
+async function createCitationElement(citation, userVote) {
     const citationElement = document.createElement("div");
     citationElement.className = "citation-item";
     citationElement.dataset.start = parseTimestamp(citation.timestampStart);
@@ -1973,10 +1898,15 @@ function createCitationElement(citation, userVote) {
     
     console.log('Creating citation element with data:', citation);
     
-    // Get current username from storage
-    chrome.storage.local.get(['youtubeUsername'], (result) => {
-        const currentUsername = result.youtubeUsername;
-        const showDeleteButton = currentUsername && currentUsername === citation.username;
+    // Await the username from storage so all event listeners are attached before returning
+    const storageResult = await new Promise(resolve => {
+        chrome.storage.local.get(['youtubeUsername'], resolve);
+    });
+    const currentUsername = storageResult.youtubeUsername;
+    const showDeleteButton = currentUsername && currentUsername === citation.username;
+
+    {
+        // Block scope replaces the old callback scope — no logic changes inside
         
         // Create username display with link if not anonymous
         const usernameDisplay = citation.username === 'Anonymous' ? 
@@ -2163,12 +2093,12 @@ function createCitationElement(citation, userVote) {
         reportBtn.addEventListener('click', () => {
             showReportDialog(citation.id, 'citation');
         });
-    });
+    }
     
     return citationElement;
 }
 
-function updateCitationsList(citations, container) {
+async function updateCitationsList(citations, container) {
     if (!container) return;
     
     container.innerHTML = '';
@@ -2179,10 +2109,10 @@ function updateCitationsList(citations, container) {
         noCitations.textContent = 'No citations found for this video.';
         fragment.appendChild(noCitations);
     } else {
-        citations.forEach(citation => {
-            const citationElement = createCitationElement(citation, userVotes[citation.id] || null);
-            fragment.appendChild(citationElement);
-        });
+        const citationElements = await Promise.all(
+            citations.map(citation => createCitationElement(citation, userVotes[citation.id] || null))
+        );
+        citationElements.forEach(el => fragment.appendChild(el));
     }
 
     container.appendChild(fragment);
