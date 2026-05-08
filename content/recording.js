@@ -41,8 +41,14 @@ function setupRecordButtons() {
         </svg>`;
 
     startBtn.addEventListener('click', () => {
-        const video = document.querySelector('video');
-        if (!video) return;
+        const moviePlayer = document.getElementById('movie_player');
+    if (moviePlayer && moviePlayer.classList.contains('ad-showing')) {
+        alert('You cannot record citations during an advertisement.');
+        return; 
+    }
+
+    const video = document.querySelector('video');
+    if (!video) return;
 
         if (_recordingStartTime === null) {
             _recordingStartTime = video.currentTime;

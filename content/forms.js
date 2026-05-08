@@ -70,6 +70,12 @@ function _attachCitationFormListener() {
     form.addEventListener('submit', async e => {
         e.preventDefault();
 
+        const moviePlayer = document.getElementById('movie_player');
+            if (moviePlayer && moviePlayer.classList.contains('ad-showing')) {
+                alert('Cannot submit citations while an ad is playing. Please wait for the main video.');
+        return; 
+    }
+
         const videoId = getCurrentVideoId();
         const submitBtn = form.querySelector('#submit-btn');
         if (submitBtn) submitBtn.disabled = true;

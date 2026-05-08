@@ -11,7 +11,7 @@ window._player = null;
 let _currentVideoId = null;
 
 // ── Time tracking ─────────────────────────────
-
+/*
 function setupTimeTracking() {
     const video = document.querySelector('video');
     if (!video) return;
@@ -25,6 +25,29 @@ function setupTimeTracking() {
             lastTime     = newTime;
             currentTime  = newTime; // shared with citations.js
             requestAnimationFrame(updateHighlighting);
+        }
+        requestAnimationFrame(checkTime);
+    };
+
+    requestAnimationFrame(checkTime);
+}
+*/
+function setupTimeTracking() {
+    const video = document.querySelector('video');
+    const moviePlayer = document.getElementById('movie_player');
+    if (!video) return;
+
+    window._player = video;
+    let lastTime = -1;
+
+    const checkTime = () => {
+        if (!moviePlayer || !moviePlayer.classList.contains('ad-showing')) {
+            const newTime = Math.floor(video.currentTime);
+            if (newTime !== lastTime) {
+                lastTime     = newTime;
+                currentTime  = newTime; 
+                requestAnimationFrame(updateHighlighting);
+            }
         }
         requestAnimationFrame(checkTime);
     };
