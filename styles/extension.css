@@ -930,6 +930,8 @@ h3 {
     margin-top: 16px;
 }
 
+/* ── Recorded Segments Panel (floating, from right) ── */
+
 .recorded-segments-panel {
     position: fixed;
     top: 20%;
@@ -1117,4 +1119,35 @@ h3 {
     background: rgba(255, 68, 68, 0.3);
     pointer-events: none;
     z-index: 99;
+}
+
+/* ── Form buttons row ── */
+
+.form-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.form-buttons .submit-btn,
+.form-buttons button[type="submit"] {
+    flex: 1;
+}
+
+.cancel-btn {
+    flex: 1;
+    padding: 8px 16px;
+    border: 1px solid #dadce0;
+    border-radius: 18px;
+    background: #fff;
+    color: #444;
+    font-family: "Roboto", "Arial", sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.cancel-btn:hover {
+    background: #f1f3f4;
 }

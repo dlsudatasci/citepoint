@@ -60,6 +60,21 @@ function initializeRequestForm() {
 async function setupFormListeners() {
     _attachCitationFormListener();
     _attachRequestFormListener();
+    _attachCancelListener();
+}
+
+function _attachCancelListener() {
+    const btn = document.getElementById('cancel-btn');
+    if (!btn || btn.dataset.listener) return;
+    btn.dataset.listener = 'true';
+
+    btn.addEventListener('click', () => {
+        const isRequest = !!document.getElementById('request-form');
+        if (typeof clearTimelineBars === 'function') clearTimelineBars();
+        document.getElementById('add-form-container').style.display = 'none';
+        document.getElementById('add-item-btn').textContent =
+            isRequest ? '+ Add Request' : '+ Add Citation';
+    });
 }
 
 function _attachCitationFormListener() {
