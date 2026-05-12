@@ -114,6 +114,7 @@ function _attachCitationFormListener() {
 
             alert('Citation added successfully!');
             form.reset();
+            if (typeof clearTimelineBars === 'function') clearTimelineBars();
             document.getElementById('add-form-container').style.display = 'none';
             document.getElementById('add-item-btn').textContent = '+ Add Citation';
             loadCitations();
@@ -163,6 +164,7 @@ function _attachRequestFormListener() {
 
             alert('Citation request submitted successfully!');
             form.reset();
+            if (typeof clearTimelineBars === 'function') clearTimelineBars();
             document.getElementById('add-form-container').style.display = 'none';
             document.getElementById('add-item-btn').textContent = '+ Add Request';
             loadCitationRequests();

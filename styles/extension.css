@@ -929,3 +929,192 @@ h3 {
 #citation-requests-container {
     margin-top: 16px;
 }
+
+.recorded-segments-panel {
+    position: fixed;
+    top: 20%;
+    right: 0;
+    background-color: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 4px 0 0 4px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    z-index: 2000;
+    transition: transform 0.3s ease;
+    width: 460px;
+    max-width: 95%;
+    display: flex;
+    overflow: visible;
+}
+
+.recorded-segments-panel.collapsed {
+    transform: translateX(calc(100% - 20px));
+}
+
+.recorded-segments-panel .toggle-btn {
+    position: absolute;
+    left: -20px;
+    top: 0;
+    transform: none;
+    background: #1a73e8;
+    color: white;
+    border: none;
+    border-radius: 4px 0 0 4px;
+    padding: 0;
+    cursor: pointer;
+    width: 20px;
+    height: 100%;
+    min-height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    margin: 0;
+    z-index: 1;
+}
+
+.recorded-segments-panel .panel-content {
+    padding: 16px;
+    width: 100%;
+    margin-left: 0;
+    max-height: 80vh;
+    overflow-y: auto;
+    min-width: 430px;
+    border-left: none;
+}
+
+.recorded-segment {
+    padding: 16px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    margin-bottom: 12px;
+    background-color: #f8f9fa;
+}
+
+.recorded-segment .time-range {
+    font-weight: 500;
+    margin-bottom: 8px;
+    cursor: pointer;
+    color: #1a73e8;
+}
+
+.recorded-segment .time-range:hover {
+    text-decoration: underline;
+}
+
+.recorded-segment .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.recorded-segment .actions button {
+    flex: 1;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 13px;
+    cursor: pointer;
+    min-width: 80px;
+    white-space: nowrap;
+    font-weight: 500;
+}
+
+.recorded-segment .actions .cite-btn,
+.recorded-segment .actions .request-btn {
+    background-color: #1a73e8;
+    color: white;
+}
+
+.recorded-segment .actions .delete-btn {
+    background-color: #ea4335;
+    color: white;
+}
+
+/* ── Record Buttons (player controls) ── */
+
+.citation-record-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.6);
+    margin: 0 4px;
+    border: 1px solid rgba(255, 0, 0, 0.5);
+}
+
+.record-start-btn.recording-active .citation-record-btn {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%   { background: rgba(0, 0, 0, 0.6);   border-color: rgba(255, 0, 0, 0.5); }
+    50%  { background: rgba(255, 0, 0, 0.2);  border-color: rgba(255, 0, 0, 0.8); }
+    100% { background: rgba(0, 0, 0, 0.6);   border-color: rgba(255, 0, 0, 0.5); }
+}
+
+.citation-record-btn:hover {
+    background: rgba(255, 0, 0, 0.2);
+    border-color: rgba(255, 0, 0, 0.8);
+}
+
+
+/* ── Timeline Bars ── */
+
+.cp-timeline-bar {
+    position: absolute;
+    top: 0;
+    width: 3px;
+    height: 100%;
+    transform: translateX(-50%);
+    cursor: ew-resize;
+    z-index: 101;
+    border-radius: 2px;
+    /* Tall grab handle above the bar */
+    box-shadow: 0 -6px 0 0 currentColor;
+}
+
+.cp-timeline-bar::before {
+    /* Diamond / grip cap above the bar */
+    content: '';
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    background: currentColor;
+    rotate: 45deg;
+}
+
+.cp-bar-start {
+    background: #ff4444;
+    color: #ff4444;
+}
+
+.cp-bar-end {
+    background: #ff4444;
+    color: #ff4444;
+    /* Pulse to signal it's live / moveable */
+    animation: cp-bar-pulse 1.2s ease-in-out infinite;
+}
+
+.cp-bar-end.cp-bar-frozen {
+    animation: none;
+}
+
+@keyframes cp-bar-pulse {
+    0%   { opacity: 1;   }
+    50%  { opacity: 0.5; }
+    100% { opacity: 1;   }
+}
+
+.cp-timeline-range {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: rgba(255, 68, 68, 0.3);
+    pointer-events: none;
+    z-index: 99;
+}
