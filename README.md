@@ -16,6 +16,10 @@ The extension no longer depends on Firebase. All data is stored in MongoDB throu
 
 ## Setup
 
+### Prerequisites
+- [MongoDB Community Server](https://www.mongodb.com/try/download/community) — runs the local database
+- [MongoDB Compass](https://www.mongodb.com/try/download/compass) — GUI to inspect and manage your data (optional but recommended for dev)
+  
 ### 1. Backend
 
 ```bash
