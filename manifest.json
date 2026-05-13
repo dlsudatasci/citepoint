@@ -16,9 +16,7 @@
         "tabs"
     ],
     "host_permissions": [
-        "https://firestore.googleapis.com/*",
-        "https://*.firebaseio.com/*",
-        "https://*.firebase.com/*"
+        "http://localhost:3000/*"
     ],
     "content_scripts": [
         {
