@@ -216,7 +216,6 @@ function _wireSortMenu() {
 
         currentSortOption = item.dataset.value;
 
-        // Update checkmark
         sortMenu.querySelectorAll('.sort-menu-item').forEach(el => {
             el.innerHTML = `
                 <span class="sort-menu-text">${el.dataset.value === 'upvotes' ? 'Most Upvoted' : 'Newest first'}</span>
