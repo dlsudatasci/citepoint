@@ -2,15 +2,62 @@
 
 A Chrome extension for adding and managing citations on YouTube videos.
 
-## Installation
+## Architecture
 
-1. Clone this repository / Download zip
+```
+Chrome Extension (content scripts + background.js)
+        ↓  fetch()
+Express REST API  (backend/server.js)
+        ↓  Mongoose
+MongoDB  (local via Compass for dev, Atlas for production)
+```
+
+The extension no longer depends on Firebase. All data is stored in MongoDB through a self-hosted Express backend.
+
+## Setup
+
+### 1. Backend
+
+```bash
+cd backend
+npm install
+cp .env.example .env   # then fill in your values
+npm run dev
+```
+
+`.env` variables:
+
+| Variable | Description |
+|---|---|
+| `MONGODB_URI` | `mongodb://localhost:27017/citepoint` for local, Atlas URI for production |
+| `PORT` | Port the server runs on (default `3000`) |
+| `ALLOWED_ORIGIN` | Your extension's `chrome-extension://<id>` origin |
+
+The server exposes a `/health` endpoint — visit `http://localhost:3000/health` to confirm it's running.
+
+### 2. Extension
+
+1. Clone this repository
 2. Open Chrome and go to `chrome://extensions/`
-3. Enable Developer Mode
-4. Click "Load unpacked" and select the cloned repository folder
+3. Enable **Developer Mode**
+4. Click **Load unpacked** and select the repository root folder
 5. Open a YouTube video
 
-## Disclaimer
-This extension is accomplished in accordance to the creators' thesis submission. Note that this may have incomplete features that is not accounted for. This is to mainly provide an idea that helping developers through real-time assistance as well as learning may be provided through this extension, and is subject for more further improvements when possible.
+> Make sure the backend is running before using the extension.
 
-test
+## API Endpoints
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/citations/:videoId` | Load citations for a video |
+| POST | `/api/citations/:videoId` | Add a citation |
+| DELETE | `/api/citations/:videoId/:id` | Delete a citation |
+| PATCH | `/api/citations/:videoId/:id/vote` | Vote on a citation |
+| GET | `/api/requests/:videoId` | Load citation requests |
+| POST | `/api/requests/:videoId` | Add a citation request |
+| PATCH | `/api/requests/:videoId/:id/vote` | Vote on a request |
+| POST | `/api/reports` | Submit a report |
+
+## Disclaimer
+
+This extension was developed as part of a thesis submission. It may have incomplete features and is subject to further improvements.

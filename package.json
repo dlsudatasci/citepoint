@@ -2,9 +2,5 @@
   "name": "youtube-citation-extension",
   "version": "1.0.0",
   "description": "Chrome extension for managing citations on YouTube videos",
-  "dependencies": {
-    "firebase": "^10.8.0",
-    "@firebase/app": "^0.9.28",
-    "@firebase/firestore": "^4.4.3"
-  }
+  "dependencies": {}
 }
