@@ -12,11 +12,7 @@
  */
 async function getYouTubeUsername() {
     try {
-        // Return cached value immediately if available
-        const cached = await getCachedUsername();
-        if (cached) return cached;
-
-        // Retry DOM strategies a few times — YouTube renders asynchronously
+        // Always try to detect the current user from the DOM first
         for (let i = 0; i < 5; i++) {
             if (i > 0) await _sleep(i * 400);
             const handle = _tryGetHandleFromDOM();
@@ -26,7 +22,7 @@ async function getYouTubeUsername() {
             }
         }
 
-        // Last resort: open the account menu briefly and read the handle
+        // Menu-click fallback before giving up on live detection
         const avatarBtn = document.querySelector('button#avatar-btn, ytd-masthead button#avatar-btn');
         if (avatarBtn) {
             const handle = await _getHandleViaMenu(avatarBtn);
@@ -34,6 +30,14 @@ async function getYouTubeUsername() {
                 _cacheUsername(handle);
                 return handle;
             }
+        }
+
+        // Only use cache as a last resort — avoids returning a stale
+        // account handle when the user has switched YouTube accounts
+        const cached = await getCachedUsername();
+        if (cached) {
+            console.log('[username] Falling back to cached handle:', cached);
+            return cached;
         }
 
         console.log('[username] Could not find user handle — user may not be logged in');

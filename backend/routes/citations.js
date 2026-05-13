@@ -5,7 +5,7 @@ const Citation = require('../models/Citation');
 router.get('/:videoId', async (req, res) => {
     try {
         const citations = await Citation.find({ videoId: req.params.videoId })
-            .sort({ timestamp: -1 });
+            .sort({ dateAdded: -1 });
         res.json({ success: true, citations });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
