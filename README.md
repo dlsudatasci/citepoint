@@ -39,6 +39,11 @@ npm run dev
 
 The server exposes a `/health` endpoint — visit `http://localhost:3000/health` to confirm it's running.
 
+### Screenshot
+
+#### Finding Your Extension ID
+<img width="955" height="374" alt="Screenshot 2026-05-13 153603" src="https://github.com/user-attachments/assets/fac2877d-d4a5-428c-be25-23a32cc6af8f" />
+
 ### 2. Extension
 
 1. Clone this repository
