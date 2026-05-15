@@ -1151,3 +1151,12 @@ h3 {
 .cancel-btn:hover {
     background: #f1f3f4;
 }
+
+/* ── Theater mode ──────────────────────────── */
+.citation-controls.theater-mode {
+    position: sticky;
+    top: 0;
+    z-index: 999;
+    background-color: white;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}

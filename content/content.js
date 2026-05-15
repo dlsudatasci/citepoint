@@ -22,6 +22,33 @@ function init() {
     insertCitationButtons();  // panel.js
     observeTheaterMode();     // panel.js
     setupRecordedSegmentsPanel(); // recording.js
+
+    // Periodic health check — corrects any missed theater mode transition
+    setInterval(() => {
+        const ccDiv = document.getElementById('citation-controls');
+        if (!ccDiv) return;
+
+        const isTheater     = _isTheaterMode();
+        const inTheaterState = ccDiv.classList.contains('theater-mode');
+        const secondary     = _getSecondaryColumn();
+
+        // Ensure panel is always first child of #secondary
+        if (secondary && ccDiv.parentElement !== secondary) {
+            console.warn('[panel] Panel detached from secondary — correcting');
+            secondary.insertBefore(ccDiv, secondary.firstChild);
+        }
+
+        if (isTheater && !inTheaterState) {
+            console.warn('[panel] Panel missing theater-mode class — correcting');
+            ccDiv.classList.add('theater-mode');
+            ccDiv.style.width = storedSecondaryWidth + 'px';
+        } else if (!isTheater && inTheaterState) {
+            console.warn('[panel] Panel has theater-mode class outside theater — correcting');
+            ccDiv.classList.remove('theater-mode');
+            ccDiv.style.cssText = '';
+            ccDiv.style.width = storedSecondaryWidth + 'px';
+        }
+    }, 5000);
 }
 
 function waitForDependencies() {

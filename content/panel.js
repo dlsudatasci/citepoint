@@ -10,7 +10,7 @@ let storedSecondaryWidth = 0;
 // ── Panel construction ────────────────────────
 
 function insertCitationButtons() {
-    const secondary = document.querySelector('div#secondary.style-scope.ytd-watch-flexy');
+    const secondary = _getSecondaryColumn();
     if (!secondary) { console.log('[panel] Secondary element not found'); return; }
 
     storedSecondaryWidth = secondary.offsetWidth;
@@ -90,36 +90,69 @@ function insertCitationButtons() {
 
 // ── Theater mode ──────────────────────────────
 
+function _isTheaterMode() {
+    const flexy = document.querySelector('ytd-watch-flexy');
+    if (!flexy) return false;
+
+    if (flexy.hasAttribute('theater')) return true;
+    if (flexy.classList.contains('theater-mode') ||
+        flexy.classList.contains('ytd-watch-flexy--theater')) return true;
+
+    const player = document.querySelector('#ytd-player, #movie_player');
+    if (player && player.getBoundingClientRect().width > window.innerWidth * 0.75) return true;
+
+    return false;
+}
+
+function _getSecondaryColumn() {
+    return (
+        document.querySelector('div#secondary.style-scope.ytd-watch-flexy') ||
+        document.querySelector('#secondary') ||
+        document.querySelector('ytd-watch-flexy [id="secondary"]') ||
+        null
+    );
+}
+
+function _getPlayerContainer() {
+    return (
+        document.querySelector('#ytd-player') ||
+        document.querySelector('#movie_player') ||
+        document.querySelector('ytd-player') ||
+        null
+    );
+}
+
 function observeTheaterMode() {
     const ytdWatchFlexy = document.querySelector('ytd-watch-flexy');
-    if (!ytdWatchFlexy) return;
+    if (!ytdWatchFlexy) {
+        console.warn('[panel] ytd-watch-flexy not found — theater mode observation skipped');
+        return;
+    }
 
     new MutationObserver(() => {
-        const isTheater = ytdWatchFlexy.hasAttribute('theater');
+        const isTheater = _isTheaterMode();
         const ccDiv     = document.getElementById('citation-controls');
         if (!ccDiv) return;
 
-        if (isTheater) {
-            const playerContainer = document.querySelector('#ytd-player');
-            playerContainer?.appendChild(ccDiv);
-            Object.assign(ccDiv.style, {
-                position:        'absolute',
-                top:             '0',
-                right:           '0',
-                zIndex:          '999',
-                width:           storedSecondaryWidth + 'px',
-                backgroundColor: 'white',
-                boxShadow:       '0 2px 10px rgba(0,0,0,0.1)',
-            });
-        } else {
-            const secondary = document.querySelector('div#secondary.style-scope.ytd-watch-flexy');
-            if (secondary) {
-                ccDiv.removeAttribute('style');
-                ccDiv.style.width = storedSecondaryWidth + 'px';
-                secondary.insertBefore(ccDiv, secondary.firstChild);
-            }
+        const secondary = _getSecondaryColumn();
+        if (!secondary) {
+            console.warn('[panel] Could not find secondary column');
+            return;
         }
-    }).observe(ytdWatchFlexy, { attributes: true });
+
+        // Always keep panel inside #secondary — just toggle sticky pinning
+        secondary.insertBefore(ccDiv, secondary.firstChild);
+        if (isTheater) {
+            ccDiv.classList.add('theater-mode');
+        } else {
+            ccDiv.classList.remove('theater-mode');
+            ccDiv.style.cssText = '';
+        }
+        ccDiv.style.width = storedSecondaryWidth + 'px';
+    }).observe(ytdWatchFlexy, {
+        attributes: true,
+        attributeFilter: ['theater', 'class'],
+    });
 }
 
 // ── Private wiring helpers ────────────────────
