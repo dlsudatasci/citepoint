@@ -1,4 +1,6 @@
-importScripts('../config/config.js');
+if (typeof importScripts === 'function') {
+    importScripts('../config/config.js');
+}
 
 async function apiRequest(path, method = 'GET', body = null) {
     const options = { method, headers: { 'Content-Type': 'application/json' } };
