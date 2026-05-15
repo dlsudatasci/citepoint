@@ -1160,3 +1160,47 @@ h3 {
     background-color: white;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
+
+/* ── Skeleton loading ────────────────────────── */
+.cp-loading {
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.cp-skeleton {
+    height: 72px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: cp-shimmer 1.4s infinite;
+}
+
+.cp-skeleton--short {
+    height: 40px;
+}
+
+@keyframes cp-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ── Load more button ────────────────────────── */
+.cp-load-more-btn {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px 0;
+    background: none;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 6px;
+    color: #606060;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background 0.1s;
+}
+
+.cp-load-more-btn:hover {
+    background: #f5f5f5;
+}

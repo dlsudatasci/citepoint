@@ -11,4 +11,7 @@ const requestSchema = new mongoose.Schema({
     voteScore:      { type: Number, default: 0 },
 });
 
+requestSchema.index({ videoId: 1, dateAdded: -1 });
+requestSchema.index({ videoId: 1, voteScore: -1 });
+
 module.exports = mongoose.model('Request', requestSchema);

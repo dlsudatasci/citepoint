@@ -127,12 +127,28 @@ function _attachCitationFormListener() {
                 dateAdded:       new Date().toISOString(),
             });
 
+            // If this was a response to a request, delete the original request
+            if (form.dataset.isResponseForm === 'true' && form.dataset.respondingToRequestId) {
+                try {
+                    await apiDeleteRequest(form.dataset.respondingToRequestId, videoId);
+                } catch (deleteErr) {
+                    console.warn('[forms] Could not delete answered request:', deleteErr);
+                }
+            }
+
             alert('Citation added successfully!');
             form.reset();
             if (typeof clearTimelineBars === 'function') clearTimelineBars();
+            if (typeof clearActiveSegment === 'function') clearActiveSegment();
             document.getElementById('add-form-container').style.display = 'none';
             document.getElementById('add-item-btn').textContent = '+ Add Citation';
             loadCitations();
+            // Also refresh requests tab so the answered request disappears
+            if (form.dataset.isResponseForm === 'true') {
+                // Reset currentRequests so the next load isn't skipped by _isSameList
+                currentRequests = [];
+                loadCitationRequests();
+            }
 
         } catch (err) {
             console.error('[forms] Error adding citation:', err);
@@ -180,6 +196,7 @@ function _attachRequestFormListener() {
             alert('Citation request submitted successfully!');
             form.reset();
             if (typeof clearTimelineBars === 'function') clearTimelineBars();
+            if (typeof clearActiveSegment === 'function') clearActiveSegment();
             document.getElementById('add-form-container').style.display = 'none';
             document.getElementById('add-item-btn').textContent = '+ Add Request';
             loadCitationRequests();
@@ -199,7 +216,7 @@ function _attachRequestFormListener() {
  * Pre-fill the citation form as a response to a specific request.
  * Exposed on window so it can be called from event-delegated click handlers.
  */
-window.respondWithCitation = function(start, end, reason, title = '') {
+window.respondWithCitation = function(start, end, reason, title = '', requestId = null) {
     document.getElementById('citations-btn')?.click();
 
     const formContainer = document.getElementById('add-form-container');
@@ -214,6 +231,7 @@ window.respondWithCitation = function(start, end, reason, title = '') {
         if (!form) return;
 
         form.dataset.isResponseForm = 'true';
+        if (requestId) form.dataset.respondingToRequestId = requestId;
 
         const titleField       = form.querySelector('#citationTitle');
         const startField       = form.querySelector('#timestampStart');

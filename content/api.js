@@ -17,9 +17,9 @@ async function _send(payload) {
 
 // ── Citations ────────────────────────────────
 
-async function apiGetCitations(videoId) {
-    const res = await _send({ type: 'getCitations', videoId });
-    return res.citations || [];
+async function apiGetCitations(videoId, page = 1, limit = 20) {
+    const res = await _send({ type: 'getCitations', videoId, page, limit });
+    return { citations: res.citations || [], pagination: res.pagination || null };
 }
 
 async function apiAddCitation(citationData) {
@@ -32,13 +32,17 @@ async function apiDeleteCitation(citationId, videoId) {
 
 // ── Citation Requests ────────────────────────
 
-async function apiGetRequests(videoId) {
-    const res = await _send({ type: 'getCitationRequests', videoId });
-    return res.requests || [];
+async function apiGetRequests(videoId, page = 1, limit = 20) {
+    const res = await _send({ type: 'getCitationRequests', videoId, page, limit });
+    return { requests: res.requests || [], pagination: res.pagination || null };
 }
 
 async function apiAddRequest(requestData) {
     return _send({ type: 'addRequest', data: requestData });
+}
+
+async function apiDeleteRequest(requestId, videoId) {
+    return _send({ type: 'deleteRequest', requestId, videoId });
 }
 
 // ── Votes ────────────────────────────────────

@@ -6,7 +6,7 @@
 
 /**
  * Handle a vote action — optimistically updates the UI,
- * persists to Firebase, reverts on error.
+ * persists to the Express backend, reverts on error.
  *
  * @param {string} itemId
  * @param {'up'|'down'} voteType
@@ -69,19 +69,24 @@ async function handleVote(itemId, voteType, itemType = 'citation') {
         // ── Optimistic UI update ──────────────────────────────────────
         scoreElement.textContent = newScore;
 
-        // ── Persist to Firebase ───────────────────────────────────────
-        await apiUpdateVote(itemId, voteType, itemType, videoId);
+        // ── Persist to backend ────────────────────────────────────────
+        const result = await apiUpdateVote(itemId, voteType, itemType, videoId);
 
-        // Reload the list to sync with server state
-        if (itemType === 'citation') {
-            loadCitations();
-        } else {
-            loadCitationRequests();
+        // Confirm with the server-authoritative score (corrects any optimistic drift)
+        scoreElement.textContent = result.newScore;
+
+        // Keep the in-memory list in sync so sorting stays consistent
+        if (itemType === 'citation' && typeof currentCitations !== 'undefined') {
+            const item = currentCitations.find(c => c.id === itemId);
+            if (item) item.voteScore = result.newScore;
+        } else if (itemType === 'request' && typeof currentRequests !== 'undefined') {
+            const item = currentRequests.find(r => r.id === itemId);
+            if (item) item.voteScore = result.newScore;
         }
 
     } catch (err) {
         console.error(`[voting] Error updating ${itemType} vote:`, err);
-        // Revert on failure
+        // Revert the optimistic UI change by reloading from the source of truth
         if (itemType === 'citation') {
             loadCitations();
         } else {
