@@ -97,6 +97,7 @@ h3 {
     line-height: 20px;
     padding: 8px 12px;
     width: 100%;
+    box-sizing: border-box;
     transition: all 0.1s;
 }
 
@@ -579,7 +580,8 @@ h3 {
     flex-direction: column;
     gap: 10px;
     border-radius: 5px;
-    width: 400px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .section-header {
