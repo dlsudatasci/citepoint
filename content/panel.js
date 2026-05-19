@@ -82,10 +82,16 @@ function insertCitationButtons() {
     _wireAddButton();
     _wireSortMenu();
 
-    // Load initial data
+    // Load initial data then start polling
     document.getElementById('citations-btn').classList.add('active');
     document.getElementById('citations-container').style.display = 'block';
     loadCitations();
+    startPolling();
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) stopPolling();
+        else startPolling();
+    });
 }
 
 // ── Theater mode ──────────────────────────────
@@ -182,6 +188,8 @@ function _wireToggle() {
             btn.style.pointerEvents = collapsed ? 'auto' : 'none';
             btn.classList.toggle('disabled', !collapsed);
         });
+        if (collapsed) startPolling();
+        else stopPolling();
     });
 }
 

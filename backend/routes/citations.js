@@ -4,9 +4,24 @@ const Citation = require('../models/Citation');
 // GET /api/citations/:videoId
 router.get('/:videoId', async (req, res) => {
     try {
-        const citations = await Citation.find({ videoId: req.params.videoId })
-            .sort({ dateAdded: -1 });
-        res.json({ success: true, citations });
+        const page  = Math.max(1, parseInt(req.query.page)  || 1);
+        const limit = Math.min(50, parseInt(req.query.limit) || 20);
+        const skip  = (page - 1) * limit;
+
+        const [citations, total] = await Promise.all([
+            Citation.find({ videoId: req.params.videoId })
+                .sort({ dateAdded: -1 })
+                .skip(skip)
+                .limit(limit),
+            Citation.countDocuments({ videoId: req.params.videoId }),
+        ]);
+
+        res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+        res.json({
+            success: true,
+            citations,
+            pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+        });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }

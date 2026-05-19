@@ -1,5 +1,34 @@
 const API_BASE_URL = "http://localhost:3000/api";
 
+// ── In-memory TTL cache ───────────────────────
+const _cache = new Map();
+const CACHE_TTL_MS = 15_000;
+
+function _cacheGet(key) {
+    const entry = _cache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.timestamp > CACHE_TTL_MS) { _cache.delete(key); return null; }
+    return entry.data;
+}
+
+function _cacheSet(key, data) {
+    _cache.set(key, { data, timestamp: Date.now() });
+}
+
+function _cacheInvalidate(videoId) {
+    for (const key of _cache.keys()) {
+        if (key.startsWith(`citations:${videoId}`) || key.startsWith(`requests:${videoId}`)) {
+            _cache.delete(key);
+        }
+    }
+}
+
+// ── MV3 keepalive ─────────────────────────────
+setInterval(
+    () => fetch(`${API_BASE_URL.replace('/api', '')}/health`).catch(() => {}),
+    20_000
+);
+
 async function apiRequest(path, method = 'GET', body = null) {
     const options = { method, headers: { 'Content-Type': 'application/json' } };
     if (body) options.body = JSON.stringify(body);
@@ -11,7 +40,7 @@ async function apiRequest(path, method = 'GET', body = null) {
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.type === 'getCitations') {
-        handleGetCitations(request.videoId).then(sendResponse);
+        handleGetCitations(request.videoId, request.page, request.limit).then(sendResponse);
         return true;
     }
     if (request.type === 'addCitation') {
@@ -23,11 +52,15 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
     if (request.type === 'getCitationRequests') {
-        handleGetRequests(request.videoId).then(sendResponse);
+        handleGetRequests(request.videoId, request.page, request.limit).then(sendResponse);
         return true;
     }
     if (request.type === 'addRequest') {
         handleAddRequest(request.data).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'deleteRequest') {
+        handleDeleteRequest(request.requestId, request.videoId).then(sendResponse);
         return true;
     }
     if (request.type === 'updateVotes') {
@@ -52,11 +85,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-async function handleGetCitations(videoId) {
+async function handleGetCitations(videoId, page = 1, limit = 20) {
+    const cacheKey = `citations:${videoId}:${page}:${limit}`;
+    const cached = _cacheGet(cacheKey);
+    if (cached) return { success: true, ...cached };
     try {
-        const data = await apiRequest(`/citations/${videoId}`);
+        const data = await apiRequest(`/citations/${videoId}?page=${page}&limit=${limit}`);
         const citations = data.citations.map(({ _id, ...rest }) => ({ id: _id, ...rest }));
-        return { success: true, citations };
+        const payload = { citations, pagination: data.pagination };
+        _cacheSet(cacheKey, payload);
+        return { success: true, ...payload };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -66,6 +104,7 @@ async function handleAddCitation(data) {
     try {
         const { videoId, ...fields } = data;
         const result = await apiRequest(`/citations/${videoId}`, 'POST', fields);
+        _cacheInvalidate(videoId);
         return { success: true, id: result.id };
     } catch (error) {
         return { success: false, error: error.message };
@@ -75,17 +114,23 @@ async function handleAddCitation(data) {
 async function handleDeleteCitation(citationId, videoId) {
     try {
         await apiRequest(`/citations/${videoId}/${citationId}`, 'DELETE');
+        _cacheInvalidate(videoId);
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
     }
 }
 
-async function handleGetRequests(videoId) {
+async function handleGetRequests(videoId, page = 1, limit = 20) {
+    const cacheKey = `requests:${videoId}:${page}:${limit}`;
+    const cached = _cacheGet(cacheKey);
+    if (cached) return { success: true, ...cached };
     try {
-        const data = await apiRequest(`/requests/${videoId}`);
+        const data = await apiRequest(`/requests/${videoId}?page=${page}&limit=${limit}`);
         const requests = data.requests.map(({ _id, ...rest }) => ({ id: _id, ...rest }));
-        return { success: true, requests };
+        const payload = { requests, pagination: data.pagination };
+        _cacheSet(cacheKey, payload);
+        return { success: true, ...payload };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -95,7 +140,18 @@ async function handleAddRequest(data) {
     try {
         const { videoId, ...fields } = data;
         const result = await apiRequest(`/requests/${videoId}`, 'POST', fields);
+        _cacheInvalidate(videoId);
         return { success: true, id: result.id };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleDeleteRequest(requestId, videoId) {
+    try {
+        await apiRequest(`/requests/${videoId}/${requestId}`, 'DELETE');
+        _cacheInvalidate(videoId);
+        return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
     }

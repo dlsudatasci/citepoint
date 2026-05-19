@@ -19,6 +19,7 @@ let _rafId         = null;          // rAF id used only during live tracking
 let _recordingLive = false;         // true while playhead is being tracked
 let _startSecs     = 0;            // current start time in seconds
 let _endSecs       = 0;            // current end time in seconds
+let _activeSegment = null;          // the segment card that opened the current form
 
 // ── Progress bar helpers ──────────────────────
 
@@ -276,6 +277,18 @@ function clearTimelineBars() {
     _removeBars();
 }
 
+// Called from forms.js submit handlers to remove the segment card that spawned the form
+function clearActiveSegment() {
+    if (!_activeSegment) return;
+    const container = _activeSegment.closest('.segments-container');
+    _activeSegment.remove();
+    _activeSegment = null;
+    if (container && container.children.length === 0) {
+        const panel = container.closest('.recorded-segments-panel');
+        if (panel) panel.style.display = 'none';
+    }
+}
+
 // ── Floating Segments Panel ───────────────────
 
 function setupRecordedSegmentsPanel() {
@@ -349,6 +362,8 @@ function addRecordedSegment(startTime, endTime) {
     });
 
     segment.querySelector('.cite-btn').addEventListener('click', () => {
+        _activeSegment = segment;
+
         const citationsBtn = document.getElementById('citations-btn');
         if (citationsBtn) citationsBtn.click();
 
@@ -375,6 +390,8 @@ function addRecordedSegment(startTime, endTime) {
     });
 
     segment.querySelector('.request-btn').addEventListener('click', () => {
+        _activeSegment = segment;
+
         const requestsBtn = document.getElementById('citation-requests-btn');
         if (requestsBtn) requestsBtn.click();
 

@@ -106,17 +106,8 @@ function _attachCitationFormListener() {
             const endTime   = form.timestampEnd.value.trim();
             validateTimestamps(startTime, endTime, videoDuration);
 
-            // Build description — differs for response-to-request forms
-            let description;
-            if (form.dataset.isResponseForm === 'true') {
-                const original  = document.getElementById('originalRequestHidden')?.value || '';
-                const userReply = form.description.value.trim();
-                description     = `${original}\n\n${userReply}`;
-            } else {
-                description = form.description.value.trim();
-            }
-
-            await apiAddCitation({
+            const description = form.description.value.trim();
+            const citationData = {
                 videoId,
                 citationTitle:   form.citationTitle.value.trim(),
                 timestampStart:  startTime,
@@ -125,11 +116,18 @@ function _attachCitationFormListener() {
                 source:          form.source.value.trim(),
                 username,
                 dateAdded:       new Date().toISOString(),
-            });
+            };
+
+            if (form.dataset.isResponseForm === 'true' && form.dataset.respondingToRequestId) {
+                citationData.requestId = form.dataset.respondingToRequestId;
+            }
+
+            await apiAddCitation(citationData);
 
             alert('Citation added successfully!');
             form.reset();
             if (typeof clearTimelineBars === 'function') clearTimelineBars();
+            if (typeof clearActiveSegment === 'function') clearActiveSegment();
             document.getElementById('add-form-container').style.display = 'none';
             document.getElementById('add-item-btn').textContent = '+ Add Citation';
             loadCitations();
@@ -180,6 +178,7 @@ function _attachRequestFormListener() {
             alert('Citation request submitted successfully!');
             form.reset();
             if (typeof clearTimelineBars === 'function') clearTimelineBars();
+            if (typeof clearActiveSegment === 'function') clearActiveSegment();
             document.getElementById('add-form-container').style.display = 'none';
             document.getElementById('add-item-btn').textContent = '+ Add Request';
             loadCitationRequests();
@@ -199,7 +198,7 @@ function _attachRequestFormListener() {
  * Pre-fill the citation form as a response to a specific request.
  * Exposed on window so it can be called from event-delegated click handlers.
  */
-window.respondWithCitation = function(start, end, reason, title = '') {
+window.respondWithCitation = function(start, end, reason, title = '', requestId = null) {
     document.getElementById('citations-btn')?.click();
 
     const formContainer = document.getElementById('add-form-container');
@@ -214,15 +213,28 @@ window.respondWithCitation = function(start, end, reason, title = '') {
         if (!form) return;
 
         form.dataset.isResponseForm = 'true';
+        if (requestId) form.dataset.respondingToRequestId = requestId;
 
         const titleField       = form.querySelector('#citationTitle');
         const startField       = form.querySelector('#timestampStart');
         const endField         = form.querySelector('#timestampEnd');
         const descriptionField = form.querySelector('#description');
 
-        if (titleField)  titleField.value  = title;
-        if (startField)  startField.value  = start;
-        if (endField)    endField.value    = end;
+        if (titleField) {
+            titleField.value    = title;
+            titleField.readOnly = true;
+            titleField.classList.add('field-locked');
+        }
+        if (startField) {
+            startField.value    = start;
+            startField.readOnly = true;
+            startField.classList.add('field-locked');
+        }
+        if (endField) {
+            endField.value    = end;
+            endField.readOnly = true;
+            endField.classList.add('field-locked');
+        }
 
         if (descriptionField) {
             // Build the response layout inside the description area
