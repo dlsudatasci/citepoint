@@ -106,17 +106,8 @@ function _attachCitationFormListener() {
             const endTime   = form.timestampEnd.value.trim();
             validateTimestamps(startTime, endTime, videoDuration);
 
-            // Build description — differs for response-to-request forms
-            let description;
-            if (form.dataset.isResponseForm === 'true') {
-                const original  = document.getElementById('originalRequestHidden')?.value || '';
-                const userReply = form.description.value.trim();
-                description     = `${original}\n\n${userReply}`;
-            } else {
-                description = form.description.value.trim();
-            }
-
-            await apiAddCitation({
+            const description = form.description.value.trim();
+            const citationData = {
                 videoId,
                 citationTitle:   form.citationTitle.value.trim(),
                 timestampStart:  startTime,
@@ -125,16 +116,13 @@ function _attachCitationFormListener() {
                 source:          form.source.value.trim(),
                 username,
                 dateAdded:       new Date().toISOString(),
-            });
+            };
 
-            // If this was a response to a request, delete the original request
             if (form.dataset.isResponseForm === 'true' && form.dataset.respondingToRequestId) {
-                try {
-                    await apiDeleteRequest(form.dataset.respondingToRequestId, videoId);
-                } catch (deleteErr) {
-                    console.warn('[forms] Could not delete answered request:', deleteErr);
-                }
+                citationData.requestId = form.dataset.respondingToRequestId;
             }
+
+            await apiAddCitation(citationData);
 
             alert('Citation added successfully!');
             form.reset();
@@ -143,12 +131,6 @@ function _attachCitationFormListener() {
             document.getElementById('add-form-container').style.display = 'none';
             document.getElementById('add-item-btn').textContent = '+ Add Citation';
             loadCitations();
-            // Also refresh requests tab so the answered request disappears
-            if (form.dataset.isResponseForm === 'true') {
-                // Reset currentRequests so the next load isn't skipped by _isSameList
-                currentRequests = [];
-                loadCitationRequests();
-            }
 
         } catch (err) {
             console.error('[forms] Error adding citation:', err);
@@ -238,9 +220,21 @@ window.respondWithCitation = function(start, end, reason, title = '', requestId 
         const endField         = form.querySelector('#timestampEnd');
         const descriptionField = form.querySelector('#description');
 
-        if (titleField)  titleField.value  = title;
-        if (startField)  startField.value  = start;
-        if (endField)    endField.value    = end;
+        if (titleField) {
+            titleField.value    = title;
+            titleField.readOnly = true;
+            titleField.classList.add('field-locked');
+        }
+        if (startField) {
+            startField.value    = start;
+            startField.readOnly = true;
+            startField.classList.add('field-locked');
+        }
+        if (endField) {
+            endField.value    = end;
+            endField.readOnly = true;
+            endField.classList.add('field-locked');
+        }
 
         if (descriptionField) {
             // Build the response layout inside the description area

@@ -10,6 +10,7 @@ const citationSchema = new mongoose.Schema({
     username:       { type: String, required: true },
     dateAdded:      { type: Date, default: Date.now },
     voteScore:      { type: Number, default: 0 },
+    requestId:      { type: String, default: null },
 });
 
 citationSchema.index({ videoId: 1, dateAdded: -1 });

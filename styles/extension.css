@@ -1204,3 +1204,124 @@ h3 {
 .cp-load-more-btn:hover {
     background: #f5f5f5;
 }
+
+/* ── Citation card layout helpers ────────────── */
+.citation-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.citation-timestamp {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    font-size: 12px;
+    color: #606060;
+}
+
+.timestamp-btn {
+    background: none;
+    border: none;
+    color: #065fd4;
+    cursor: pointer;
+    font-family: "Roboto", "Arial", sans-serif;
+    font-size: 12px;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: background-color 0.1s;
+}
+
+.timestamp-btn:hover {
+    background-color: rgba(6, 95, 212, 0.1);
+}
+
+.citation-meta {
+    display: flex;
+    gap: 8px;
+    color: #606060;
+    font-size: 12px;
+    margin: 6px 0;
+}
+
+.citation-source {
+    display: inline-block;
+    color: #065fd4;
+    font-size: 13px;
+    text-decoration: none;
+    margin: 4px 0 6px;
+}
+
+.citation-source:hover {
+    text-decoration: underline;
+}
+
+/* ── Response / Request badges ───────────────── */
+.response-badge,
+.request-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.response-badge {
+    background-color: rgba(6, 95, 212, 0.1);
+    color: #065fd4;
+}
+
+.request-badge {
+    background-color: rgba(0, 0, 0, 0.07);
+    color: #606060;
+}
+
+/* ── Request-response group card ─────────────── */
+.rg-divider {
+    border: none;
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+    margin: 12px 0 8px;
+}
+
+.rg-responses-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #606060;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.rg-response-entry {
+    padding: 8px 0;
+}
+
+.rg-response-entry + .rg-response-entry {
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.rg-response-entry .citation-description {
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    margin: 4px 0 6px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* ── Locked (read-only) form fields ──────────── */
+.field-locked {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+    border-color: transparent !important;
+    color: #606060 !important;
+    cursor: not-allowed !important;
+    user-select: none;
+}

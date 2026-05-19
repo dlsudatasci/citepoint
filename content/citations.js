@@ -16,6 +16,7 @@ let currentTime        = 0; // updated by player.js
 let _citationsLoading  = false;
 let _requestsLoading   = false;
 let _pollInterval      = null;
+let _requestsById      = {}; // request objects keyed by id, for grouping response citations
 
 // ── Load functions ────────────────────────────
 
@@ -48,6 +49,22 @@ async function loadCitations(page = 1) {
         }
 
         const sorted = sortItems(citations, currentSortOption, 'citation');
+
+        // Fetch requests for grouping response citations under their original request
+        if (page === 1) {
+            const hasResponses = sorted.some(c => c.requestId);
+            if (hasResponses) {
+                try {
+                    const { requests } = await apiGetRequests(videoId, 1, 200);
+                    _requestsById = Object.fromEntries(requests.map(r => [r.id, r]));
+                } catch (e) {
+                    console.warn('[citations] Could not fetch requests for grouping:', e);
+                    _requestsById = {};
+                }
+            } else {
+                _requestsById = {};
+            }
+        }
 
         if (container.style.display !== 'none') {
             if (page === 1) {
@@ -156,7 +173,9 @@ function sortItems(items, sortBy, itemType = 'citation') {
 // ── Rendering ─────────────────────────────────
 
 /**
- * Render citations split into "Current Timestamps" and "Other Citations" sections
+ * Render citations split into "Current Timestamps" and "Other Citations" sections.
+ * Response citations that have a matching request in _requestsById are grouped
+ * under a single composite card; the rest render individually.
  */
 async function _renderCitationsWithSections(citations, container, pagination = null) {
     container.innerHTML = '';
@@ -167,14 +186,35 @@ async function _renderCitationsWithSections(citations, container, pagination = n
     }
 
     const currentUsername = await getCachedUsername();
-    const elements = await Promise.all(
-        citations.map(c => createCitationElement(c, userVotes[c.id] || null, currentUsername))
+
+    // Separate into request-response groups and standalone citations
+    const groups    = new Map(); // requestId → citation[]
+    const standalone = [];
+
+    for (const c of citations) {
+        if (c.requestId && _requestsById[c.requestId]) {
+            if (!groups.has(c.requestId)) groups.set(c.requestId, []);
+            groups.get(c.requestId).push(c);
+        } else {
+            standalone.push(c);
+        }
+    }
+
+    const standaloneEls = await Promise.all(
+        standalone.map(c => createCitationElement(c, userVotes[c.id] || null, currentUsername))
+    );
+    const groupEls = await Promise.all(
+        [...groups.entries()].map(([requestId, responses]) =>
+            createRequestResponseGroupElement(_requestsById[requestId], responses, userVotes, currentUsername)
+        )
     );
 
-    const highlighted = elements.filter(el =>
+    const allElements = [...standaloneEls, ...groupEls];
+
+    const highlighted = allElements.filter(el =>
         parseFloat(el.dataset.start) <= currentTime && currentTime <= parseFloat(el.dataset.end)
     );
-    const normal = elements.filter(el => !highlighted.includes(el));
+    const normal = allElements.filter(el => !highlighted.includes(el));
 
     if (highlighted.length > 0) {
         const header = document.createElement('div');
@@ -287,6 +327,103 @@ async function createCitationElement(citation, userVote, currentUsername = null)
     el.querySelector('.report-btn').addEventListener('click', () =>
         showReportDialog(citation.id, 'citation')
     );
+
+    return el;
+}
+
+/**
+ * Build a grouped card showing the original request header and all its response
+ * citations beneath it — one container for all responses to a single request.
+ */
+async function createRequestResponseGroupElement(request, responseCitations, votes, currentUsername) {
+    const el = document.createElement('div');
+    el.className     = 'citation-item request-response-group';
+    el.dataset.start = parseTimestamp(request.timestampStart);
+    el.dataset.end   = parseTimestamp(request.timestampEnd);
+
+    el.innerHTML = `
+        <div class="citation-header">
+            <span class="citation-title">${_escapeHtml(request.title || 'Untitled Request')}</span>
+            <span class="citation-timestamp">
+                <button class="timestamp-btn" data-time="${parseTimestamp(request.timestampStart)}">
+                    ${_escapeHtml(request.timestampStart)}
+                </button>
+                –
+                <button class="timestamp-btn" data-time="${parseTimestamp(request.timestampEnd)}">
+                    ${_escapeHtml(request.timestampEnd)}
+                </button>
+            </span>
+        </div>
+        <span class="request-badge">Citation Request</span>
+        <p class="citation-description">${_escapeHtml(request.reason || '')}</p>
+        <div class="citation-meta">
+            <span class="citation-author">${_escapeHtml(request.username || 'Anonymous')}</span>
+            <span class="citation-date">${_formatDate(request.dateAdded)}</span>
+        </div>
+        <div class="rg-divider"></div>
+        <div class="rg-responses">
+            <span class="rg-responses-label">${responseCitations.length} Response${responseCitations.length !== 1 ? 's' : ''}</span>
+        </div>
+    `;
+
+    el.querySelectorAll('.timestamp-btn').forEach(btn => {
+        btn.addEventListener('click', () => seekToTime(parseFloat(btn.dataset.time)));
+    });
+
+    const responsesContainer = el.querySelector('.rg-responses');
+
+    for (const citation of responseCitations) {
+        const userVote  = votes[citation.id] || null;
+        const canDelete = currentUsername && currentUsername === citation.username;
+
+        const responseEl = document.createElement('div');
+        responseEl.className = 'rg-response-entry';
+        responseEl.innerHTML = `
+            <p class="citation-description">${_escapeHtml(citation.description || '')}</p>
+            ${citation.source ? `<a class="citation-source" href="${_escapeHtml(citation.source)}" target="_blank" rel="noopener noreferrer">Source ↗</a>` : ''}
+            <div class="citation-meta">
+                <span class="citation-author">${_escapeHtml(citation.username || 'Anonymous')}</span>
+                <span class="citation-date">${_formatDate(citation.dateAdded)}</span>
+            </div>
+            <div class="citation-actions">
+                <div class="vote-controls" data-citation-id="${citation.id}">
+                    <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}">▲</button>
+                    <span class="vote-score">${citation.voteScore ?? 0}</span>
+                    <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
+                </div>
+                <div class="action-buttons">
+                    ${canDelete ? `<button class="action-btn delete-btn" data-id="${citation.id}">Delete</button>` : ''}
+                    <button class="action-btn report-btn" data-id="${citation.id}">Report</button>
+                </div>
+            </div>
+        `;
+
+        const vc = responseEl.querySelector('.vote-controls');
+        vc.querySelector('.upvote-btn').addEventListener('click', () =>
+            handleVote(citation.id, 'up', 'citation')
+        );
+        vc.querySelector('.downvote-btn').addEventListener('click', () =>
+            handleVote(citation.id, 'down', 'citation')
+        );
+
+        if (canDelete) {
+            responseEl.querySelector('.delete-btn').addEventListener('click', async () => {
+                if (!confirm('Delete this citation?')) return;
+                try {
+                    await apiDeleteCitation(citation.id, getCurrentVideoId());
+                    loadCitations();
+                } catch (err) {
+                    alert('Failed to delete citation. Please try again.');
+                }
+            });
+        }
+
+        responseEl.querySelector('.report-btn').addEventListener('click', () =>
+            showReportDialog(citation.id, 'citation')
+        );
+
+        responsesContainer.appendChild(responseEl);
+    }
 
     return el;
 }
@@ -442,14 +579,31 @@ const debouncedSortAndUpdate = debounce(() => {
 // ── Private helpers ───────────────────────────
 
 async function _appendCitationsPage(citations, container, pagination) {
-    // Remove existing load-more button before appending new items
     container.querySelector('.cp-load-more-btn')?.remove();
 
     const currentUsername = await getCachedUsername();
-    const elements = await Promise.all(
-        citations.map(c => createCitationElement(c, userVotes[c.id] || null, currentUsername))
+
+    const groups     = new Map();
+    const standalone = [];
+    for (const c of citations) {
+        if (c.requestId && _requestsById[c.requestId]) {
+            if (!groups.has(c.requestId)) groups.set(c.requestId, []);
+            groups.get(c.requestId).push(c);
+        } else {
+            standalone.push(c);
+        }
+    }
+
+    const standaloneEls = await Promise.all(
+        standalone.map(c => createCitationElement(c, userVotes[c.id] || null, currentUsername))
     );
-    elements.forEach(el => container.appendChild(el));
+    const groupEls = await Promise.all(
+        [...groups.entries()].map(([requestId, responses]) =>
+            createRequestResponseGroupElement(_requestsById[requestId], responses, userVotes, currentUsername)
+        )
+    );
+
+    [...standaloneEls, ...groupEls].forEach(el => container.appendChild(el));
 
     if (pagination && pagination.page < pagination.pages) {
         const remaining = pagination.total - pagination.page * pagination.limit;
