@@ -166,7 +166,7 @@ function _attachRequestFormListener() {
 
             await apiAddRequest({
                 videoId,
-                title:          form.title.value.trim(),
+                title:          form.elements['title'].value.trim(), 
                 timestampStart: startTime,
                 timestampEnd:   endTime,
                 reason:         form.reason.value.trim(),

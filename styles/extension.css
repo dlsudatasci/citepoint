@@ -86,6 +86,7 @@ h3 {
 }
 
 .form-group input[type="text"],
+.form-group input[type="url"],
 .form-group input[type="date"],
 .form-group textarea {
     background-color: rgba(0, 0, 0, 0.05);
@@ -97,16 +98,19 @@ h3 {
     line-height: 20px;
     padding: 8px 12px;
     width: 100%;
+    box-sizing: border-box;
     transition: all 0.1s;
 }
 
 .form-group input[type="text"]:hover,
+.form-group input[type="url"]:hover,
 .form-group input[type="date"]:hover,
 .form-group textarea:hover {
     background-color: rgba(0, 0, 0, 0.08);
 }
 
 .form-group input[type="text"]:focus,
+.form-group input[type="url"]:focus,
 .form-group input[type="date"]:focus,
 .form-group textarea:focus {
     background-color: white;
@@ -439,6 +443,9 @@ h3 {
     padding: 0 16px;
     margin: 12px 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 /* Tab buttons */
@@ -579,7 +586,8 @@ h3 {
     flex-direction: column;
     gap: 10px;
     border-radius: 5px;
-    width: 400px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .section-header {
@@ -1161,70 +1169,55 @@ h3 {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
 
-/* ── Skeleton loading ────────────────────────── */
-.cp-loading {
-    padding: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.cp-skeleton {
-    height: 72px;
-    border-radius: 6px;
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-    background-size: 200% 100%;
-    animation: cp-shimmer 1.4s infinite;
-}
-
-.cp-skeleton--short {
-    height: 40px;
-}
-
-@keyframes cp-shimmer {
-    0%   { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
-}
-
-/* ── Load more button ────────────────────────── */
-.cp-load-more-btn {
-    display: block;
-    width: 100%;
-    margin-top: 8px;
-    padding: 8px 0;
-    background: none;
-    border: 1px solid rgba(0, 0, 0, 0.15);
-    border-radius: 6px;
-    color: #606060;
-    font-size: 13px;
-    cursor: pointer;
-    transition: background 0.1s;
-}
-
-.cp-load-more-btn:hover {
-    background: #f5f5f5;
-}
-
-/* ── Citation card layout helpers ────────────── */
-.citation-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 8px;
-    margin-bottom: 6px;
-}
-
-.citation-timestamp {
+/* ── Panel header & toggle arrow ──────────────────────────── */
+.extension-header {
     display: flex;
     align-items: center;
-    gap: 2px;
-    flex-shrink: 0;
-    white-space: nowrap;
-    font-size: 12px;
+    padding: 4px 8px;
+    background-color: transparent;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.toggle-extension-btn {
+    background: none;
+    border: none;
+    padding: 4px 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
     color: #606060;
 }
 
-.timestamp-btn {
+.toggle-extension-btn:hover {
+    color: #030303;
+}
+
+.toggle-icon {
+    font-size: 16px;
+    transition: transform 0.2s ease;
+}
+
+.extension-content {
+    transition: max-height 0.3s ease-out;
+    overflow: hidden;
+}
+
+.extension-content.collapsed {
+    max-height: 0;
+    overflow: hidden;
+}
+/* ── Citation card layout (old format) ──────────────────────────── */
+.citation-timestamp {
+    display: block;
+    margin: 4px 0;
+    font-size: 13px;
+}
+
+.citation-timestamp .timestamp-btn {
     background: none;
     border: none;
     color: #065fd4;
@@ -1324,4 +1317,74 @@ h3 {
     color: #606060 !important;
     cursor: not-allowed !important;
     user-select: none;
+}
+    font-size: 13px;
+    padding: 0;
+    font-family: "Roboto", "Arial", sans-serif;
+}
+
+.citation-timestamp .timestamp-btn:hover {
+    text-decoration: underline;
+}
+
+.citation-meta {
+    font-size: 12px;
+    color: #606060;
+    margin: 2px 0 8px 0;
+}
+
+.citation-author {
+    color: #065fd4;
+    font-weight: 500;
+}
+
+.citation-source-url {
+    font-size: 13px;
+    color: #065fd4;
+    word-break: break-all;
+    margin: 4px 0;
+}
+
+/* ── Citation author link ──────────────────────────── */
+.citation-author {
+    color: #065fd4;
+    font-weight: 500;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.citation-author:hover {
+    text-decoration: underline;
+}
+
+/* ── Toast notification ──────────────────────────── */
+.cp-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #323232;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: "Roboto", "Arial", sans-serif;
+    z-index: 99999;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    max-width: 360px;
+    text-align: center;
+}
+
+.cp-toast.cp-toast-error {
+    background: #c0392b;
+}
+
+.cp-toast.cp-toast-success {
+    background: #27ae60;
+}
+
+.cp-toast.visible {
+    opacity: 1;
 }

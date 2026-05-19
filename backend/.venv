@@ -1,0 +1,3 @@
+MONGODB_URI=mongodb://localhost:27017/citepoint
+PORT=3000
+ALLOWED_ORIGINS=chrome-extension://ghppfhodfckelffdcckmiombabceijbl

@@ -1,4 +1,4 @@
-importScripts('../config/config.js');
+const API_BASE_URL = "http://localhost:3000/api";
 
 // ── In-memory TTL cache ───────────────────────
 const _cache = new Map();
@@ -163,12 +163,10 @@ function getStorageKey(itemType, videoId) {
 
 function computeDelta(voteType, currentVote) {
     if (voteType === currentVote) {
-        // Toggle off
         return voteType === 'up' ? -1 : 1;
     }
     let delta = voteType === 'up' ? 1 : -1;
     if (currentVote) {
-        // Undo previous vote before applying new one
         delta += currentVote === 'up' ? -1 : 1;
     }
     return delta;
@@ -180,20 +178,15 @@ async function handleUpdateCitationVotes(videoId, citationId, voteType) {
         const userVotes = await new Promise(resolve =>
             chrome.storage.local.get(storageKey, r => resolve(r[storageKey] || {}))
         );
-
         const currentVote = userVotes[citationId];
         const delta = computeDelta(voteType, currentVote);
-
         const result = await apiRequest(`/citations/${videoId}/${citationId}/vote`, 'PATCH', { delta });
-
         if (voteType === currentVote) {
             delete userVotes[citationId];
         } else {
             userVotes[citationId] = voteType;
         }
         await new Promise(resolve => chrome.storage.local.set({ [storageKey]: userVotes }, resolve));
-
-        _cacheInvalidate(videoId);
         return { success: true, newScore: result.newScore, newVote: userVotes[citationId] || null };
     } catch (error) {
         return { success: false, error: error.message };
@@ -206,20 +199,15 @@ async function handleUpdateRequestVotes(videoId, requestId, voteType) {
         const userVotes = await new Promise(resolve =>
             chrome.storage.local.get(storageKey, r => resolve(r[storageKey] || {}))
         );
-
         const currentVote = userVotes[requestId];
         const delta = computeDelta(voteType, currentVote);
-
         const result = await apiRequest(`/requests/${videoId}/${requestId}/vote`, 'PATCH', { delta });
-
         if (voteType === currentVote) {
             delete userVotes[requestId];
         } else {
             userVotes[requestId] = voteType;
         }
         await new Promise(resolve => chrome.storage.local.set({ [storageKey]: userVotes }, resolve));
-
-        _cacheInvalidate(videoId);
         return { success: true, newScore: result.newScore, newVote: userVotes[requestId] || null };
     } catch (error) {
         return { success: false, error: error.message };
