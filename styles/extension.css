@@ -443,6 +443,9 @@ h3 {
     padding: 0 16px;
     margin: 12px 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 /* Tab buttons */
@@ -1172,6 +1175,9 @@ h3 {
     align-items: center;
     padding: 4px 8px;
     background-color: transparent;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .toggle-extension-btn {
