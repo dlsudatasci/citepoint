@@ -187,23 +187,23 @@ async function createCitationElement(citation, userVote) {
     el.innerHTML = `
         <div class="citation-header">
             <span class="citation-title">${_escapeHtml(citation.citationTitle || 'Untitled')}</span>
-            <span class="citation-timestamp">
-                <button class="timestamp-btn" data-time="${parseTimestamp(citation.timestampStart)}">
-                    ${_escapeHtml(citation.timestampStart)}
-                </button>
-                –
-                <button class="timestamp-btn" data-time="${parseTimestamp(citation.timestampEnd)}">
-                    ${_escapeHtml(citation.timestampEnd)}
-                </button>
-            </span>
+        </div>
+        <div class="citation-timestamp">
+            <button class="timestamp-btn" data-time="${parseTimestamp(citation.timestampStart)}">
+                ${_escapeHtml(citation.timestampStart)}
+            </button>
+            to
+            <button class="timestamp-btn" data-time="${parseTimestamp(citation.timestampEnd)}">
+                ${_escapeHtml(citation.timestampEnd)}
+            </button>
+        </div>
+        <div class="citation-meta">
+            <a class="citation-author" href="https://www.youtube.com/@${_escapeHtml(citation.username || 'Anonymous')}" target="_blank" rel="noopener noreferrer">@${_escapeHtml(citation.username || 'Anonymous')}</a>
+            <span class="citation-date"> · ${_formatDate(citation.dateAdded)}</span>
         </div>
         ${isResponse ? '<span class="response-badge">Response</span>' : ''}
         <p class="citation-description">${_escapeHtml(displayDescription || '')}</p>
-        ${citation.source ? `<a class="citation-source" href="${_escapeHtml(citation.source)}" target="_blank" rel="noopener noreferrer">Source ↗</a>` : ''}
-        <div class="citation-meta">
-            <span class="citation-author">${_escapeHtml(citation.username || 'Anonymous')}</span>
-            <span class="citation-date">${_formatDate(citation.dateAdded)}</span>
-        </div>
+        ${citation.source ? `<p class="citation-source-url">${_escapeHtml(citation.source)}</p>` : ''}
         <div class="citation-actions">
             <div class="vote-controls" data-citation-id="${citation.id}">
                 <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}">▲</button>
@@ -238,7 +238,7 @@ async function createCitationElement(citation, userVote) {
                 await apiDeleteCitation(citation.id, getCurrentVideoId());
                 loadCitations();
             } catch (err) {
-                alert('Failed to delete citation. Please try again.');
+                showToast('Failed to delete citation. Please try again.', 'error');
             }
         });
     }
@@ -274,7 +274,7 @@ function createRequestElement(request, userVote) {
         </div>
         <p class="citation-description">${_escapeHtml(request.reason || '')}</p>
         <div class="citation-meta">
-            <span class="citation-author">${_escapeHtml(request.username || 'Anonymous')}</span>
+            <a class="citation-author" href="https://www.youtube.com/@${_escapeHtml(request.username || 'Anonymous')}" target="_blank" rel="noopener noreferrer">@${_escapeHtml(request.username || 'Anonymous')}</a>
             <span class="citation-date">${_formatDate(request.dateAdded)}</span>
         </div>
         <div class="citation-actions">
