@@ -86,6 +86,7 @@ h3 {
 }
 
 .form-group input[type="text"],
+.form-group input[type="url"],
 .form-group input[type="date"],
 .form-group textarea {
     background-color: rgba(0, 0, 0, 0.05);
@@ -102,12 +103,14 @@ h3 {
 }
 
 .form-group input[type="text"]:hover,
+.form-group input[type="url"]:hover,
 .form-group input[type="date"]:hover,
 .form-group textarea:hover {
     background-color: rgba(0, 0, 0, 0.08);
 }
 
 .form-group input[type="text"]:focus,
+.form-group input[type="url"]:focus,
 .form-group input[type="date"]:focus,
 .form-group textarea:focus {
     background-color: white;

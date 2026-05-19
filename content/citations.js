@@ -198,7 +198,7 @@ async function createCitationElement(citation, userVote) {
             </button>
         </div>
         <div class="citation-meta">
-            <a class="citation-author" href="https://www.youtube.com/@${_escapeHtml(citation.username || 'Anonymous')}" target="_blank" rel="noopener noreferrer">@${_escapeHtml(citation.username || 'Anonymous')}</a>
+            <a class="citation-author" href="https://www.youtube.com/${_escapeHtml(citation.username || 'Anonymous')}" target="_blank" rel="noopener noreferrer">${_escapeHtml(citation.username || 'Anonymous')}</a>
             <span class="citation-date"> · ${_formatDate(citation.dateAdded)}</span>
         </div>
         ${isResponse ? '<span class="response-badge">Response</span>' : ''}
@@ -274,7 +274,7 @@ function createRequestElement(request, userVote) {
         </div>
         <p class="citation-description">${_escapeHtml(request.reason || '')}</p>
         <div class="citation-meta">
-            <a class="citation-author" href="https://www.youtube.com/@${_escapeHtml(request.username || 'Anonymous')}" target="_blank" rel="noopener noreferrer">@${_escapeHtml(request.username || 'Anonymous')}</a>
+            <a class="citation-author" href="https://www.youtube.com/${_escapeHtml(request.username || 'Anonymous')}" target="_blank" rel="noopener noreferrer">${_escapeHtml(request.username || 'Anonymous')}</a>
             <span class="citation-date">${_formatDate(request.dateAdded)}</span>
         </div>
         <div class="citation-actions">
