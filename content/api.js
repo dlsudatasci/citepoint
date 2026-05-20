@@ -10,9 +10,24 @@
  * Rejects if response.success is false.
  */
 async function _send(payload) {
-    const response = await chrome.runtime.sendMessage(payload);
-    if (!response.success) throw new Error(response.error || 'Unknown error from background');
-    return response;
+    return new Promise((resolve, reject) => {
+        try {
+            chrome.runtime.sendMessage(payload, (response) => {
+                if (chrome.runtime.lastError) {
+                    return reject(new Error(chrome.runtime.lastError.message));
+                }
+                if (!response) {
+                    return reject(new Error('No response from background script'));
+                }
+                if (!response.success) {
+                    return reject(new Error(response.error || 'Unknown error from background'));
+                }
+                resolve(response);
+            });
+        } catch (err) {
+            reject(err);
+        }
+    });
 }
 
 // ── Citations ────────────────────────────────
