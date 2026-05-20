@@ -8,7 +8,7 @@ const _storage = (typeof browser !== 'undefined' && browser.storage)
 
 // ── In-memory TTL cache ───────────────────────
 const _cache = new Map();
-const CACHE_TTL_MS = 15_000;
+const CACHE_TTL_MS = 10_000; // aligned with server max-age=10
 
 function _cacheGet(key) {
     const entry = _cache.get(key);
@@ -54,7 +54,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
     if (request.type === 'deleteCitation') {
-        handleDeleteCitation(request.citationId, request.videoId).then(sendResponse);
+        handleDeleteCitation(request.citationId, request.videoId, request.username).then(sendResponse);
         return true;
     }
     if (request.type === 'getCitationRequests') {
@@ -66,7 +66,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
     if (request.type === 'deleteRequest') {
-        handleDeleteRequest(request.requestId, request.videoId).then(sendResponse);
+        handleDeleteRequest(request.requestId, request.videoId, request.username).then(sendResponse);
         return true;
     }
     if (request.type === 'updateVotes') {
@@ -117,9 +117,9 @@ async function handleAddCitation(data) {
     }
 }
 
-async function handleDeleteCitation(citationId, videoId) {
+async function handleDeleteCitation(citationId, videoId, username) {
     try {
-        await apiRequest(`/citations/${videoId}/${citationId}`, 'DELETE');
+        await apiRequest(`/citations/${videoId}/${citationId}`, 'DELETE', { username });
         _cacheInvalidate(videoId);
         return { success: true };
     } catch (error) {
@@ -153,9 +153,9 @@ async function handleAddRequest(data) {
     }
 }
 
-async function handleDeleteRequest(requestId, videoId) {
+async function handleDeleteRequest(requestId, videoId, username) {
     try {
-        await apiRequest(`/requests/${videoId}/${requestId}`, 'DELETE');
+        await apiRequest(`/requests/${videoId}/${requestId}`, 'DELETE', { username });
         _cacheInvalidate(videoId);
         return { success: true };
     } catch (error) {
@@ -235,11 +235,12 @@ async function handleGetUserVotes(videoId, itemType = 'citation') {
 async function handleReportItem(data) {
     try {
         const result = await apiRequest('/reports', 'POST', {
-            videoId: data.videoId,
-            itemId: data.itemId,
-            itemType: data.itemType,
-            reason: data.reason,
-            additionalInfo: data.additionalInfo || '',
+            videoId:         data.videoId,
+            itemId:          data.itemId,
+            itemType:        data.itemType,
+            reason:          data.reason,
+            additionalInfo:  data.additionalInfo || '',
+            reporterUsername: data.reporterUsername,
         });
         return { success: true, reportId: result.reportId };
     } catch (error) {

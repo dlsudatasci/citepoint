@@ -8,9 +8,6 @@
 /**
  * Fetch an internal HTML page by filename, inject it into a container,
  * apply form styling, then fire an optional callback.
- * @param {string} url           e.g. 'forms/youtube_extension_citation.html'
- * @param {string} containerId
- * @param {Function} [callback]
  */
 function loadPage(url, containerId, callback = null) {
     fetch(chrome.runtime.getURL(url))
@@ -20,7 +17,6 @@ function loadPage(url, containerId, callback = null) {
             if (!container) return;
             container.innerHTML = html;
 
-            // Apply consistent styling to injected form elements
             container.querySelectorAll('form').forEach(form => {
                 form.style.maxWidth = '100%';
                 form.querySelectorAll('input:not([type="checkbox"]), textarea').forEach(el => {
@@ -86,10 +82,10 @@ function _attachCitationFormListener() {
         e.preventDefault();
 
         const moviePlayer = document.getElementById('movie_player');
-            if (moviePlayer && moviePlayer.classList.contains('ad-showing')) {
-                alert('Cannot submit citations while an ad is playing. Please wait for the main video.');
-        return; 
-    }
+        if (moviePlayer && moviePlayer.classList.contains('ad-showing')) {
+            alert('Cannot submit citations while an ad is playing. Please wait for the main video.');
+            return;
+        }
 
         const videoId = getCurrentVideoId();
         const submitBtn = form.querySelector('#submit-btn');
@@ -109,13 +105,13 @@ function _attachCitationFormListener() {
             const description = form.description.value.trim();
             const citationData = {
                 videoId,
-                citationTitle:   form.citationTitle.value.trim(),
-                timestampStart:  startTime,
-                timestampEnd:    endTime,
+                citationTitle:  form.citationTitle.value.trim(),
+                timestampStart: startTime,
+                timestampEnd:   endTime,
                 description,
-                source:          form.source.value.trim(),
+                source:         form.source.value.trim(),
                 username,
-                dateAdded:       new Date().toISOString(),
+                dateAdded:      new Date().toISOString(),
             };
 
             if (form.dataset.isResponseForm === 'true' && form.dataset.respondingToRequestId) {
@@ -124,13 +120,16 @@ function _attachCitationFormListener() {
 
             await apiAddCitation(citationData);
 
-            alert('Citation added successfully!');
+            // Toast instead of blocking alert — lets the UI update immediately
+            showToast('Citation added successfully!', 'success');
             form.reset();
             if (typeof clearTimelineBars === 'function') clearTimelineBars();
             if (typeof clearActiveSegment === 'function') clearActiveSegment();
             document.getElementById('add-form-container').style.display = 'none';
             document.getElementById('add-item-btn').textContent = '+ Add Citation';
-            loadCitations();
+
+            // Silent refresh — keeps existing cards visible while fetching updated list
+            loadCitations(1, true);
 
         } catch (err) {
             console.error('[forms] Error adding citation:', err);
@@ -166,22 +165,23 @@ function _attachRequestFormListener() {
 
             await apiAddRequest({
                 videoId,
-                title:          form.elements['title'].value.trim(), 
+                title:          form.elements['title'].value.trim(),
                 timestampStart: startTime,
                 timestampEnd:   endTime,
                 reason:         form.reason.value.trim(),
                 username,
                 dateAdded:      new Date().toISOString(),
-                voteScore:      0,
             });
 
-            alert('Citation request submitted successfully!');
+            showToast('Citation request submitted!', 'success');
             form.reset();
             if (typeof clearTimelineBars === 'function') clearTimelineBars();
             if (typeof clearActiveSegment === 'function') clearActiveSegment();
             document.getElementById('add-form-container').style.display = 'none';
             document.getElementById('add-item-btn').textContent = '+ Add Request';
-            loadCitationRequests();
+
+            // Silent refresh — no skeleton flash
+            loadCitationRequests(1, true);
 
         } catch (err) {
             console.error('[forms] Error submitting request:', err);
@@ -194,10 +194,6 @@ function _attachRequestFormListener() {
 
 // ── respondWithCitation (global) ──────────────
 
-/**
- * Pre-fill the citation form as a response to a specific request.
- * Exposed on window so it can be called from event-delegated click handlers.
- */
 window.respondWithCitation = function(start, end, reason, title = '', requestId = null) {
     document.getElementById('citations-btn')?.click();
 
@@ -237,7 +233,6 @@ window.respondWithCitation = function(start, end, reason, title = '', requestId 
         }
 
         if (descriptionField) {
-            // Build the response layout inside the description area
             const wrapper = document.createElement('div');
             wrapper.className = 'response-section';
 

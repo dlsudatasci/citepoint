@@ -35,16 +35,19 @@ async function handleVote(itemId, voteType, itemType = 'citation') {
         const isUpvoted    = upvoteBtn.classList.contains('voted');
         const isDownvoted  = downvoteBtn.classList.contains('voted');
 
-        // ── Calculate new score ───────────────────────────────────────
+        // ── Calculate optimistic score and new button state ───────────
         let newScore = currentScore;
+        let newVote  = null; // null = no vote after this action
 
         if (voteType === 'up') {
             if (isUpvoted) {
                 newScore--;
+                newVote = null;
                 upvoteBtn.classList.remove('voted');
                 upvoteBtn.title = 'Upvote';
             } else {
                 newScore++;
+                newVote = 'up';
                 if (isDownvoted) newScore++; // cancel previous downvote
                 upvoteBtn.classList.add('voted');
                 downvoteBtn.classList.remove('voted');
@@ -54,10 +57,12 @@ async function handleVote(itemId, voteType, itemType = 'citation') {
         } else {
             if (isDownvoted) {
                 newScore++;
+                newVote = null;
                 downvoteBtn.classList.remove('voted');
                 downvoteBtn.title = 'Downvote';
             } else {
                 newScore--;
+                newVote = 'down';
                 if (isUpvoted) newScore--; // cancel previous upvote
                 downvoteBtn.classList.add('voted');
                 upvoteBtn.classList.remove('voted');
@@ -69,13 +74,33 @@ async function handleVote(itemId, voteType, itemType = 'citation') {
         // ── Optimistic UI update ──────────────────────────────────────
         scoreElement.textContent = newScore;
 
+        // ── Optimistic in-memory state update ─────────────────────────
+        // Update userVotes immediately so re-renders triggered by sort or other
+        // actions don't revert the button to its pre-vote state.
+        if (typeof userVotes !== 'undefined') {
+            if (newVote === null) {
+                delete userVotes[itemId];
+            } else {
+                userVotes[itemId] = newVote;
+            }
+        }
+
         // ── Persist to backend ────────────────────────────────────────
         const result = await apiUpdateVote(itemId, voteType, itemType, videoId);
 
         // Confirm with the server-authoritative score (corrects any optimistic drift)
         scoreElement.textContent = result.newScore;
 
-        // Keep the in-memory list in sync so sorting stays consistent
+        // Sync server-authoritative vote state into userVotes
+        if (typeof userVotes !== 'undefined') {
+            if (result.newVote === null || result.newVote === undefined) {
+                delete userVotes[itemId];
+            } else {
+                userVotes[itemId] = result.newVote;
+            }
+        }
+
+        // Keep the in-memory citation/request list in sync so sorting by score is consistent
         if (itemType === 'citation' && typeof currentCitations !== 'undefined') {
             const item = currentCitations.find(c => c.id === itemId);
             if (item) item.voteScore = result.newScore;
@@ -86,11 +111,11 @@ async function handleVote(itemId, voteType, itemType = 'citation') {
 
     } catch (err) {
         console.error(`[voting] Error updating ${itemType} vote:`, err);
-        // Revert the optimistic UI change by reloading from the source of truth
+        // Revert via silent refresh — no skeleton flash, no counter reset
         if (itemType === 'citation') {
-            loadCitations();
+            loadCitations(1, true);
         } else {
-            loadCitationRequests();
+            loadCitationRequests(1, true);
         }
     }
 }

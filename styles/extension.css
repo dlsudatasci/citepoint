@@ -1318,10 +1318,6 @@ h3 {
     cursor: not-allowed !important;
     user-select: none;
 }
-    font-size: 13px;
-    padding: 0;
-    font-family: "Roboto", "Arial", sans-serif;
-}
 
 .citation-timestamp .timestamp-btn:hover {
     text-decoration: underline;
