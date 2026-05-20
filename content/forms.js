@@ -87,7 +87,7 @@ function _attachCitationFormListener() {
 
         const moviePlayer = document.getElementById('movie_player');
             if (moviePlayer && moviePlayer.classList.contains('ad-showing')) {
-                alert('Cannot submit citations while an ad is playing. Please wait for the main video.');
+                showToast('Cannot submit citations while an ad is playing. Please wait for the main video.');
         return; 
     }
 
@@ -124,7 +124,7 @@ function _attachCitationFormListener() {
 
             await apiAddCitation(citationData);
 
-            alert('Citation added successfully!');
+            showToast('Citation added successfully!');
             form.reset();
             if (typeof clearTimelineBars === 'function') clearTimelineBars();
             if (typeof clearActiveSegment === 'function') clearActiveSegment();
@@ -134,7 +134,7 @@ function _attachCitationFormListener() {
 
         } catch (err) {
             console.error('[forms] Error adding citation:', err);
-            alert(err.message || 'Error adding citation. Please try again.');
+            showToast(err.message || 'Error adding citation. Please try again.');
         } finally {
             if (submitBtn) submitBtn.disabled = false;
         }
@@ -175,7 +175,7 @@ function _attachRequestFormListener() {
                 voteScore:      0,
             });
 
-            alert('Citation request submitted successfully!');
+            showToast('Citation request submitted successfully!');
             form.reset();
             if (typeof clearTimelineBars === 'function') clearTimelineBars();
             if (typeof clearActiveSegment === 'function') clearActiveSegment();
@@ -185,7 +185,7 @@ function _attachRequestFormListener() {
 
         } catch (err) {
             console.error('[forms] Error submitting request:', err);
-            alert(err.message || 'Error submitting request. Please try again.');
+            showToast(err.message || 'Error submitting request. Please try again.');
         } finally {
             if (submitBtn) submitBtn.disabled = false;
         }
