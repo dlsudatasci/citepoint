@@ -150,6 +150,8 @@ function observeTheaterMode() {
         secondary.insertBefore(ccDiv, secondary.firstChild);
         if (isTheater) {
             ccDiv.classList.add('theater-mode');
+            ccDiv.style.position = 'relative'; 
+            ccDiv.style.top = 'auto';   
         } else {
             ccDiv.classList.remove('theater-mode');
             ccDiv.style.cssText = '';

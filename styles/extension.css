@@ -1162,13 +1162,19 @@ h3 {
 
 /* ── Theater mode ──────────────────────────── */
 .citation-controls.theater-mode {
-    position: sticky;
-    top: 0;
+    position: relative; 
+    top: auto;         
     z-index: 999;
     background-color: white;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
 
+ytd-watch-flexy[theater] #secondary,
+ytd-watch-flexy[theater] div#secondary {
+    overflow-y: auto;
+    max-height: 100vh;
+    position: relative;
+}
 /* ── Panel header & toggle arrow ──────────────────────────── */
 .extension-header {
     display: flex;
@@ -1317,10 +1323,6 @@ h3 {
     color: #606060 !important;
     cursor: not-allowed !important;
     user-select: none;
-}
-
-/* commenting this out for now, unsure if this is part of field-locked above
-/*
     font-size: 13px;
     padding: 0;
     font-family: "Roboto", "Arial", sans-serif;
