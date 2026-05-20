@@ -5,7 +5,12 @@ const cors = require('cors');
 
 const app = express();
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS ? process.env.ALLOWED_ORIGINS.split(',') : [];
+// Support both ALLOWED_ORIGINS (comma-separated list) and ALLOWED_ORIGIN (single value)
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+    ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
+    : process.env.ALLOWED_ORIGIN
+        ? [process.env.ALLOWED_ORIGIN.trim()]
+        : [];
 
 app.use(cors({
     origin: function (origin, callback) {

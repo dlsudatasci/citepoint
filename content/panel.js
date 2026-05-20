@@ -205,7 +205,8 @@ function _wireTabs() {
         document.getElementById('citation-requests-container').style.display = 'none';
         document.getElementById('add-item-btn').textContent = '+ Add Citation';
         document.getElementById('add-form-container').style.display = 'none';
-        loadCitations();
+        // silent=true when data is already in memory — no skeleton flash on tab switch
+        loadCitations(1, currentCitations.length > 0);
     });
 
     document.getElementById('citation-requests-btn').addEventListener('click', function () {
@@ -217,7 +218,7 @@ function _wireTabs() {
         document.getElementById('citation-requests-container').style.display = 'block';
         document.getElementById('add-item-btn').textContent = '+ Add Request';
         document.getElementById('add-form-container').style.display = 'none';
-        loadCitationRequests();
+        loadCitationRequests(1, currentRequests.length > 0);
     });
 }
 
@@ -269,10 +270,8 @@ function _wireSortMenu() {
         sortMenu.style.display = 'none';
         sortBtn.classList.remove('active');
 
-        const citContainer = document.getElementById('citations-container');
-        const reqContainer = document.getElementById('citation-requests-container');
-        if (citContainer?.style.display === 'block') loadCitations();
-        else if (reqContainer?.style.display === 'block') loadCitationRequests();
+        // Re-sort in-memory — no network call, no skeleton flash
+        debouncedSortAndUpdate();
     });
 
     document.addEventListener('click', e => {

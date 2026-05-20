@@ -41,8 +41,13 @@ async function apiAddCitation(citationData) {
     return _send({ type: 'addCitation', data: citationData });
 }
 
-async function apiDeleteCitation(citationId, videoId) {
-    return _send({ type: 'deleteCitation', citationId, videoId });
+/**
+ * @param {string} citationId
+ * @param {string} videoId
+ * @param {string} username  — must match the citation's owner for the delete to succeed
+ */
+async function apiDeleteCitation(citationId, videoId, username) {
+    return _send({ type: 'deleteCitation', citationId, videoId, username });
 }
 
 // ── Citation Requests ────────────────────────
@@ -56,8 +61,13 @@ async function apiAddRequest(requestData) {
     return _send({ type: 'addRequest', data: requestData });
 }
 
-async function apiDeleteRequest(requestId, videoId) {
-    return _send({ type: 'deleteRequest', requestId, videoId });
+/**
+ * @param {string} requestId
+ * @param {string} videoId
+ * @param {string} username  — must match the request's owner for the delete to succeed
+ */
+async function apiDeleteRequest(requestId, videoId, username) {
+    return _send({ type: 'deleteRequest', requestId, videoId, username });
 }
 
 // ── Votes ────────────────────────────────────
@@ -85,5 +95,8 @@ async function apiGetUserVotes(videoId, itemType = 'citation') {
 // ── Reports ──────────────────────────────────
 
 async function apiReportItem({ videoId, itemId, itemType, reason, additionalInfo, username }) {
-    return _send({ type: 'reportItem', data: { videoId, itemId, itemType, reason, additionalInfo, username } });
+    return _send({
+        type: 'reportItem',
+        data: { videoId, itemId, itemType, reason, additionalInfo, reporterUsername: username },
+    });
 }

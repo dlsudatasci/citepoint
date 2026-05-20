@@ -1,21 +1,49 @@
 const router = require('express').Router();
-const Report = require('../models/Report');
+const Report    = require('../models/Report');
+const Citation  = require('../models/Citation');
+const Request   = require('../models/Request');
 
 // POST /api/reports
 router.post('/', async (req, res) => {
     try {
-        const { videoId, itemId, itemType, reason, additionalInfo } = req.body;
-        if (!videoId || !itemId || !itemType || !reason) {
+        const { videoId, itemId, itemType, reason, additionalInfo, reporterUsername } = req.body;
+
+        if (!videoId || !itemId || !itemType || !reason || !reporterUsername) {
             return res.status(400).json({ success: false, error: 'Missing required fields' });
         }
+        if (!['citation', 'request'].includes(itemType)) {
+            return res.status(400).json({ success: false, error: 'itemType must be citation or request' });
+        }
+
+        // Look up the reported item to check ownership and existence
+        const Model = itemType === 'citation' ? Citation : Request;
+        const item  = await Model.findById(itemId).select('username').lean();
+        if (!item) {
+            return res.status(404).json({ success: false, error: 'Reported item not found' });
+        }
+
+        // Self-report prevention
+        if (item.username === reporterUsername) {
+            return res.status(403).json({ success: false, error: 'You cannot report your own content' });
+        }
+
         const report = await Report.create({
-            videoId, itemId, itemType, reason,
+            videoId,
+            itemId,
+            itemType,
+            reason,
             additionalInfo: additionalInfo || '',
+            reporterUsername,
             timestamp: new Date(),
-            status: 'pending',
+            status:    'pending',
         });
+
         res.status(201).json({ success: true, reportId: report._id });
     } catch (err) {
+        // Duplicate report — unique index on { itemId, reporterUsername }
+        if (err.code === 11000) {
+            return res.status(409).json({ success: false, error: 'You have already reported this item' });
+        }
         res.status(500).json({ success: false, error: err.message });
     }
 });
