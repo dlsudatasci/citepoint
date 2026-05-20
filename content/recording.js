@@ -238,7 +238,7 @@ function setupRecordButtons() {
     startRecordBtn.addEventListener('click', () => {
         const moviePlayer = document.getElementById('movie_player');
         if (moviePlayer && moviePlayer.classList.contains('ad-showing')) {
-            alert('You cannot record citations during an advertisement.');
+            showToast('You cannot record citations during an advertisement.');
             return;
         }
         _startSecs = player.currentTime;

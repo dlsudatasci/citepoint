@@ -1318,10 +1318,14 @@ h3 {
     cursor: not-allowed !important;
     user-select: none;
 }
+
+/* commenting this out for now, unsure if this is part of field-locked above
+/*
     font-size: 13px;
     padding: 0;
     font-family: "Roboto", "Arial", sans-serif;
 }
+*/
 
 .citation-timestamp .timestamp-btn:hover {
     text-decoration: underline;
@@ -1362,29 +1366,36 @@ h3 {
     position: fixed;
     bottom: 24px;
     left: 50%;
-    transform: translateX(-50%);
-    background: #323232;
-    color: white;
+    transform: translateX(-50%) translateY(16px);
     padding: 10px 20px;
-    border-radius: 8px;
-    font-size: 14px;
-    font-family: "Roboto", "Arial", sans-serif;
-    z-index: 99999;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    border-radius: 6px;
+    font-size: 13px;
+    color: #fff;
     opacity: 0;
-    transition: opacity 0.2s ease;
-    max-width: 360px;
-    text-align: center;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 99999;
+    pointer-events: none;
 }
+.cp-toast--visible  { opacity: 1; transform: translateX(-50%) translateY(0); }
+.cp-toast--success  { background: #2e7d32; }
+.cp-toast--error    { background: #c62828; }
+.cp-toast--warning  { background: #e65100; }
+.cp-toast--info     { background: #1565c0; }
 
-.cp-toast.cp-toast-error {
-    background: #c0392b;
+.cp-confirm-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 99998;
 }
-
-.cp-toast.cp-toast-success {
-    background: #27ae60;
+.cp-confirm-box {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    border-radius: 8px;
+    padding: 20px 24px;
+    z-index: 99999;
+    min-width: 280px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
 }
-
-.cp-toast.visible {
-    opacity: 1;
-}
+.cp-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
