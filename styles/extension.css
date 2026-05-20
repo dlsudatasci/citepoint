@@ -1114,6 +1114,11 @@ h3 {
     animation: none;
 }
 
+.cp-timeline-bar.cp-bar-ad-paused {
+    border-color: #ff9800;
+    opacity: 0.5;
+}
+
 @keyframes cp-bar-pulse {
     0%   { opacity: 1;   }
     50%  { opacity: 0.5; }

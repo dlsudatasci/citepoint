@@ -155,15 +155,36 @@ function _removeBars() {
 
 function _startLiveTracking() {
     _recordingLive = true;
+    const moviePlayer = document.getElementById('movie_player');
+
     const tick = () => {
         if (!_recordingLive) return;
-        const video = document.querySelector('video');
-        if (video) {
-            _endSecs = video.currentTime;
-            _syncBars();
+
+        const isAdShowing = moviePlayer?.classList.contains('ad-showing');
+
+        if (!isAdShowing) {
+            const video = document.querySelector('video');
+            if (video) {
+                _endSecs = video.currentTime;
+                _syncBars();
+            }
         }
+
+        if (isAdShowing) {
+            if (!_endBar?.classList.contains('cp-bar-ad-paused')) {
+                _endBar?.classList.add('cp-bar-ad-paused');
+                showToast('Recording paused — ad is playing', 'warning', 0);
+            }
+        } else {
+            if (_endBar?.classList.contains('cp-bar-ad-paused')) {
+                _endBar?.classList.remove('cp-bar-ad-paused');
+                showToast('Recording resumed', 'info', 2000);
+            }
+        }
+
         _rafId = requestAnimationFrame(tick);
     };
+
     _rafId = requestAnimationFrame(tick);
 }
 
