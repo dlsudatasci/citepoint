@@ -1,6 +1,6 @@
 # YouTube Citation Extension
 
-A Chrome extension for adding and managing citations on YouTube videos.
+A Chrome extension for adding and managing citations on long-form YouTube videos.
 
 ## Architecture
 
