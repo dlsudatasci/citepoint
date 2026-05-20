@@ -1,4 +1,10 @@
-const API_BASE_URL = "http://localhost:3000/api";
+// First line of background.js
+var API_BASE_URL = "http://localhost:3000/api";
+
+// ── Cross-browser compatibility ───────────────
+const _storage = (typeof browser !== 'undefined' && browser.storage)
+    ? browser.storage
+    : chrome.storage;
 
 // ── In-memory TTL cache ───────────────────────
 const _cache = new Map();
@@ -23,7 +29,7 @@ function _cacheInvalidate(videoId) {
     }
 }
 
-// ── MV3 keepalive ─────────────────────────────
+// ── Keep alive ────────────────────────────────
 setInterval(
     () => fetch(`${API_BASE_URL.replace('/api', '')}/health`).catch(() => {}),
     20_000
@@ -176,7 +182,7 @@ async function handleUpdateCitationVotes(videoId, citationId, voteType) {
     try {
         const storageKey = getStorageKey('citation', videoId);
         const userVotes = await new Promise(resolve =>
-            chrome.storage.local.get(storageKey, r => resolve(r[storageKey] || {}))
+            _storage.local.get(storageKey, r => resolve(r[storageKey] || {}))
         );
         const currentVote = userVotes[citationId];
         const delta = computeDelta(voteType, currentVote);
@@ -186,7 +192,7 @@ async function handleUpdateCitationVotes(videoId, citationId, voteType) {
         } else {
             userVotes[citationId] = voteType;
         }
-        await new Promise(resolve => chrome.storage.local.set({ [storageKey]: userVotes }, resolve));
+        await new Promise(resolve => _storage.local.set({ [storageKey]: userVotes }, resolve));
         return { success: true, newScore: result.newScore, newVote: userVotes[citationId] || null };
     } catch (error) {
         return { success: false, error: error.message };
@@ -197,7 +203,7 @@ async function handleUpdateRequestVotes(videoId, requestId, voteType) {
     try {
         const storageKey = getStorageKey('request', videoId);
         const userVotes = await new Promise(resolve =>
-            chrome.storage.local.get(storageKey, r => resolve(r[storageKey] || {}))
+            _storage.local.get(storageKey, r => resolve(r[storageKey] || {}))
         );
         const currentVote = userVotes[requestId];
         const delta = computeDelta(voteType, currentVote);
@@ -207,7 +213,7 @@ async function handleUpdateRequestVotes(videoId, requestId, voteType) {
         } else {
             userVotes[requestId] = voteType;
         }
-        await new Promise(resolve => chrome.storage.local.set({ [storageKey]: userVotes }, resolve));
+        await new Promise(resolve => _storage.local.set({ [storageKey]: userVotes }, resolve));
         return { success: true, newScore: result.newScore, newVote: userVotes[requestId] || null };
     } catch (error) {
         return { success: false, error: error.message };
@@ -218,7 +224,7 @@ async function handleGetUserVotes(videoId, itemType = 'citation') {
     try {
         const storageKey = getStorageKey(itemType, videoId);
         const votes = await new Promise(resolve =>
-            chrome.storage.local.get(storageKey, r => resolve(r[storageKey] || {}))
+            _storage.local.get(storageKey, r => resolve(r[storageKey] || {}))
         );
         return { success: true, votes };
     } catch (error) {

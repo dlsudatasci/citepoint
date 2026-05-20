@@ -50,7 +50,6 @@
     "background": {
         "service_worker": "background/background.js",
         "scripts": [
-            "lib/browser-polyfill.js",
             "config/config.js",
             "background/background.js"
         ]
