@@ -89,3 +89,49 @@ function normalizeDateAdded(dateStr) {
     const d = new Date(dateStr);
     return isNaN(d.getTime()) ? new Date().toISOString() : dateStr;
 }
+
+
+function showToast(message, type = 'info', duration = 3000) {
+    const existing = document.getElementById('cp-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'cp-toast';
+    toast.className = `cp-toast cp-toast--${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    requestAnimationFrame(() => toast.classList.add('cp-toast--visible'));
+
+    if (duration > 0) {
+        setTimeout(() => {
+            toast.classList.remove('cp-toast--visible');
+            toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+        }, duration);
+    }
+}
+
+
+function showConfirm(message) {
+    return new Promise(resolve => {
+        const overlay = document.createElement('div');
+        overlay.className = 'cp-confirm-overlay';
+
+        const box = document.createElement('div');
+        box.className = 'cp-confirm-box';
+        box.innerHTML = `
+            <p class="cp-confirm-message">${_escapeHtml(message)}</p>
+            <div class="cp-confirm-actions">
+                <button class="cp-confirm-cancel">Cancel</button>
+                <button class="cp-confirm-ok">Confirm</button>
+            </div>
+        `;
+
+        document.body.append(overlay, box);
+        const cleanup = (result) => { overlay.remove(); box.remove(); resolve(result); };
+
+        box.querySelector('.cp-confirm-ok').addEventListener('click', () => cleanup(true));
+        box.querySelector('.cp-confirm-cancel').addEventListener('click', () => cleanup(false));
+        overlay.addEventListener('click', () => cleanup(false));
+    });
+}

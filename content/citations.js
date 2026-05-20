@@ -326,7 +326,9 @@ async function createCitationElement(citation, userVote, currentUsername = null)
 
     if (canDelete) {
         el.querySelector('.delete-btn').addEventListener('click', async () => {
-            if (!confirm('Delete this citation?')) return;
+            const confirmed = await showConfirm('Delete this citation?');
+            if (!confirmed) return;
+            
             try {
                 await apiDeleteCitation(citation.id, getCurrentVideoId(), currentUsername);
                 loadCitations(1, true);
@@ -418,7 +420,9 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
 
         if (canDelete) {
             responseEl.querySelector('.delete-btn').addEventListener('click', async () => {
-                if (!confirm('Delete this citation?')) return;
+                const confirmed = await showConfirm('Delete this citation?');
+                if (!confirmed) return;
+                
                 try {
                     await apiDeleteCitation(citation.id, getCurrentVideoId(), currentUsername);
                     loadCitations(1, true);

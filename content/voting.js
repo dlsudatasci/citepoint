@@ -19,7 +19,7 @@ async function handleVote(itemId, voteType, itemType = 'citation') {
 
         const username = await getYouTubeUsername();
         if (!username) {
-            alert('You must be logged in to vote. Please log in to your YouTube account.');
+            showToast('You must be logged in to vote. Please log in to your YouTube account.');
             return;
         }
 

@@ -82,10 +82,10 @@ function _attachCitationFormListener() {
         e.preventDefault();
 
         const moviePlayer = document.getElementById('movie_player');
-        if (moviePlayer && moviePlayer.classList.contains('ad-showing')) {
-            alert('Cannot submit citations while an ad is playing. Please wait for the main video.');
-            return;
-        }
+            if (moviePlayer && moviePlayer.classList.contains('ad-showing')) {
+                showToast('Cannot submit citations while an ad is playing. Please wait for the main video.');
+        return; 
+    }
 
         const videoId = getCurrentVideoId();
         const submitBtn = form.querySelector('#submit-btn');
@@ -120,8 +120,7 @@ function _attachCitationFormListener() {
 
             await apiAddCitation(citationData);
 
-            // Toast instead of blocking alert — lets the UI update immediately
-            showToast('Citation added successfully!', 'success');
+            showToast('Citation added successfully!');
             form.reset();
             if (typeof clearTimelineBars === 'function') clearTimelineBars();
             if (typeof clearActiveSegment === 'function') clearActiveSegment();
@@ -133,7 +132,7 @@ function _attachCitationFormListener() {
 
         } catch (err) {
             console.error('[forms] Error adding citation:', err);
-            alert(err.message || 'Error adding citation. Please try again.');
+            showToast(err.message || 'Error adding citation. Please try again.');
         } finally {
             if (submitBtn) submitBtn.disabled = false;
         }
@@ -173,7 +172,7 @@ function _attachRequestFormListener() {
                 dateAdded:      new Date().toISOString(),
             });
 
-            showToast('Citation request submitted!', 'success');
+            showToast('Citation request submitted successfully!');
             form.reset();
             if (typeof clearTimelineBars === 'function') clearTimelineBars();
             if (typeof clearActiveSegment === 'function') clearActiveSegment();
@@ -185,7 +184,7 @@ function _attachRequestFormListener() {
 
         } catch (err) {
             console.error('[forms] Error submitting request:', err);
-            alert(err.message || 'Error submitting request. Please try again.');
+            showToast(err.message || 'Error submitting request. Please try again.');
         } finally {
             if (submitBtn) submitBtn.disabled = false;
         }

@@ -12,7 +12,7 @@
 async function showReportDialog(itemId, itemType) {
     const username = await getYouTubeUsername();
     if (!username) {
-        alert('You must be logged in to report. Please log in to your YouTube account.');
+        showToast('You must be logged in to report. Please log in to your YouTube account.');
         return;
     }
 
@@ -49,7 +49,7 @@ async function showReportDialog(itemId, itemType) {
         const reason  = dialog.querySelector('#report-reason').value;
         const details = dialog.querySelector('#report-details').value;
 
-        if (!reason) { alert('Please select a reason for reporting'); return; }
+        if (!reason) { showToast('Please select a reason for reporting'); return; }
 
         try {
             await apiReportItem({
@@ -60,11 +60,11 @@ async function showReportDialog(itemId, itemType) {
                 additionalInfo: details,
                 username,
             });
-            alert('Report submitted successfully');
+            showToast('Report submitted successfully');
             close();
         } catch (err) {
             console.error('[report] Error submitting report:', err);
-            alert('Failed to submit report. Please try again.');
+            showToast('Failed to submit report. Please try again.');
         }
     });
 }
