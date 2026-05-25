@@ -2,5 +2,15 @@
   "name": "youtube-citation-extension",
   "version": "1.0.0",
   "description": "Chrome extension for managing citations on YouTube videos",
-  "dependencies": {}
+  "scripts": {
+    "test:e2e": "playwright test --project=chrome-extension",
+    "test:e2e:firefox": "node selenium/firefox.test.js",
+    "test:e2e:all": "playwright test --project=chrome-extension && node selenium/firefox.test.js"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "archiver": "^8.0.0",
+    "selenium-webdriver": "^4.44.0",
+    "web-ext": "^8.0.0"
+  }
 }
