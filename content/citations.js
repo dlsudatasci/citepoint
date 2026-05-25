@@ -15,9 +15,43 @@ let currentTime        = 0; // updated by player.js
 
 let _citationsLoading  = false;
 let _requestsLoading   = false;
-let _pollInterval      = null;
 let _requestsById      = {}; // request objects keyed by id, for grouping response citations
 let _currentUsername   = null; // cached once per load so re-renders don't need to re-fetch
+
+// ── Vote-load optimisation (#5) ───────────────
+// Votes are stored in chrome.storage.local and updated optimistically on every
+// vote action.  Re-reading storage on every 15-s poll is redundant — we only
+// need a fresh read when we switch to a new video.
+let _votesLoaded       = false;
+let _votesVideoId      = null; // videoId for which votes were last loaded
+
+// ── Reported-items cache (#10) ────────────────
+// Loaded once per video session; updated after each successful report submission.
+let _reportedItems     = {}; // itemId → true
+
+// ── Polling / SSE state ───────────────────────
+
+// _pollTimeout replaces the old _pollInterval setInterval ID.
+// We use setTimeout + self-rescheduling so the interval can adapt dynamically
+// (fast when idle-timeout hasn't triggered, slow when SSE is active or user is idle).
+let _pollTimeout        = null;
+
+// Idle tracking (#8) — interaction resets the timer; after _IDLE_THRESHOLD_MS
+// without interaction the poll slows to _POLL_SLOW_MS.
+let _lastInteractionTime   = Date.now();
+let _idleTrackingInstalled = false;
+const _IDLE_THRESHOLD_MS   = 2 * 60 * 1000; // 2 minutes
+const _POLL_FAST_MS        = 15_000;         // normal interval
+const _POLL_SLOW_MS        = 60_000;         // idle / SSE-active interval
+
+// SSE state (#2)
+let _sseSource       = null;  // EventSource instance
+let _sseVideoId      = null;  // videoId the current connection watches
+let _sseRetryTimeout = null;  // reconnect backoff timer
+let _sseRetryDelay   = 1_000; // current backoff delay (ms)
+let _sseFailCount    = 0;     // consecutive connection failures
+const _SSE_MAX_FAIL  = 5;     // give up and fall back to normal polling after N failures
+const _SSE_MAX_DELAY = 30_000; // cap for exponential backoff
 
 // ── Load functions ────────────────────────────
 
@@ -45,13 +79,32 @@ async function loadCitations(page = 1, silent = false) {
     }
 
     try {
-        const [{ citations, pagination }, votes] = await Promise.all([
+        // ── Fix #5: skip vote re-read when already loaded for this video ──
+        // Votes are updated optimistically in handleVote (voting.js) and
+        // written to chrome.storage.local by background.js.  Re-reading on
+        // every poll tick is safe but wasteful; the in-memory userVotes map
+        // is already authoritative after the first load.
+        let votesPromise;
+        if (!_votesLoaded || _votesVideoId !== videoId) {
+            votesPromise = apiGetUserVotes(videoId, 'citation');
+        } else {
+            votesPromise = Promise.resolve({});
+        }
+
+        const [{ citations, pagination }, freshVotes] = await Promise.all([
             apiGetCitations(videoId, page),
-            apiGetUserVotes(videoId, 'citation'),
+            votesPromise,
         ]);
 
-        // Merge fetched votes with any in-flight optimistic votes so vote buttons don't flicker back
-        userVotes = { ...userVotes, ...votes };
+        if (!_votesLoaded || _votesVideoId !== videoId) {
+            // First load for this video — replace stale votes entirely
+            userVotes = { ...freshVotes };
+            _votesLoaded  = true;
+            _votesVideoId = videoId;
+        } else {
+            // Subsequent polls — merge to preserve any in-flight optimistic updates
+            userVotes = { ...userVotes, ...freshVotes };
+        }
 
         citations.forEach(c => {
             c.voteScore = Number(c.voteScore ?? 0);
@@ -68,19 +121,37 @@ async function loadCitations(page = 1, silent = false) {
 
         const sorted = sortItems(citations, currentSortOption, 'citation');
 
+        // ── Fix #1: targeted request fetch instead of blanket 200-item pull ──
+        // Only fetch requests if any citation references one (hasResponses),
+        // and only fetch the specific IDs we need — not the entire collection.
         if (page === 1) {
-            const hasResponses = sorted.some(c => c.requestId);
-            if (hasResponses) {
+            const requestIds = [
+                ...new Set(
+                    sorted.filter(c => c.requestId).map(c => c.requestId)
+                )
+            ];
+
+            if (requestIds.length > 0) {
                 try {
-                    const { requests } = await apiGetRequests(videoId, 1, 200);
-                    _requestsById = Object.fromEntries(requests.map(r => [r.id, r]));
+                    const { requests } = await apiGetRequestsByIds(videoId, requestIds);
+                    _requestsById = Object.fromEntries(
+                        requests.map(r => [r.id || r._id, r])
+                    );
                 } catch (e) {
-                    console.warn('[citations] Could not fetch requests for grouping:', e);
+                    // Non-fatal — citations without matching requests render as standalone
+                    console.warn('[citations] Could not fetch parent requests for grouping:', e);
                     _requestsById = {};
                 }
             } else {
                 _requestsById = {};
             }
+        }
+
+        // ── Load reported items once per video for button state (#10) ─────
+        if (page === 1 && _votesVideoId === videoId) {
+            const reportedKey  = `reported_items_${videoId}`;
+            const storedData   = await new Promise(r => chrome.storage.local.get(reportedKey, r));
+            _reportedItems = storedData[reportedKey] || {};
         }
 
         if (container.style.display !== 'none') {
@@ -128,13 +199,21 @@ async function loadCitationRequests(page = 1, silent = false) {
     }
 
     try {
-        const [{ requests, pagination }, votes] = await Promise.all([
+        // ── Fix #5: skip vote re-read when already loaded for this video ──
+        let votesPromise;
+        if (!_votesLoaded || _votesVideoId !== videoId) {
+            votesPromise = apiGetUserVotes(videoId, 'request');
+        } else {
+            votesPromise = Promise.resolve({});
+        }
+
+        const [{ requests, pagination }, freshVotes] = await Promise.all([
             apiGetRequests(videoId, page),
-            apiGetUserVotes(videoId, 'request'),
+            votesPromise,
         ]);
 
         // Merge to preserve optimistic vote state
-        userVotes = { ...userVotes, ...votes };
+        userVotes = { ...userVotes, ...freshVotes };
 
         requests.forEach(r => {
             r.voteScore  = Number(r.voteScore ?? 0);
@@ -272,12 +351,16 @@ async function createCitationElement(citation, userVote, currentUsername = null)
 
     const canDelete = currentUsername && currentUsername === citation.username;
 
-    const isResponse = citation.description?.startsWith('Response to request:');
-    const displayDescription = isResponse
+    // Use requestId field for response detection — more reliable than description prefix
+    const isResponse       = !!citation.requestId;
+    const displayDescription = isResponse && citation.description?.startsWith('Response to request:')
         ? citation.description.split('\n\n').slice(1).join('\n\n').trim()
         : citation.description;
 
     const authorLink = _buildAuthorLink(citation.username);
+
+    // Disable the Report button if this item was already reported (#10)
+    const alreadyReported = !!_reportedItems[citation.id];
 
     el.innerHTML = `
         <div class="citation-header">
@@ -297,7 +380,7 @@ async function createCitationElement(citation, userVote, currentUsername = null)
             <span class="citation-date"> · ${_formatDate(citation.dateAdded)}</span>
         </div>
         ${isResponse ? '<span class="response-badge">Response</span>' : ''}
-        <p class="citation-description">${_escapeHtml(displayDescription || '')}</p>
+        ${_buildDescription(displayDescription)}
         ${_safeSourceLink(citation.source)}
         <div class="citation-actions">
             <div class="vote-controls" data-citation-id="${citation.id}">
@@ -307,13 +390,21 @@ async function createCitationElement(citation, userVote, currentUsername = null)
             </div>
             <div class="action-buttons">
                 ${canDelete ? `<button class="action-btn delete-btn" data-id="${citation.id}">Delete</button>` : ''}
-                ${!canDelete ? `<button class="action-btn report-btn" data-id="${citation.id}">Report</button>` : ''}
+                ${!canDelete ? `<button class="action-btn report-btn" data-id="${citation.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
             </div>
         </div>
     `;
 
     el.querySelectorAll('.timestamp-btn').forEach(btn => {
         btn.addEventListener('click', () => seekToTime(parseFloat(btn.dataset.time)));
+    });
+
+    // ── Description expand/collapse (#7) ──────
+    el.querySelector('.cp-desc-toggle')?.addEventListener('click', function () {
+        const p    = this.closest('.citation-description');
+        p.querySelector('.cp-desc-full').style.display  = 'inline';
+        p.querySelector('.cp-desc-dots').style.display  = 'none';
+        this.style.display = 'none';
     });
 
     const voteControls = el.querySelector('.vote-controls');
@@ -328,7 +419,7 @@ async function createCitationElement(citation, userVote, currentUsername = null)
         el.querySelector('.delete-btn').addEventListener('click', async () => {
             const confirmed = await showConfirm('Delete this citation?');
             if (!confirmed) return;
-            
+
             try {
                 await apiDeleteCitation(citation.id, getCurrentVideoId(), currentUsername);
                 loadCitations(1, true);
@@ -385,13 +476,19 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
     const responsesContainer = el.querySelector('.rg-responses');
 
     for (const citation of responseCitations) {
-        const userVote  = votes[citation.id] || null;
-        const canDelete = currentUsername && currentUsername === citation.username;
+        const userVote       = votes[citation.id] || null;
+        const canDelete      = currentUsername && currentUsername === citation.username;
+        const alreadyReported = !!_reportedItems[citation.id];
+
+        // Strip the "Response to request: …\n\n" prefix that forms.js prepends
+        const responseText = citation.description?.startsWith('Response to request:')
+            ? citation.description.split('\n\n').slice(1).join('\n\n').trim()
+            : citation.description;
 
         const responseEl = document.createElement('div');
         responseEl.className = 'rg-response-entry';
         responseEl.innerHTML = `
-            <p class="citation-description">${_escapeHtml(citation.description || '')}</p>
+            ${_buildDescription(responseText)}
             ${_safeSourceLink(citation.source)}
             <div class="citation-meta">
                 <span class="citation-author">${_escapeHtml(citation.username || 'Anonymous')}</span>
@@ -405,10 +502,17 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
                 </div>
                 <div class="action-buttons">
                     ${canDelete ? `<button class="action-btn delete-btn" data-id="${citation.id}">Delete</button>` : ''}
-                    ${!canDelete ? `<button class="action-btn report-btn" data-id="${citation.id}">Report</button>` : ''}
+                    ${!canDelete ? `<button class="action-btn report-btn" data-id="${citation.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
                 </div>
             </div>
         `;
+
+        responseEl.querySelector('.cp-desc-toggle')?.addEventListener('click', function () {
+            const p = this.closest('.citation-description');
+            p.querySelector('.cp-desc-full').style.display = 'inline';
+            p.querySelector('.cp-desc-dots').style.display = 'none';
+            this.style.display = 'none';
+        });
 
         const vc = responseEl.querySelector('.vote-controls');
         vc.querySelector('.upvote-btn').addEventListener('click', () =>
@@ -422,7 +526,7 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
             responseEl.querySelector('.delete-btn').addEventListener('click', async () => {
                 const confirmed = await showConfirm('Delete this citation?');
                 if (!confirmed) return;
-                
+
                 try {
                     await apiDeleteCitation(citation.id, getCurrentVideoId(), currentUsername);
                     loadCitations(1, true);
@@ -450,7 +554,8 @@ function createRequestElement(request, userVote, currentUsername = null) {
     el.dataset.start = parseTimestamp(request.timestampStart);
     el.dataset.end   = parseTimestamp(request.timestampEnd);
 
-    const canDelete = currentUsername && currentUsername === request.username;
+    const canDelete       = currentUsername && currentUsername === request.username;
+    const alreadyReported = !!_reportedItems[request.id];
 
     el.innerHTML = `
         <div class="citation-header">
@@ -465,7 +570,7 @@ function createRequestElement(request, userVote, currentUsername = null) {
                 </button>
             </span>
         </div>
-        <p class="citation-description">${_escapeHtml(request.reason || '')}</p>
+        ${_buildDescription(request.reason)}
         <div class="citation-meta">
             ${_buildAuthorLink(request.username)}
             <span class="citation-date">${_formatDate(request.dateAdded)}</span>
@@ -488,13 +593,20 @@ function createRequestElement(request, userVote, currentUsername = null) {
                 </button>
                 ` : ''}
                 ${canDelete ? `<button class="action-btn delete-btn" data-id="${request.id}">Delete</button>` : ''}
-                ${!canDelete ? `<button class="action-btn report-btn" data-id="${request.id}">Report</button>` : ''}
+                ${!canDelete ? `<button class="action-btn report-btn" data-id="${request.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
             </div>
         </div>
     `;
 
     el.querySelectorAll('.timestamp-btn').forEach(btn => {
         btn.addEventListener('click', () => seekToTime(parseFloat(btn.dataset.time)));
+    });
+
+    el.querySelector('.cp-desc-toggle')?.addEventListener('click', function () {
+        const p = this.closest('.citation-description');
+        p.querySelector('.cp-desc-full').style.display = 'inline';
+        p.querySelector('.cp-desc-dots').style.display = 'none';
+        this.style.display = 'none';
     });
 
     const vc = el.querySelector('.vote-controls');
@@ -561,21 +673,233 @@ async function updateCitationsList(citations, container) {
     await _renderCitationsWithSections(citations, container);
 }
 
-// ── Polling ───────────────────────────────────
+// ── SSE (#2) ──────────────────────────────────
+
+/**
+ * Start an SSE connection for a videoId.
+ * If one already exists for this video, this is a no-op.
+ * Falls back to polling-only after _SSE_MAX_FAIL consecutive failures.
+ */
+function _connectSSE(videoId) {
+    // Cancel any pending reconnect timer before starting fresh
+    if (_sseRetryTimeout) { clearTimeout(_sseRetryTimeout); _sseRetryTimeout = null; }
+
+    // Already connected to this video
+    if (_sseSource && _sseVideoId === videoId && _sseSource.readyState !== EventSource.CLOSED) return;
+
+    // Clean up stale connection to a different video
+    if (_sseSource) {
+        _sseSource.close();
+        _sseSource = null;
+    }
+
+    _sseVideoId = videoId;
+
+    try {
+        _sseSource = new EventSource(apiGetSSEUrl(videoId));
+    } catch (err) {
+        // EventSource constructor can throw if URL is malformed or feature unavailable
+        console.warn('[sse] Could not create EventSource, polling only:', err);
+        _sseSource = null;
+        return;
+    }
+
+    _sseSource.onopen = () => {
+        console.log('[sse] Connected for video:', videoId);
+        _sseRetryDelay = 1_000; // reset backoff on success
+        _sseFailCount  = 0;
+    };
+
+    _sseSource.onmessage = (e) => {
+        if (!e.data || e.data.trim() === '') return;
+        try {
+            const event = JSON.parse(e.data);
+            _handleSSEEvent(event);
+        } catch (err) {
+            console.warn('[sse] Failed to parse event data:', e.data, err);
+        }
+    };
+
+    _sseSource.onerror = () => {
+        // EventSource fires onerror on any connection problem and then tries
+        // to reconnect automatically using its own retry mechanism.  We close
+        // it explicitly and apply our own exponential backoff so we can give
+        // up after _SSE_MAX_FAIL attempts and revert to normal polling.
+        if (_sseSource) { _sseSource.close(); _sseSource = null; }
+
+        _sseFailCount++;
+
+        if (_sseFailCount >= _SSE_MAX_FAIL) {
+            console.warn(`[sse] ${_sseFailCount} consecutive failures — SSE disabled, polling only`);
+            _sseVideoId    = null;
+            _sseFailCount  = 0;
+            _sseRetryDelay = 1_000;
+            // Polling continues at the existing rate (_schedulePoll already running)
+            return;
+        }
+
+        // Exponential backoff: 1 s → 2 → 4 → 8 → 16 → 30 (capped)
+        const delay       = _sseRetryDelay;
+        _sseRetryDelay    = Math.min(_sseRetryDelay * 2, _SSE_MAX_DELAY);
+        console.log(`[sse] Reconnecting in ${delay}ms (attempt ${_sseFailCount}/${_SSE_MAX_FAIL})`);
+        _sseRetryTimeout  = setTimeout(() => _connectSSE(videoId), delay);
+    };
+}
+
+function stopSSE() {
+    if (_sseRetryTimeout) { clearTimeout(_sseRetryTimeout); _sseRetryTimeout = null; }
+    if (_sseSource)       { _sseSource.close(); _sseSource = null; }
+    _sseVideoId    = null;
+    _sseFailCount  = 0;
+    _sseRetryDelay = 1_000;
+}
+
+/**
+ * Process an incoming SSE event.  Vote-changed events are applied in-place
+ * (no reload); add/delete events trigger a silent full refresh so the list
+ * stays accurate without a visible flash.
+ */
+function _handleSSEEvent(event) {
+    if (!event || !event.type) return;
+
+    const videoId = getCurrentVideoId();
+    // Ignore events for other videos (shouldn't happen with per-videoId subscriptions,
+    // but guard anyway in case of URL race during SPA navigation)
+    if (event.videoId && event.videoId !== videoId) return;
+
+    const citContainer = document.getElementById('citations-container');
+    const reqContainer = document.getElementById('citation-requests-container');
+
+    switch (event.type) {
+        case 'citationAdded':
+        case 'citationDeleted':
+            if (citContainer?.style.display !== 'none') {
+                loadCitations(1, true);
+            }
+            break;
+
+        case 'citationVoteUpdated':
+            // Update in-place — no full list reload needed just for a score change
+            _applyVoteUpdate(event.citationId, event.voteScore, 'citation');
+            break;
+
+        case 'requestAdded':
+        case 'requestDeleted':
+            if (reqContainer?.style.display !== 'none') {
+                loadCitationRequests(1, true);
+            }
+            break;
+
+        case 'requestVoteUpdated':
+            _applyVoteUpdate(event.requestId, event.voteScore, 'request');
+            break;
+    }
+}
+
+/**
+ * Update a vote score in both the in-memory list and the rendered DOM
+ * without triggering a full list reload.
+ */
+function _applyVoteUpdate(itemId, voteScore, itemType) {
+    if (itemId == null || voteScore == null) return;
+    const score = Number(voteScore);
+
+    // Update in-memory list so sort-on-refresh uses the right score
+    if (itemType === 'citation') {
+        const item = currentCitations.find(c => c.id === itemId);
+        if (item) item.voteScore = score;
+    } else {
+        const item = currentRequests.find(r => r.id === itemId);
+        if (item) item.voteScore = score;
+    }
+
+    // Update live DOM score display
+    const selector    = itemType === 'citation'
+        ? `[data-citation-id="${itemId}"]`
+        : `[data-request-id="${itemId}"]`;
+    const voteControls = document.querySelector(selector);
+    if (voteControls) {
+        const scoreEl = voteControls.querySelector('.vote-score');
+        if (scoreEl) scoreEl.textContent = score;
+    }
+}
+
+// ── Polling (#2 + #8) ─────────────────────────
+//
+// Architecture:
+//   • Tries SSE first (real-time push, no wasted polling).
+//   • Keeps a slow safety-net poll running even when SSE is active,
+//     in case the server drops an event.
+//   • Falls back to normal 15 s polling if SSE fails _SSE_MAX_FAIL times.
+//   • Slows to 60 s when the user has been idle > 2 minutes (#8).
+//
+// External interface is unchanged: startPolling() / stopPolling().
+
+function _isIdle() {
+    return Date.now() - _lastInteractionTime > _IDLE_THRESHOLD_MS;
+}
+
+function _wireIdleTracking() {
+    if (_idleTrackingInstalled) return;
+    _idleTrackingInstalled = true;
+    // Passive listeners — no scroll/input performance impact
+    const reset = () => { _lastInteractionTime = Date.now(); };
+    ['mousemove', 'keydown', 'scroll', 'click'].forEach(evt => {
+        document.addEventListener(evt, reset, { passive: true, capture: false });
+    });
+}
+
+function _doPoll() {
+    const citContainer = document.getElementById('citations-container');
+    const reqContainer = document.getElementById('citation-requests-container');
+    if (citContainer?.style.display !== 'none')      loadCitations(1, true);
+    else if (reqContainer?.style.display !== 'none') loadCitationRequests(1, true);
+}
+
+function _getPollingInterval() {
+    // Slow poll when SSE is alive (safety-net only) OR when user is idle
+    const sseActive = _sseSource && _sseSource.readyState !== EventSource.CLOSED;
+    return (sseActive || _isIdle()) ? _POLL_SLOW_MS : _POLL_FAST_MS;
+}
+
+function _schedulePoll() {
+    // Only schedule if polling is still active (stopPolling hasn't been called)
+    if (_pollTimeout === null && typeof _pollActive === 'undefined') return;
+    const delay = _getPollingInterval();
+    _pollTimeout = setTimeout(() => {
+        _doPoll();
+        _schedulePoll(); // reschedule with potentially updated interval
+    }, delay);
+}
 
 function startPolling() {
-    if (_pollInterval) return;
-    _pollInterval = setInterval(() => {
-        const citContainer = document.getElementById('citations-container');
-        const reqContainer = document.getElementById('citation-requests-container');
-        if (citContainer?.style.display !== 'none') loadCitations(1, true);
-        else if (reqContainer?.style.display !== 'none') loadCitationRequests(1, true);
-    }, 15_000); // 15s — better collaborative responsiveness
+    // Detect video change — restart polling + SSE for the new videoId
+    const videoId = getCurrentVideoId();
+    if (_pollTimeout !== null && _sseVideoId && _sseVideoId === videoId) return; // already active
+
+    // Clean up any previous session before starting fresh
+    if (_pollTimeout !== null) {
+        clearTimeout(_pollTimeout);
+        _pollTimeout = null;
+    }
+    stopSSE();
+
+    // Attempt SSE connection for real-time updates
+    if (videoId) _connectSSE(videoId);
+
+    // Wire up idle-activity tracking (one-time, survives across videos)
+    _wireIdleTracking();
+
+    // Schedule the polling safety-net
+    _schedulePoll();
 }
 
 function stopPolling() {
-    clearInterval(_pollInterval);
-    _pollInterval = null;
+    if (_pollTimeout !== null) {
+        clearTimeout(_pollTimeout);
+        _pollTimeout = null;
+    }
+    stopSSE();
 }
 
 // ── Highlighting ──────────────────────────────
@@ -605,7 +929,7 @@ const debouncedSortAndUpdate = debounce(async () => {
             _currentUsername
         );
     }
-}, 60); // 60ms debounce — feels instant
+}, 60); // 60 ms debounce — feels instant
 
 // ── Private helpers ───────────────────────────
 
@@ -718,6 +1042,27 @@ function _safeSourceLink(url) {
     } catch {
         return '';
     }
+}
+
+/**
+ * Render a description with inline "Show more" for long text (#7).
+ * Descriptions longer than 250 characters are truncated; the rest is
+ * stored inline (no extra fetch needed — data is already loaded).
+ *
+ * The toggle button is wired in the calling createXxxElement function.
+ */
+function _buildDescription(text) {
+    if (!text) return '';
+    const LIMIT = 250;
+    if (text.length <= LIMIT) {
+        return `<p class="citation-description">${_escapeHtml(text)}</p>`;
+    }
+    return `<p class="citation-description">\
+<span class="cp-desc-preview">${_escapeHtml(text.slice(0, LIMIT))}</span>\
+<span class="cp-desc-dots">…</span>\
+<span class="cp-desc-full" style="display:none">${_escapeHtml(text.slice(LIMIT))}</span>\
+ <button class="cp-desc-toggle" type="button" style="background:none;border:none;color:inherit;cursor:pointer;font-size:0.85em;padding:0;text-decoration:underline">Show more</button>\
+</p>`;
 }
 
 /**

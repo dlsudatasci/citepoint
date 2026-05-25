@@ -5,6 +5,11 @@
 // with the response data or rejects with an Error.
 // ─────────────────────────────────────────────
 
+// Direct API base URL — used only for EventSource (SSE) connections
+// which cannot go through the background service worker.
+// Must match API_BASE_URL in background/background.js (without /api suffix).
+const _CP_API_BASE = 'http://localhost:3000';
+
 /**
  * Internal wrapper — send a message to background.js and return the response.
  * Rejects if response.success is false.
@@ -57,6 +62,21 @@ async function apiGetRequests(videoId, page = 1, limit = 20) {
     return { requests: res.requests || [], pagination: res.pagination || null };
 }
 
+/**
+ * Fetch a specific subset of requests by ID.
+ * Used to populate request-response groups on the Citations tab without
+ * pulling the full requests list (replaces the old blanket 200-item fetch).
+ *
+ * @param {string}   videoId
+ * @param {string[]} ids  — array of request IDs to fetch; duplicates are handled server-side
+ * @returns {{ requests: Array }}
+ */
+async function apiGetRequestsByIds(videoId, ids) {
+    if (!ids || ids.length === 0) return { requests: [] };
+    const res = await _send({ type: 'getRequestsByIds', videoId, ids });
+    return { requests: res.requests || [] };
+}
+
 async function apiAddRequest(requestData) {
     return _send({ type: 'addRequest', data: requestData });
 }
@@ -99,4 +119,18 @@ async function apiReportItem({ videoId, itemId, itemType, reason, additionalInfo
         type: 'reportItem',
         data: { videoId, itemId, itemType, reason, additionalInfo, reporterUsername: username },
     });
+}
+
+// ── SSE ──────────────────────────────────────
+
+/**
+ * Build the EventSource URL for real-time updates on a given video.
+ * The content script opens this URL directly (EventSource cannot go through
+ * the background service worker — SW context cannot maintain open connections).
+ *
+ * @param {string} videoId
+ * @returns {string}
+ */
+function apiGetSSEUrl(videoId) {
+    return `${_CP_API_BASE}/api/events?videoId=${encodeURIComponent(videoId)}`;
 }

@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const requestSchema = new mongoose.Schema({
-    videoId:        { type: String, required: true, index: true },
+    videoId:        { type: String, required: true },
     title:          { type: String, required: true },
     timestampStart: { type: String, default: '' },
     timestampEnd:   { type: String, default: '' },
@@ -11,7 +11,15 @@ const requestSchema = new mongoose.Schema({
     voteScore:      { type: Number, default: 0 },
 });
 
+// ── Indexes ───────────────────────────────────
+
+// Primary sort index: list queries filter by videoId then sort by date.
 requestSchema.index({ videoId: 1, dateAdded: -1 });
-requestSchema.index({ videoId: 1, voteScore: -1 });
+
+// Compound sort index: replaces the old single-field { videoId, voteScore } index.
+requestSchema.index({ videoId: 1, voteScore: -1, dateAdded: -1 });
+
+// Ownership index: speeds up findOneAndDelete({ videoId, username, _id }).
+requestSchema.index({ videoId: 1, username: 1 });
 
 module.exports = mongoose.model('Request', requestSchema);

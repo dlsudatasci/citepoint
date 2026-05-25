@@ -21,11 +21,40 @@ function _cacheSet(key, data) {
     _cache.set(key, { data, timestamp: Date.now() });
 }
 
+/**
+ * Invalidate ALL cached pages for a videoId (citations and requests).
+ * Called after add / delete mutations.
+ */
 function _cacheInvalidate(videoId) {
     for (const key of _cache.keys()) {
         if (key.startsWith(`citations:${videoId}`) || key.startsWith(`requests:${videoId}`)) {
             _cache.delete(key);
         }
+    }
+}
+
+/**
+ * Surgically update the voteScore for a single item inside every cached
+ * page that contains it, instead of blowing away the whole videoId cache.
+ * This ensures polling consumers always see up-to-date scores without
+ * triggering a full DB round-trip.
+ *
+ * @param {string} videoId
+ * @param {'citation'|'request'} itemType
+ * @param {string} itemId   — the normalised "id" field (not _id)
+ * @param {number} newScore
+ */
+function _cacheUpdateItemScore(videoId, itemType, itemId, newScore) {
+    const cachePrefix = itemType === 'citation' ? 'citations' : 'requests';
+    const listField   = itemType === 'citation' ? 'citations' : 'requests';
+
+    for (const [key, entry] of _cache.entries()) {
+        if (!key.startsWith(`${cachePrefix}:${videoId}`)) continue;
+        const items = entry.data[listField];
+        if (!Array.isArray(items)) continue;
+        const item = items.find(i => i.id === itemId);
+        if (item) item.voteScore = newScore;
+        // No need to update entry.timestamp — the TTL keeps its original window
     }
 }
 
@@ -59,6 +88,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     if (request.type === 'getCitationRequests') {
         handleGetRequests(request.videoId, request.page, request.limit).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getRequestsByIds') {
+        handleGetRequestsByIds(request.videoId, request.ids).then(sendResponse);
         return true;
     }
     if (request.type === 'addRequest') {
@@ -142,6 +175,35 @@ async function handleGetRequests(videoId, page = 1, limit = 20) {
     }
 }
 
+/**
+ * Fetch specific requests by their IDs — used for response-citation grouping.
+ * Cache key includes a sorted, deduplicated ID list for reliable cache hits
+ * across callers that pass IDs in different orders.
+ */
+async function handleGetRequestsByIds(videoId, ids) {
+    if (!Array.isArray(ids) || ids.length === 0) return { success: true, requests: [] };
+
+    // Deduplicate and cap to prevent runaway queries
+    const uniqueIds = [...new Set(ids)].slice(0, 50);
+
+    // Stable cache key regardless of caller's ID order
+    const cacheKey = `requests:${videoId}:ids:${[...uniqueIds].sort().join(',')}`;
+    const cached = _cacheGet(cacheKey);
+    if (cached) return { success: true, ...cached };
+
+    try {
+        const data = await apiRequest(
+            `/requests/${videoId}/by-ids?ids=${uniqueIds.join(',')}`
+        );
+        const requests = data.requests.map(({ _id, ...rest }) => ({ id: _id, ...rest }));
+        const payload  = { requests };
+        _cacheSet(cacheKey, payload);
+        return { success: true, ...payload };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
 async function handleAddRequest(data) {
     try {
         const { videoId, ...fields } = data;
@@ -187,12 +249,19 @@ async function handleUpdateCitationVotes(videoId, citationId, voteType) {
         const currentVote = userVotes[citationId];
         const delta = computeDelta(voteType, currentVote);
         const result = await apiRequest(`/citations/${videoId}/${citationId}/vote`, 'PATCH', { delta });
+
         if (voteType === currentVote) {
             delete userVotes[citationId];
         } else {
             userVotes[citationId] = voteType;
         }
         await new Promise(resolve => _storage.local.set({ [storageKey]: userVotes }, resolve));
+
+        // ── Fix #4: update score in-place inside every cached page ───────
+        // Avoids the 10-second stale-score window that existed before this fix.
+        // Much cheaper than full cache invalidation — no extra DB round-trip.
+        _cacheUpdateItemScore(videoId, 'citation', citationId, result.newScore);
+
         return { success: true, newScore: result.newScore, newVote: userVotes[citationId] || null };
     } catch (error) {
         return { success: false, error: error.message };
@@ -208,12 +277,17 @@ async function handleUpdateRequestVotes(videoId, requestId, voteType) {
         const currentVote = userVotes[requestId];
         const delta = computeDelta(voteType, currentVote);
         const result = await apiRequest(`/requests/${videoId}/${requestId}/vote`, 'PATCH', { delta });
+
         if (voteType === currentVote) {
             delete userVotes[requestId];
         } else {
             userVotes[requestId] = voteType;
         }
         await new Promise(resolve => _storage.local.set({ [storageKey]: userVotes }, resolve));
+
+        // ── Fix #4: update score in-place inside every cached page ───────
+        _cacheUpdateItemScore(videoId, 'request', requestId, result.newScore);
+
         return { success: true, newScore: result.newScore, newVote: userVotes[requestId] || null };
     } catch (error) {
         return { success: false, error: error.message };
@@ -235,11 +309,11 @@ async function handleGetUserVotes(videoId, itemType = 'citation') {
 async function handleReportItem(data) {
     try {
         const result = await apiRequest('/reports', 'POST', {
-            videoId:         data.videoId,
-            itemId:          data.itemId,
-            itemType:        data.itemType,
-            reason:          data.reason,
-            additionalInfo:  data.additionalInfo || '',
+            videoId:          data.videoId,
+            itemId:           data.itemId,
+            itemType:         data.itemType,
+            reason:           data.reason,
+            additionalInfo:   data.additionalInfo || '',
             reporterUsername: data.reporterUsername,
         });
         return { success: true, reportId: result.reportId };

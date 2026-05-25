@@ -32,8 +32,12 @@ app.use(express.json());
 app.use('/api/citations', require('./routes/citations'));
 app.use('/api/requests',  require('./routes/requests'));
 app.use('/api/reports',   require('./routes/reports'));
+app.use('/api/events',    require('./routes/events'));
 
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+app.get('/health', (req, res) => {
+    const { clientCount } = require('./lib/sseEmitter');
+    res.json({ status: 'ok', sseClients: clientCount() });
+});
 
 mongoose.connect(process.env.MONGODB_URI)
     .then(() => {
