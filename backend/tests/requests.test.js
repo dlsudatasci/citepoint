@@ -1,0 +1,129 @@
+const request = require('supertest');
+const app     = require('../app');
+
+const VIDEO = 'dQw4w9WgXcQ';
+const BASE  = `/api/requests/${VIDEO}`;
+
+async function createRequest(overrides = {}) {
+    const body = { title: 'Test Request', username: 'alice', ...overrides };
+    const res  = await request(app).post(BASE).send(body);
+    return res.body.id;
+}
+
+// ─────────────────────────────────────────────
+// GET /api/requests/:videoId
+// ─────────────────────────────────────────────
+describe('GET /api/requests/:videoId', () => {
+    it('returns empty list when no requests exist', async () => {
+        const res = await request(app).get(BASE);
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.requests).toHaveLength(0);
+    });
+
+    it('returns requests only for the correct video', async () => {
+        await createRequest();
+        await request(app)
+            .post(`/api/requests/OTHER_VIDEO`)
+            .send({ title: 'Other', username: 'bob' });
+
+        const res = await request(app).get(BASE);
+        expect(res.body.requests).toHaveLength(1);
+    });
+
+    it('paginates correctly', async () => {
+        for (let i = 0; i < 4; i++) {
+            await createRequest({ title: `Request ${i}` });
+        }
+        const res = await request(app).get(`${BASE}?limit=2&page=2`);
+        expect(res.body.requests).toHaveLength(2);
+        expect(res.body.pagination.page).toBe(2);
+    });
+});
+
+// ─────────────────────────────────────────────
+// POST /api/requests/:videoId
+// ─────────────────────────────────────────────
+describe('POST /api/requests/:videoId', () => {
+    it('creates a request with 201', async () => {
+        const res = await request(app).post(BASE).send({
+            title: 'Please add citations here',
+            username: 'alice',
+        });
+        expect(res.status).toBe(201);
+        expect(res.body.id).toBeDefined();
+    });
+
+    it('rejects missing title with 400', async () => {
+        const res = await request(app).post(BASE).send({ username: 'alice' });
+        expect(res.status).toBe(400);
+    });
+
+    it('rejects missing username with 400', async () => {
+        const res = await request(app).post(BASE).send({ title: 'Help' });
+        expect(res.status).toBe(400);
+    });
+
+    it('always sets voteScore to 0', async () => {
+        const id = await createRequest({ voteScore: 500 });
+        const res = await request(app).get(BASE);
+        const created = res.body.requests.find(r => r._id === id);
+        expect(created.voteScore).toBe(0);
+    });
+});
+
+// ─────────────────────────────────────────────
+// DELETE /api/requests/:videoId/:id
+// ─────────────────────────────────────────────
+describe('DELETE /api/requests/:videoId/:id', () => {
+    it('lets author delete their own request', async () => {
+        const id  = await createRequest({ username: 'alice' });
+        const res = await request(app)
+            .delete(`${BASE}/${id}`)
+            .send({ username: 'alice' });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    it('blocks a different user from deleting', async () => {
+        const id  = await createRequest({ username: 'alice' });
+        const res = await request(app)
+            .delete(`${BASE}/${id}`)
+            .send({ username: 'eve' });
+        expect(res.status).toBe(403);
+    });
+
+    it('returns 400 when username is missing', async () => {
+        const id  = await createRequest();
+        const res = await request(app).delete(`${BASE}/${id}`).send({});
+        expect(res.status).toBe(400);
+    });
+});
+
+// ─────────────────────────────────────────────
+// PATCH /api/requests/:videoId/:id/vote
+// ─────────────────────────────────────────────
+describe('PATCH /api/requests/:videoId/:id/vote', () => {
+    it('upvotes correctly', async () => {
+        const id  = await createRequest();
+        const res = await request(app)
+            .patch(`${BASE}/${id}/vote`)
+            .send({ delta: 1 });
+        expect(res.body.newScore).toBe(1);
+    });
+
+    it('rejects delta 0', async () => {
+        const id  = await createRequest();
+        const res = await request(app)
+            .patch(`${BASE}/${id}/vote`)
+            .send({ delta: 0 });
+        expect(res.status).toBe(400);
+    });
+
+    it('returns 404 for non-existent request', async () => {
+        const res = await request(app)
+            .patch(`${BASE}/000000000000000000000000/vote`)
+            .send({ delta: 1 });
+        expect(res.status).toBe(404);
+    });
+});
