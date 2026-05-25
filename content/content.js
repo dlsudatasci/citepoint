@@ -80,6 +80,10 @@ function waitForDependencies() {
 
 window.addEventListener('yt-navigate-finish', () => {
     if (location.href.includes('youtube.com/watch')) {
+        // Stop the previous video's polling loop and SSE connection before
+        // tearing down the panel so timers and network connections don't leak.
+        if (typeof stopPolling === 'function') stopPolling();
+
         // Remove old panel; waitForDependencies will rebuild it
         document.getElementById('citation-controls')?.remove();
         waitForDependencies();
