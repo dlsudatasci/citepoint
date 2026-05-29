@@ -122,6 +122,8 @@ async function expectToast(text) {
 
 async function submitForm() {
     await _waitForAdToFinish();
+    // Brief pause to avoid rate limiting when multiple workers submit simultaneously
+    await page.waitForTimeout(2000).catch(() => {});
     await page.locator('#add-form-container #submit-btn').click();
 }
 
@@ -141,7 +143,7 @@ async function seedRequest({
     await page.locator('#citations-btn').click();
     await page.waitForTimeout(500);
     await openRequestsTab();
-    await page.waitForTimeout(20000);
+    await page.waitForTimeout(3000);
 
     // Capture the ID from the delete button for cleanup — look across all cards
     const deleteBtns = page.locator('#citation-requests-container .delete-btn');
@@ -165,7 +167,7 @@ test('REQ-001: citation requests list shows title, timestamps and vote score', a
 
     const container = page.locator('#citation-requests-container');
     await expect(container).toBeVisible();
-    await expect(container.locator('.citation-title').first()).toBeVisible({ timeout: 20000 });
+    await expect(container.locator('.citation-title').first()).toBeVisible();
     await expect(container.locator('.timestamp-btn').first()).toBeVisible();
     await expect(container.locator('.vote-score').first()).toBeVisible();
 });
@@ -338,7 +340,7 @@ test('REQ-013: Respond button does not appear on own requests', async () => {
 
     const ownTitle = page.locator('#citation-requests-container .citation-title')
         .filter({ hasText: 'REQ-013 Own Request' }).first();
-    await expect(ownTitle).toBeVisible({ timeout: 20000 });
+    await expect(ownTitle).toBeVisible();
 
     const ownCard = ownTitle.locator('xpath=ancestor::div[2]');
     await expect(ownCard.locator('.respond-btn')).toHaveCount(0);

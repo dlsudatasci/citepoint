@@ -13,6 +13,9 @@ module.exports = async () => {
                 PORT: '3000',
                 ALLOWED_ORIGINS: '*',
                 ALLOWED_ORIGIN: '*',
+                // Disable rate limiting during tests if your backend supports this env var
+                DISABLE_RATE_LIMIT: 'true',
+                NODE_ENV: 'test',
             },
             stdio: ['ignore', 'pipe', 'pipe'],
         });
@@ -30,7 +33,6 @@ module.exports = async () => {
         backend.on('error', reject);
         setTimeout(() => reject(new Error('Backend did not start in time')), 30000);
 
-        // Store PID so global-teardown can kill it
         process.env._BACKEND_PID = String(backend.pid);
     });
 
