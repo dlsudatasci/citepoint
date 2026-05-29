@@ -5,9 +5,11 @@ const EXTENSION_PATH = path.resolve(__dirname);
 
 module.exports = defineConfig({
     testDir: './e2e',
+    globalSetup:    './e2e/global-setup.js',
+    globalTeardown: './e2e/global-teardown.js',
     reporter: [['list'], ['html'], ['github']],
     timeout: 120000,
-    workers: 3,   // run one file at a time to avoid port conflicts
+    workers: 3,
     retries: 1,
     use: {
         headless: false,

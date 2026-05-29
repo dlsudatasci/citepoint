@@ -1,61 +1,18 @@
 const { test, expect, chromium } = require('@playwright/test');
 const path = require('path');
-const { spawn } = require('child_process');
 
-const EXTENSION_PATH = path.resolve(__dirname, '..');
-const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-const BACKEND_DIR    = path.resolve(__dirname, '../backend');
+const EXTENSION_PATH  = path.resolve(__dirname, '..');
+const TEST_VIDEO      = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
 
 let context;
 let page;
 let EXTENSION_ID      = '';
-let backendProcess    = null;
-let createdRequestIds = []; // track IDs to clean up after all tests
-
-// ── Backend helpers ───────────────────────────────────────────────────────
-
-async function startBackend() {
-    return new Promise((resolve, reject) => {
-        backendProcess = spawn('node', ['server.js'], {
-            cwd: BACKEND_DIR,
-            env: {
-                ...process.env,
-                MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test',
-                PORT: process.env.PORT || '3000',
-                ALLOWED_ORIGINS: '*',
-                ALLOWED_ORIGIN: '*',
-            },
-            stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        backendProcess.stdout.on('data', (data) => {
-            const msg = data.toString();
-            console.log('[backend]', msg.trim());
-            if (msg.includes('Server running on port')) resolve();
-        });
-
-        backendProcess.stderr.on('data', (data) => {
-            console.error('[backend error]', data.toString().trim());
-        });
-
-        backendProcess.on('error', reject);
-        setTimeout(() => reject(new Error('Backend did not start in time')), 30000);
-    });
-}
-
-async function stopBackend() {
-    if (backendProcess) {
-        backendProcess.kill('SIGTERM');
-        backendProcess = null;
-    }
-}
+let createdRequestIds = [];
 
 // ── beforeAll / afterAll ──────────────────────────────────────────────────
 
 test.beforeAll(async () => {
-    await startBackend();
-    console.log('Backend ready');
-
+    // Backend is started by global-setup.js
     context = await chromium.launchPersistentContext('', {
         headless: false,
         args: [
@@ -91,8 +48,7 @@ test.afterAll(async () => {
     } catch (err) {
         console.warn('Cleanup failed:', err.message);
     }
-
-    await stopBackend();
+    // Backend is stopped by global-teardown.js
 });
 
 // ── Fresh page before every test ─────────────────────────────────────────
@@ -249,7 +205,7 @@ test('REQ-005: submitting a valid request shows success toast and form closes', 
     await expect(page.locator('#add-form-container')).toBeHidden();
     await expect(page.locator('#add-item-btn')).toHaveText('+ Add Request');
 
-    // Track the created request for cleanup
+    // Track for cleanup
     await page.locator('#citations-btn').click();
     await page.waitForTimeout(500);
     await openRequestsTab();
