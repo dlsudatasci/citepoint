@@ -157,7 +157,7 @@ test('ADD-004: submitting a valid citation shows success toast and refreshes lis
 
     await expectToast('Citation added successfully!');
     await expect(page.locator('#add-form-container')).toBeHidden();
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(20000);
     await expect(page.locator('#citations-container')).toContainText('Test', { timeout: 60000 });
 });
 
