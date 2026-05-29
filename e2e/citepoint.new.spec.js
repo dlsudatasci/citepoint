@@ -204,6 +204,8 @@ test('ADD-004: submitting a valid citation shows success toast and refreshes lis
 
     await expectToast('Citation added successfully!');
     await expect(page.locator('#add-form-container')).toBeHidden();
+    // Wait for polling to refresh the list (extension polls every 15s)
+    await page.waitForTimeout(3000);
     await expect(page.locator('#citations-container')).toContainText('Test', { timeout: 30000 });
 });
 

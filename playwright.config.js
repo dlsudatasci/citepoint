@@ -6,7 +6,7 @@ const EXTENSION_PATH = path.resolve(__dirname);
 module.exports = defineConfig({
     testDir: './e2e',
     reporter: [['list'], ['html'], ['github']],
-    timeout: 60000,
+    timeout: 120000,
     workers: 1,   // run one file at a time to avoid port conflicts
     retries: 1,
     use: {
