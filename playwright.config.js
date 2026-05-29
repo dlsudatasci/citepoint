@@ -7,7 +7,7 @@ module.exports = defineConfig({
     testDir: './e2e',
     reporter: [['list'], ['html'], ['github']],
     timeout: 120000,
-    workers: 1,   // run one file at a time to avoid port conflicts
+    workers: 3,   // run one file at a time to avoid port conflicts
     retries: 1,
     use: {
         headless: false,
