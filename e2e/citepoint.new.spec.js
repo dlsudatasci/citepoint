@@ -1,65 +1,18 @@
 const { test, expect, chromium } = require('@playwright/test');
 const path = require('path');
-const { spawn } = require('child_process');
 
 const EXTENSION_PATH = path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-const BACKEND_DIR    = path.resolve(__dirname, '../backend');
 
 let context;
 let page;
-let EXTENSION_ID  = '';
-let backendProcess = null;
-
-// ── Start backend as a child process ─────────────────────────────────────
-
-async function startBackend() {
-    return new Promise((resolve, reject) => {
-        backendProcess = spawn('node', ['server.js'], {
-            cwd: BACKEND_DIR,
-            env: {
-                ...process.env,
-                MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test',
-                PORT: process.env.PORT || '3000',
-                ALLOWED_ORIGINS: '*',
-                ALLOWED_ORIGIN: '*',
-            },
-            stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        backendProcess.stdout.on('data', (data) => {
-            const msg = data.toString();
-            console.log('[backend]', msg.trim());
-            // server.js prints "Server running on port X" when ready
-            if (msg.includes('Server running on port')) resolve();
-        });
-
-        backendProcess.stderr.on('data', (data) => {
-            console.error('[backend error]', data.toString().trim());
-        });
-
-        backendProcess.on('error', reject);
-
-        // Timeout if server doesn't start in 15s
-        setTimeout(() => reject(new Error('Backend did not start in time')), 30000);
-    });
-}
-
-async function stopBackend() {
-    if (backendProcess) {
-        backendProcess.kill('SIGTERM');
-        backendProcess = null;
-    }
-}
+let EXTENSION_ID = '';
 
 // ── beforeAll / afterAll ──────────────────────────────────────────────────
+// Backend is started by global-setup.js and stopped by global-teardown.js
+// No startBackend/stopBackend needed here except for ADD-022
 
 test.beforeAll(async () => {
-    // Start your real backend (connects to your real MongoDB via .env)
-    await startBackend();
-    console.log('Backend ready');
-
-    // Launch browser with extension
     context = await chromium.launchPersistentContext('', {
         headless: false,
         args: [
@@ -77,7 +30,6 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
     await context.close();
-    await stopBackend();
 });
 
 // ── Fresh page before every test ─────────────────────────────────────────
@@ -200,13 +152,12 @@ test('ADD-004: submitting a valid citation shows success toast and refreshes lis
         source:      'https://example.com',
         description: 'test desc',
     });
-    // Wait for any ad to finish before submitting
     await _waitForAdToFinish();
     await submitForm();
 
     await expectToast('Citation added successfully!');
     await expect(page.locator('#add-form-container')).toBeHidden();
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(20000);
     await expect(page.locator('#citations-container')).toContainText('Test', { timeout: 60000 });
 });
 
@@ -286,7 +237,6 @@ test('ADD-010: start timestamp after end timestamp shows error toast', async () 
 
 // ─────────────────────────────────────────────
 // ADD-012: End Exceeds Video Duration
-// 59:59:59 is valid HH:MM:SS but always exceeds the test video (~3.5 min)
 // ─────────────────────────────────────────────
 
 test('ADD-012: end timestamp beyond video duration shows error toast', async () => {
@@ -376,13 +326,19 @@ test('ADD-020: submitting during an ad shows the ad-playing toast', async () => 
 
 // ─────────────────────────────────────────────
 // ADD-022: Backend Offline
-// Kill the backend process, submit, then restart it
+// Points the extension at a dead port instead of killing the shared backend
 // ─────────────────────────────────────────────
 
 test('ADD-022: when backend is offline an error toast is shown and form stays open', async () => {
-    // Stop backend BEFORE opening the form
-    await stopBackend();
-    await page.waitForTimeout(1000); // give it a moment to fully stop
+    const sw = context.serviceWorkers().find(w => w.url().includes(EXTENSION_ID));
+
+    // Redirect API calls to a dead port
+    if (sw) {
+        await sw.evaluate(() => {
+            globalThis._savedApiBase = API_BASE_URL;
+            API_BASE_URL = 'http://localhost:19999/api';
+        });
+    }
 
     await openAddForm();
     await fillForm({ title: 'Backend Offline Test' });
@@ -394,7 +350,12 @@ test('ADD-022: when backend is offline an error toast is shown and form stays op
     await expect(toast).not.toContainText('Citation added successfully!');
     await expect(page.locator('#add-form-container #submit-btn')).toBeEnabled({ timeout: 5000 });
 
-    await startBackend();
+    // Restore the real API URL
+    if (sw) {
+        await sw.evaluate(() => {
+            API_BASE_URL = globalThis._savedApiBase;
+        });
+    }
 });
 
 // ─────────────────────────────────────────────

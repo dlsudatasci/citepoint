@@ -12,5 +12,8 @@
     "archiver": "^8.0.0",
     "selenium-webdriver": "^4.44.0",
     "web-ext": "^8.0.0"
+  },
+  "dependencies": {
+    "mongoose": "^9.6.3"
   }
 }
