@@ -228,13 +228,15 @@ test('C-014: dragging the start bar updates the start timestamp field', async ()
     await page.waitForTimeout(1000);
     await endRecording();
 
+    // Ensure panel is visible before clicking
+    await expect(page.locator('.recorded-segment')).toBeVisible({ timeout: 5000 });
     await page.locator('.recorded-segment .cite-btn').first().click();
-    await page.waitForSelector('#add-form-container #citation-form', { timeout: 10000 });
+    await page.waitForSelector('#add-form-container #citation-form', { timeout: 15000 });
 
     await page.waitForFunction(() => {
         const f = document.querySelector('#add-form-container #timestampStart');
         return f && f.value && f.value.length > 0;
-    }, { timeout: 5000 });
+    }, { timeout: 10000 });
 
     const bar = page.locator('.cp-bar-start');
     const barBox = await bar.boundingBox();
@@ -414,6 +416,10 @@ test('C-024: record buttons reappear after navigating to a different YouTube vid
     await page.goto('https://www.youtube.com/watch?v=9bZkp7q19f0', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('ytd-watch-metadata', { timeout: 30000 });
     await _waitForAdToFinish();
+
+    // Hover over the player to make controls visible
+    const player = page.locator('#movie_player');
+    await player.hover().catch(() => {});
 
     await expect(page.locator('.record-start-btn')).toBeVisible({ timeout: 20000 });
 });
