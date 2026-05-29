@@ -412,17 +412,13 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
 test('C-024: record buttons reappear after navigating to a different YouTube video', async () => {
     await expect(page.locator('.record-start-btn')).toBeVisible();
 
-    try {
-        await page.goto('https://www.youtube.com/watch?v=9bZkp7q19f0', {
-            waitUntil: 'domcontentloaded',
-            timeout: 60000,
-        });
-    } catch (_) {
-        // Navigation may be aborted by YouTube SPA — that's fine, just check the button
-    }
+    // Click a related video link — triggers YouTube's SPA router, not a full page load
+    const relatedLink = page.locator('a#thumbnail[href*="/watch"]').first();
+    await expect(relatedLink).toBeVisible({ timeout: 10000 });
+    await relatedLink.click();
 
     await _waitForAdToFinish();
-    await page.waitForSelector('#citation-controls', { timeout: 60000 }).catch(() => {});
+    await page.waitForSelector('#citation-controls', { timeout: 60000 });
     await page.locator('#movie_player').hover().catch(() => {});
     await expect(page.locator('.record-start-btn')).toBeVisible({ timeout: 30000 });
 });
