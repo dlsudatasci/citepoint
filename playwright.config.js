@@ -5,8 +5,9 @@ const EXTENSION_PATH = path.resolve(__dirname);
 
 module.exports = defineConfig({
     testDir: './e2e',
-    reporter: [['list'],['html'],['github']],
-    timeout: 60000,
+    reporter: [['list'], ['html'], ['github']],
+    timeout: 120000,
+    workers: 1,   // run one file at a time to avoid port conflicts
     retries: 1,
     use: {
         headless: false,
@@ -16,7 +17,10 @@ module.exports = defineConfig({
     projects: [
         {
             name: 'chrome-extension',
-            testMatch: '**/extension.spec.js',
+            testMatch: [
+                '**/extension.spec.js',
+                '**/citepoint.new.spec.js',
+            ],
             use: {
                 launchOptions: {
                     args: [
