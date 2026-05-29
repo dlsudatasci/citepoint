@@ -2,9 +2,8 @@ const { Builder, By, until } = require('selenium-webdriver');
 const firefox  = require('selenium-webdriver/firefox');
 const path     = require('path');
 const assert   = require('assert');
-const { execSync } = require('child_process');
 
-const MANIFEST_PATH  = path.resolve(__dirname, '..', 'manifest.json');
+const EXTENSION_DIR  = path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
 const TIMEOUT        = 30000;
 
@@ -12,45 +11,24 @@ let driver;
 
 async function setup() {
     console.log('  launching Firefox...');
-    const service = new firefox.ServiceBuilder(
-    'C:\\Users\\andre\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Mozilla.GeckoDriver_Microsoft.Winget.Source_8wekyb3d8bbwe\\geckodriver.exe'
-);
+    
+    const options = new firefox.Options();
 
-driver = await new Builder()
-    .forBrowser('firefox')
-    .setFirefoxOptions(new firefox.Options())
-    .setFirefoxService(service)
-    .build();
+    driver = await new Builder()
+        .forBrowser('firefox')
+        .setFirefoxOptions(options)
+        .build();
 
     await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 30000 });
     console.log('  Firefox launched');
 
-    console.log('  navigating to about:debugging...');
-    await driver.get('about:debugging#/runtime/this-firefox');
-    await driver.sleep(2000);
-
-    console.log('  clicking Load Temporary Add-on...');
-    await driver.wait(
-        until.elementLocated(By.css('.qa-temporary-extension-install-button')),
-        10000
-    );
-    await driver.findElement(By.css('.qa-temporary-extension-install-button')).click();
+    console.log('  Installing temporary add-on natively...');
+    await driver.installAddon(EXTENSION_DIR, true);
+    
     await driver.sleep(1000);
-
-    console.log('  typing manifest path...');
-    execSync(
-    `powershell -Command "` +
-    `Add-Type -AssemblyName System.Windows.Forms; ` +
-    `Start-Sleep -Milliseconds 500; ` +
-    `[System.Windows.Forms.SendKeys]::SendWait('${MANIFEST_PATH.replace(/'/g, "\\'")}'); ` +
-    `Start-Sleep -Milliseconds 500; ` +
-    `[System.Windows.Forms.SendKeys]::SendWait('{ENTER}')"`,
-    { stdio: 'inherit' }
-);
-
-    await driver.sleep(3000);
     console.log('  extension loaded\n');
 }
+
 
 async function teardown() {
     await driver?.quit();
