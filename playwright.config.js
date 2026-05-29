@@ -9,7 +9,7 @@ module.exports = defineConfig({
     globalTeardown: './e2e/global-teardown.js',
     reporter: [['list'], ['html'], ['github']],
     timeout: 120000,
-    workers: 5,
+    workers: 3,
     retries: 1,
     use: {
         headless: false,
