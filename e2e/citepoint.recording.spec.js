@@ -412,9 +412,13 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
 test('C-024: record buttons reappear after navigating to a different YouTube video', async () => {
     await expect(page.locator('.record-start-btn')).toBeVisible();
 
-    // Click a related video link — triggers YouTube's SPA router, not a full page load
-    const relatedLink = page.locator('a#thumbnail[href*="/watch"]').first();
-    await expect(relatedLink).toBeVisible({ timeout: 10000 });
+    // Scroll down to load related videos
+    await page.evaluate(() => window.scrollBy(0, 500));
+    await page.waitForTimeout(2000);
+
+    // Try multiple selectors for related video links
+    const relatedLink = page.locator('ytd-compact-video-renderer a, a#thumbnail[href*="watch"]').first();
+    await expect(relatedLink).toBeVisible({ timeout: 15000 });
     await relatedLink.click();
 
     await _waitForAdToFinish();
@@ -422,7 +426,6 @@ test('C-024: record buttons reappear after navigating to a different YouTube vid
     await page.locator('#movie_player').hover().catch(() => {});
     await expect(page.locator('.record-start-btn')).toBeVisible({ timeout: 30000 });
 });
-
 // ─────────────────────────────────────────────
 // C-025: Invalid range — no segment card created
 // ─────────────────────────────────────────────

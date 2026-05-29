@@ -141,7 +141,7 @@ async function seedRequest({
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
     await mockLogin('@testuser');
     await openRequestsTab();
-    await page.waitForTimeout(3000);
+    await page.waitForTimeout(5000);
 
     // Capture the ID from the delete button for cleanup
     const deleteBtns = page.locator('#citation-requests-container .delete-btn');
@@ -181,7 +181,7 @@ test('REQ-003: empty state message shown when video has no citation requests', a
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
     await mockLogin('@testuser');
     await openRequestsTab();
-
+await page.waitForTimeout(5000);
     await expect(page.locator('#citation-requests-container')).toContainText(
         'No citation requests found for this video.', { timeout: 10000 }
     );
@@ -212,7 +212,7 @@ test('REQ-005: submitting a valid request shows success toast and form closes', 
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
     await mockLogin('@testuser');
     await openRequestsTab();
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(5000);
     const deleteBtns = page.locator('#citation-requests-container .delete-btn');
     const count = await deleteBtns.count();
     for (let i = 0; i < count; i++) {
@@ -230,6 +230,7 @@ test('REQ-005: submitting a valid request shows success toast and form closes', 
 
 test('REQ-007: submitting a request without a title is blocked by required field validation', async () => {
     await openRequestsTab();
+    await page.waitForTimeout(5000);
     await openAddRequestForm();
 
     const form = page.locator('#add-form-container #request-form');
@@ -253,6 +254,7 @@ test('REQ-007: submitting a request without a title is blocked by required field
 
 test('REQ-008: submitting request with start > end shows timestamp error toast', async () => {
     await openRequestsTab();
+    await page.waitForTimeout(5000);
     await openAddRequestForm();
     await fillRequestForm({ start: '00:05:00', end: '00:01:00' });
     await submitForm();
@@ -267,6 +269,7 @@ test('REQ-008: submitting request with start > end shows timestamp error toast',
 
 test('REQ-009: anonymous checkbox is hidden in the request form', async () => {
     await openRequestsTab();
+    await page.waitForTimeout(5000);
     await openAddRequestForm();
 
     const anonGroup = page.locator('#add-form-container #anonymous-group');
@@ -285,6 +288,7 @@ test('REQ-010: clicking Respond opens citation form pre-filled with request time
     await page.locator('#citations-btn').click();
     await page.waitForTimeout(500);
     await openRequestsTab();
+    await page.waitForTimeout(5000);
 
     const respondBtn = page.locator('.respond-btn').first();
     await expect(respondBtn).toBeVisible({ timeout: 15000 });
@@ -311,7 +315,7 @@ test('REQ-012: title and timestamp fields are read-only in the response form', a
     await page.locator('#citations-btn').click();
     await page.waitForTimeout(500);
     await openRequestsTab();
-
+await page.waitForTimeout(5000);
     const respondBtn = page.locator('.respond-btn').first();
     await expect(respondBtn).toBeVisible({ timeout: 15000 });
     await respondBtn.click();

@@ -160,7 +160,8 @@ test('ADD-004: submitting a valid citation shows success toast and refreshes lis
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
     await mockLogin('@testuser');
     await page.locator('#citations-btn').click();
-    await expect(page.locator('#citations-container')).toContainText('Test', { timeout: 30000 });
+    await expect(page.locator('#citations-container')).not.toBeEmpty({ timeout: 30000 });
+    await expect(page.locator('#citations-container')).toContainText('Test', { timeout: 15000 });
 });
 
 // ─────────────────────────────────────────────
