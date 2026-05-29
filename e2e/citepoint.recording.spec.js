@@ -69,8 +69,11 @@ async function _waitForAdToFinish(maxWaitMs = 60000) {
 }
 
 async function startRecording() {
+    // Hover player to ensure controls are visible
+    await page.locator('#movie_player').hover().catch(() => {});
+    await page.waitForTimeout(500);
     await page.locator('.record-start-btn').click();
-    await expect(page.locator('.record-end-btn')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.record-end-btn')).toBeVisible({ timeout: 10000 });
 }
 
 async function endRecording() {
@@ -413,15 +416,14 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
 test('C-024: record buttons reappear after navigating to a different YouTube video', async () => {
     await expect(page.locator('.record-start-btn')).toBeVisible();
 
-    await page.goto('https://www.youtube.com/watch?v=9bZkp7q19f0', { waitUntil: 'domcontentloaded' });
+    // Use a short reliable video with no ads
+    await page.goto('https://www.youtube.com/watch?v=BaW_jenozKc', { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('ytd-watch-metadata', { timeout: 30000 });
     await _waitForAdToFinish();
+    await page.waitForSelector('#citation-controls', { timeout: 30000 });
 
-    // Hover over the player to make controls visible
-    const player = page.locator('#movie_player');
-    await player.hover().catch(() => {});
-
-    await expect(page.locator('.record-start-btn')).toBeVisible({ timeout: 20000 });
+    await page.locator('#movie_player').hover().catch(() => {});
+    await expect(page.locator('.record-start-btn')).toBeVisible({ timeout: 30000 });
 });
 
 // ─────────────────────────────────────────────
