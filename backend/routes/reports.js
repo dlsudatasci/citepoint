@@ -14,6 +14,12 @@ router.post('/', async (req, res) => {
         if (!['citation', 'request'].includes(itemType)) {
             return res.status(400).json({ success: false, error: 'itemType must be citation or request' });
         }
+        if (typeof reason === 'string' && reason.length > 5000) {
+            return res.status(400).json({ success: false, error: 'reason must be at most 5000 characters' });
+        }
+        if (additionalInfo && typeof additionalInfo === 'string' && additionalInfo.length > 5000) {
+            return res.status(400).json({ success: false, error: 'additionalInfo must be at most 5000 characters' });
+        }
 
         // Look up the reported item to check ownership and existence
         const Model = itemType === 'citation' ? Citation : Request;

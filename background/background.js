@@ -1,5 +1,14 @@
-// First line of background.js
-var API_BASE_URL = "http://localhost:3000/api";
+// Derive API base from manifest host_permissions — single source of truth.
+// Update host_permissions in manifest.json for production; this picks it up automatically.
+var API_BASE_URL = (() => {
+    try {
+        const perm = chrome.runtime.getManifest().host_permissions?.[0] ?? '';
+        const base = perm.replace(/\/\*$/, ''); // strip trailing /*
+        return base ? base + '/api' : 'http://localhost:3000/api';
+    } catch (_) {
+        return 'http://localhost:3000/api';
+    }
+})();
 
 // ── Cross-browser compatibility ───────────────
 const _storage = (typeof browser !== 'undefined' && browser.storage)

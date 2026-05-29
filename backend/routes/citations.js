@@ -2,8 +2,28 @@ const router      = require('express').Router();
 const Citation    = require('../models/Citation');
 const sseEmitter  = require('../lib/sseEmitter');
 
+// ── Validation helpers ────────────────────────
+
+const YOUTUBE_ID_RE  = /^[a-zA-Z0-9_-]{1,64}$/;
+const TIMESTAMP_RE   = /^\d{1,2}:\d{2}(:\d{2})?$/;
+const MAX_TITLE_LEN  = 500;
+const MAX_DESC_LEN   = 5000;
+const MAX_SOURCE_LEN = 2048;
+
+function isValidVideoId(id) {
+    return typeof id === 'string' && YOUTUBE_ID_RE.test(id);
+}
+
+function isValidTimestamp(ts) {
+    return !ts || TIMESTAMP_RE.test(ts);
+}
+
 // GET /api/citations/:videoId
 router.get('/:videoId', async (req, res) => {
+    if (!isValidVideoId(req.params.videoId)) {
+        return res.status(400).json({ success: false, error: 'Invalid videoId' });
+    }
+
     try {
         const page  = Math.max(1, parseInt(req.query.page)  || 1);
         const limit = Math.min(50, parseInt(req.query.limit) || 20);
@@ -29,9 +49,12 @@ router.get('/:videoId', async (req, res) => {
     }
 });
 
-// GET /api/citations/:videoId/:id  — single-item detail (full document including description)
-// Define BEFORE /:videoId/:id/vote so Express matches the literal 'vote' suffix separately.
+// GET /api/citations/:videoId/:id  — single-item detail
 router.get('/:videoId/:id', async (req, res) => {
+    if (!isValidVideoId(req.params.videoId)) {
+        return res.status(400).json({ success: false, error: 'Invalid videoId' });
+    }
+
     try {
         const citation = await Citation.findOne({
             _id:     req.params.id,
@@ -51,20 +74,36 @@ router.get('/:videoId/:id', async (req, res) => {
 
 // POST /api/citations/:videoId
 router.post('/:videoId', async (req, res) => {
+    if (!isValidVideoId(req.params.videoId)) {
+        return res.status(400).json({ success: false, error: 'Invalid videoId' });
+    }
+
     try {
-        const { citationTitle, username } = req.body;
+        const { citationTitle, username, timestampStart, timestampEnd, description, source } = req.body;
+
         if (!citationTitle || !username) {
             return res.status(400).json({ success: false, error: 'citationTitle and username are required' });
+        }
+        if (typeof citationTitle === 'string' && citationTitle.length > MAX_TITLE_LEN) {
+            return res.status(400).json({ success: false, error: `citationTitle must be at most ${MAX_TITLE_LEN} characters` });
+        }
+        if (!isValidTimestamp(timestampStart) || !isValidTimestamp(timestampEnd)) {
+            return res.status(400).json({ success: false, error: 'Timestamps must be in HH:MM or HH:MM:SS format' });
+        }
+        if (description && description.length > MAX_DESC_LEN) {
+            return res.status(400).json({ success: false, error: `description must be at most ${MAX_DESC_LEN} characters` });
+        }
+        if (source && source.length > MAX_SOURCE_LEN) {
+            return res.status(400).json({ success: false, error: `source URL must be at most ${MAX_SOURCE_LEN} characters` });
         }
 
         const citation = await Citation.create({
             ...req.body,
             videoId:   req.params.videoId,
-            dateAdded: new Date(),  // server-authoritative — overrides any client-supplied value
-            voteScore: 0,           // always start at zero regardless of body
+            dateAdded: new Date(),  // server-authoritative
+            voteScore: 0,           // always start at zero
         });
 
-        // Notify all SSE clients watching this video
         sseEmitter.emit(req.params.videoId, {
             type:       'citationAdded',
             videoId:    req.params.videoId,
@@ -79,6 +118,10 @@ router.post('/:videoId', async (req, res) => {
 
 // DELETE /api/citations/:videoId/:id  — body: { username }
 router.delete('/:videoId/:id', async (req, res) => {
+    if (!isValidVideoId(req.params.videoId)) {
+        return res.status(400).json({ success: false, error: 'Invalid videoId' });
+    }
+
     try {
         const { username } = req.body;
         if (!username) {
@@ -88,14 +131,13 @@ router.delete('/:videoId/:id', async (req, res) => {
         const result = await Citation.findOneAndDelete({
             _id:     req.params.id,
             videoId: req.params.videoId,
-            username,              // ownership check — only the author can delete
+            username,
         });
 
         if (!result) {
             return res.status(403).json({ success: false, error: 'Not found or permission denied' });
         }
 
-        // Notify all SSE clients watching this video
         sseEmitter.emit(req.params.videoId, {
             type:       'citationDeleted',
             videoId:    req.params.videoId,
@@ -110,9 +152,12 @@ router.delete('/:videoId/:id', async (req, res) => {
 
 // PATCH /api/citations/:videoId/:id/vote  — body: { delta: number }
 router.patch('/:videoId/:id/vote', async (req, res) => {
+    if (!isValidVideoId(req.params.videoId)) {
+        return res.status(400).json({ success: false, error: 'Invalid videoId' });
+    }
+
     try {
         const delta = Number(req.body.delta);
-        // Valid deltas: ±1 (new vote or toggle), ±2 (switching from opposite vote)
         if (![-2, -1, 1, 2].includes(delta)) {
             return res.status(400).json({ success: false, error: 'delta must be -2, -1, 1, or 2' });
         }
@@ -124,7 +169,6 @@ router.patch('/:videoId/:id/vote', async (req, res) => {
         );
         if (!citation) return res.status(404).json({ success: false, error: 'Citation not found' });
 
-        // Notify all SSE clients with the authoritative new score
         sseEmitter.emit(req.params.videoId, {
             type:       'citationVoteUpdated',
             videoId:    req.params.videoId,
