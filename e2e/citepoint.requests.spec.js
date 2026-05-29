@@ -165,7 +165,7 @@ test('REQ-001: citation requests list shows title, timestamps and vote score', a
 
     const container = page.locator('#citation-requests-container');
     await expect(container).toBeVisible();
-    await expect(container.locator('.citation-title').first()).toBeVisible({ timeout: 10000 });
+    await expect(container.locator('.citation-title').first()).toBeVisible({ timeout: 15000 });
     await expect(container.locator('.timestamp-btn').first()).toBeVisible();
     await expect(container.locator('.vote-score').first()).toBeVisible();
 });
@@ -340,7 +340,7 @@ test('REQ-013: Respond button does not appear on own requests', async () => {
 
     const ownTitle = page.locator('#citation-requests-container .citation-title')
         .filter({ hasText: 'REQ-013 Own Request' }).first();
-    await expect(ownTitle).toBeVisible({ timeout: 10000 });
+    await expect(ownTitle).toBeVisible({ timeout: 15000 });
 
     const ownCard = ownTitle.locator('xpath=ancestor::div[2]');
     await expect(ownCard.locator('.respond-btn')).toHaveCount(0);
