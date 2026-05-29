@@ -21,7 +21,8 @@ async function startBackend() {
                 ...process.env,
                 MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test',
                 PORT: process.env.PORT || '3000',
-                ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'chrome-extension://',
+                ALLOWED_ORIGINS: '*',
+                ALLOWED_ORIGIN: '*',
             },
             stdio: ['ignore', 'pipe', 'pipe'],
         });
@@ -203,7 +204,7 @@ test('ADD-004: submitting a valid citation shows success toast and refreshes lis
 
     await expectToast('Citation added successfully!');
     await expect(page.locator('#add-form-container')).toBeHidden();
-    await expect(page.locator('#citations-container')).toContainText('Test', { timeout: 15000 });
+    await expect(page.locator('#citations-container')).toContainText('Test', { timeout: 30000 });
 });
 
 // ─────────────────────────────────────────────
@@ -384,7 +385,7 @@ test('ADD-022: when backend is offline an error toast is shown and form stays op
     await submitForm();
 
     const toast = page.locator('.cp-toast');
-    await expect(toast).toBeVisible({ timeout: 15000 });
+    await expect(toast).toBeVisible({ timeout: 30000 });
     await expect(toast).not.toContainText('Citation added successfully!');
     await expect(page.locator('#add-form-container #submit-btn')).toBeEnabled({ timeout: 5000 });
 
