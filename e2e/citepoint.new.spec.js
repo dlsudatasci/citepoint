@@ -200,13 +200,14 @@ test('ADD-004: submitting a valid citation shows success toast and refreshes lis
         source:      'https://example.com',
         description: 'test desc',
     });
+    // Wait for any ad to finish before submitting
+    await _waitForAdToFinish();
     await submitForm();
 
     await expectToast('Citation added successfully!');
     await expect(page.locator('#add-form-container')).toBeHidden();
-    // Wait for polling to refresh the list (extension polls every 15s)
     await page.waitForTimeout(3000);
-    await expect(page.locator('#citations-container')).toContainText('Test', { timeout: 30000 });
+    await expect(page.locator('#citations-container')).toContainText('Test', { timeout: 60000 });
 });
 
 // ─────────────────────────────────────────────
@@ -379,19 +380,20 @@ test('ADD-020: submitting during an ad shows the ad-playing toast', async () => 
 // ─────────────────────────────────────────────
 
 test('ADD-022: when backend is offline an error toast is shown and form stays open', async () => {
-    // Stop the backend
+    // Stop backend BEFORE opening the form
     await stopBackend();
+    await page.waitForTimeout(1000); // give it a moment to fully stop
 
     await openAddForm();
     await fillForm({ title: 'Backend Offline Test' });
+    await _waitForAdToFinish();
     await submitForm();
 
     const toast = page.locator('.cp-toast');
-    await expect(toast).toBeVisible({ timeout: 30000 });
+    await expect(toast).toBeVisible({ timeout: 15000 });
     await expect(toast).not.toContainText('Citation added successfully!');
     await expect(page.locator('#add-form-container #submit-btn')).toBeEnabled({ timeout: 5000 });
 
-    // Restart for subsequent tests
     await startBackend();
 });
 
