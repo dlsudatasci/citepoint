@@ -35,6 +35,7 @@ let _reportedItems     = {}; // itemId → true
 // We use setTimeout + self-rescheduling so the interval can adapt dynamically
 // (fast when idle-timeout hasn't triggered, slow when SSE is active or user is idle).
 let _pollTimeout        = null;
+let _pollActive         = false; // true while polling is running; guards _schedulePoll reschedule
 
 // Idle tracking (#8) — interaction resets the timer; after _IDLE_THRESHOLD_MS
 // without interaction the poll slows to _POLL_SLOW_MS.
@@ -169,7 +170,10 @@ async function loadCitations(page = 1, silent = false) {
     } catch (err) {
         console.error('[citations] Error loading citations:', err);
         if (container.style.display !== 'none') {
-            container.innerHTML = `<p class="error-message">Error loading citations: ${err.message}</p>`;
+            const p = document.createElement('p');
+            p.className   = 'error-message';
+            p.textContent = `Error loading citations: ${err.message}`;
+            container.replaceChildren(p);
         }
         _updateCounter('citations-counter', 0);
     } finally {
@@ -239,7 +243,10 @@ async function loadCitationRequests(page = 1, silent = false) {
     } catch (err) {
         console.error('[citations] Error loading requests:', err);
         if (container.style.display !== 'none') {
-            container.innerHTML = `<p class="error-message">Error loading requests: ${err.message}</p>`;
+            const p = document.createElement('p');
+            p.className   = 'error-message';
+            p.textContent = `Error loading requests: ${err.message}`;
+            container.replaceChildren(p);
         }
         _updateCounter('requests-counter', 0);
     } finally {
@@ -863,8 +870,8 @@ function _getPollingInterval() {
 }
 
 function _schedulePoll() {
-    // Only schedule if polling is still active (stopPolling hasn't been called)
-    if (_pollTimeout === null && typeof _pollActive === 'undefined') return;
+    // Only reschedule while polling is active (stopPolling sets _pollActive = false)
+    if (!_pollActive) return;
     const delay = _getPollingInterval();
     _pollTimeout = setTimeout(() => {
         _doPoll();
@@ -875,7 +882,7 @@ function _schedulePoll() {
 function startPolling() {
     // Detect video change — restart polling + SSE for the new videoId
     const videoId = getCurrentVideoId();
-    if (_pollTimeout !== null && _sseVideoId && _sseVideoId === videoId) return; // already active
+    if (_pollActive && _sseVideoId && _sseVideoId === videoId) return; // already active for this video
 
     // Clean up any previous session before starting fresh
     if (_pollTimeout !== null) {
@@ -883,6 +890,8 @@ function startPolling() {
         _pollTimeout = null;
     }
     stopSSE();
+
+    _pollActive = true;
 
     // Attempt SSE connection for real-time updates
     if (videoId) _connectSSE(videoId);
@@ -895,6 +904,7 @@ function startPolling() {
 }
 
 function stopPolling() {
+    _pollActive = false;
     if (_pollTimeout !== null) {
         clearTimeout(_pollTimeout);
         _pollTimeout = null;

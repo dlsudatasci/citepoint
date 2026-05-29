@@ -5,10 +5,16 @@
 // with the response data or rejects with an Error.
 // ─────────────────────────────────────────────
 
-// Direct API base URL — used only for EventSource (SSE) connections
-// which cannot go through the background service worker.
-// Must match API_BASE_URL in background/background.js (without /api suffix).
-const _CP_API_BASE = 'http://localhost:3000';
+// Derive the API base from manifest.json host_permissions[0] so the URL is
+// defined in exactly one place.  Update manifest.json for production deployments.
+const _CP_API_BASE = (() => {
+    try {
+        const perm = chrome.runtime.getManifest().host_permissions?.[0] ?? '';
+        return perm.replace(/\/\*$/, ''); // strip trailing /*
+    } catch (_) {
+        return 'http://localhost:3000';   // safe fallback
+    }
+})();
 
 /**
  * Internal wrapper — send a message to background.js and return the response.
