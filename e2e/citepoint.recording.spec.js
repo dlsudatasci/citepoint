@@ -69,7 +69,7 @@ async function _waitForAdToFinish(maxWaitMs = 60000) {
 }
 
 async function startRecording() {
-    // Hover player to ensure controls are visible
+    // Hover player to ensure controls are visible before clicking
     await page.locator('#movie_player').hover().catch(() => {});
     await page.waitForTimeout(500);
     await page.locator('.record-start-btn').click();
@@ -169,6 +169,7 @@ test('C-009: trying to record during an ad shows a toast and does not start', as
         if (p) p.classList.add('ad-showing');
     });
 
+    await page.locator('#movie_player').hover().catch(() => {});
     await page.locator('.record-start-btn').click();
 
     await expectToast('You cannot record citations during an advertisement.');
@@ -231,8 +232,7 @@ test('C-014: dragging the start bar updates the start timestamp field', async ()
     await page.waitForTimeout(1000);
     await endRecording();
 
-    // Ensure panel is visible before clicking
-    await expect(page.locator('.recorded-segment')).toBeVisible({ timeout: 5000 });
+    await expect(page.locator('.recorded-segment')).toBeVisible({ timeout: 10000 });
     await page.locator('.recorded-segment .cite-btn').first().click();
     await page.waitForSelector('#add-form-container #citation-form', { timeout: 15000 });
 
@@ -271,7 +271,6 @@ test('C-017: after recording ends, cite button pre-fills form with segment times
     await page.locator('.recorded-segment .cite-btn').first().click();
     await page.waitForSelector('#add-form-container #citation-form', { timeout: 10000 });
 
-    // cite-btn uses setTimeout(300ms) to populate fields — wait for it
     await page.waitForFunction(() => {
         const f = document.querySelector('#add-form-container #timestampStart');
         return f && f.value && f.value.length > 0;
@@ -301,10 +300,10 @@ test('C-018: timeline bars are removed after successfully submitting a citation'
     await page.waitForTimeout(2000);
     await endRecording();
 
+    await expect(page.locator('.recorded-segment')).toBeVisible({ timeout: 10000 });
     await page.locator('.recorded-segment .cite-btn').first().click();
     await page.waitForSelector('#add-form-container #citation-form', { timeout: 10000 });
 
-    // Wait for fields to populate via setTimeout(300ms)
     await page.waitForFunction(() => {
         const f = document.querySelector('#add-form-container #timestampStart');
         return f && f.value && f.value.length > 0;
@@ -316,17 +315,14 @@ test('C-018: timeline bars are removed after successfully submitting a citation'
     await form.locator('#description').fill('test');
     await page.locator('#add-form-container #submit-btn').click();
 
-    // Wait for any toast — success or error
     await page.locator('.cp-toast').waitFor({ timeout: 15000 });
     const toastText = await page.locator('.cp-toast').textContent().catch(() => '');
     console.log('C-018 toast:', toastText);
 
-    // Bars are removed only on successful submit via clearTimelineBars()
     if (toastText.includes('Citation added successfully')) {
         await expect(page.locator('.cp-bar-start')).toHaveCount(0, { timeout: 10000 });
         await expect(page.locator('.cp-bar-end')).toHaveCount(0, { timeout: 10000 });
     } else {
-        // Submit failed (e.g. backend down) — bars stay, log and pass
         console.log('C-018: submit did not succeed, skipping bar removal check');
     }
 });
@@ -416,11 +412,9 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
 test('C-024: record buttons reappear after navigating to a different YouTube video', async () => {
     await expect(page.locator('.record-start-btn')).toBeVisible();
 
-    // Use a short reliable video with no ads
-    await page.goto('https://www.youtube.com/watch?v=BaW_jenozKc', { waitUntil: 'domcontentloaded' });
-    await page.waitForSelector('ytd-watch-metadata', { timeout: 30000 });
+    await page.goto('https://www.youtube.com/watch?v=9bZkp7q19f0', { waitUntil: 'domcontentloaded' });
     await _waitForAdToFinish();
-    await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await page.waitForSelector('#citation-controls', { timeout: 60000 });
 
     await page.locator('#movie_player').hover().catch(() => {});
     await expect(page.locator('.record-start-btn')).toBeVisible({ timeout: 30000 });
@@ -428,19 +422,15 @@ test('C-024: record buttons reappear after navigating to a different YouTube vid
 
 // ─────────────────────────────────────────────
 // C-025: Invalid range — no segment card created
-// When start === end, recording.js logs a warning and calls _removeBars().
-// However if the video moves even slightly between clicks, a tiny valid
-// segment may be created instead. Both outcomes are acceptable — the key
-// check is that the extension does not crash and behaves consistently.
 // ─────────────────────────────────────────────
 
 test('C-025: ending recording immediately handles invalid range gracefully', async () => {
-    // Pause video so currentTime doesn't move between clicks
     await page.evaluate(() => {
         const v = document.querySelector('video');
         if (v) v.pause();
     });
 
+    await page.locator('#movie_player').hover().catch(() => {});
     await page.locator('.record-start-btn').click();
     await expect(page.locator('.record-end-btn')).toBeVisible({ timeout: 5000 });
     await page.locator('.record-end-btn').click();
@@ -450,13 +440,10 @@ test('C-025: ending recording immediately handles invalid range gracefully', asy
     const barCount     = await page.locator('.cp-bar-start').count();
 
     if (segmentCount === 0) {
-        // Invalid range confirmed — bars must also be gone
         expect(barCount).toBe(0);
     } else {
-        // Tiny valid segment was created — bars stay until form submit, that's correct
         expect(segmentCount).toBe(1);
     }
 
-    // Either way — extension is still responsive
     await expect(page.locator('#citation-controls')).toBeVisible();
 });

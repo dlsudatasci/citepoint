@@ -10,7 +10,6 @@ let EXTENSION_ID      = '';
 let createdRequestIds = [];
 
 // ── beforeAll / afterAll ──────────────────────────────────────────────────
-// Backend is started by global-setup.js and stopped by global-teardown.js
 
 test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
@@ -31,7 +30,6 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
     await context.close();
 
-    // Delete only the requests created during this test run
     try {
         const mongoose = require('mongoose');
         await mongoose.connect(
@@ -122,8 +120,6 @@ async function expectToast(text) {
 
 async function submitForm() {
     await _waitForAdToFinish();
-    // Brief pause to avoid rate limiting when multiple workers submit simultaneously
-    await page.waitForTimeout(2000).catch(() => {});
     await page.locator('#add-form-container #submit-btn').click();
 }
 
@@ -139,13 +135,15 @@ async function seedRequest({
     await submitForm();
     await expectToast('Citation request submitted successfully!');
 
-    // Wait for list to refresh
-    await page.locator('#citations-btn').click();
-    await page.waitForTimeout(500);
+    // Force reload to bypass cache — gets fresh list immediately
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await _waitForAdToFinish();
+    await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await mockLogin('@testuser');
     await openRequestsTab();
     await page.waitForTimeout(3000);
 
-    // Capture the ID from the delete button for cleanup — look across all cards
+    // Capture the ID from the delete button for cleanup
     const deleteBtns = page.locator('#citation-requests-container .delete-btn');
     const count = await deleteBtns.count();
     for (let i = 0; i < count; i++) {
@@ -167,7 +165,7 @@ test('REQ-001: citation requests list shows title, timestamps and vote score', a
 
     const container = page.locator('#citation-requests-container');
     await expect(container).toBeVisible();
-    await expect(container.locator('.citation-title').first()).toBeVisible({ timeout: 25000 });
+    await expect(container.locator('.citation-title').first()).toBeVisible({ timeout: 10000 });
     await expect(container.locator('.timestamp-btn').first()).toBeVisible();
     await expect(container.locator('.vote-score').first()).toBeVisible();
 });
@@ -209,8 +207,10 @@ test('REQ-005: submitting a valid request shows success toast and form closes', 
     await expect(page.locator('#add-item-btn')).toHaveText('+ Add Request');
 
     // Track for cleanup
-    await page.locator('#citations-btn').click();
-    await page.waitForTimeout(500);
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await _waitForAdToFinish();
+    await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await mockLogin('@testuser');
     await openRequestsTab();
     await page.waitForTimeout(2000);
     const deleteBtns = page.locator('#citation-requests-container .delete-btn');
@@ -340,7 +340,7 @@ test('REQ-013: Respond button does not appear on own requests', async () => {
 
     const ownTitle = page.locator('#citation-requests-container .citation-title')
         .filter({ hasText: 'REQ-013 Own Request' }).first();
-    await expect(ownTitle).toBeVisible({ timeout: 25000 });
+    await expect(ownTitle).toBeVisible({ timeout: 10000 });
 
     const ownCard = ownTitle.locator('xpath=ancestor::div[2]');
     await expect(ownCard.locator('.respond-btn')).toHaveCount(0);
