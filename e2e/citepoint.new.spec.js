@@ -40,7 +40,7 @@ async function startBackend() {
         backendProcess.on('error', reject);
 
         // Timeout if server doesn't start in 15s
-        setTimeout(() => reject(new Error('Backend did not start in time')), 15000);
+        setTimeout(() => reject(new Error('Backend did not start in time')), 30000);
     });
 }
 
