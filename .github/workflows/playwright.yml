@@ -1,4 +1,4 @@
-name: Playwright Tests
+name: Playwright & Selenium Extension Tests
 on:
   push:
     branches: [ dev, main, ci-cd ]
