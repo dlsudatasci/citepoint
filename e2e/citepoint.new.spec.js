@@ -17,7 +17,12 @@ async function startBackend() {
     return new Promise((resolve, reject) => {
         backendProcess = spawn('node', ['server.js'], {
             cwd: BACKEND_DIR,
-            env: { ...process.env },   // inherits your .env values via dotenv in server.js
+            env: {
+                ...process.env,
+                MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test',
+                PORT: process.env.PORT || '3000',
+                ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS || 'chrome-extension://',
+            },
             stdio: ['ignore', 'pipe', 'pipe'],
         });
 
