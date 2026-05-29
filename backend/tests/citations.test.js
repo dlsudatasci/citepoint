@@ -28,8 +28,9 @@ describe('GET /api/citations/:videoId', () => {
     });
 
     it('returns citations only for the requested video', async () => {
-        await createCitation({ videoId: VIDEO });
-        await createCitation({ videoId: 'OTHER_VIDEO', citationTitle: 'Other' });
+        // POST to each video's own endpoint — videoId comes from the URL param, not the body
+        await request(app).post(BASE).send({ citationTitle: 'Mine', username: 'alice' });
+        await request(app).post('/api/citations/OTHER_VIDEO').send({ citationTitle: 'Other', username: 'alice' });
 
         const res = await request(app).get(BASE);
         expect(res.status).toBe(200);
