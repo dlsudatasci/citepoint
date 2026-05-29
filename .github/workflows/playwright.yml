@@ -31,21 +31,16 @@ jobs:
 
     - name: Install Playwright Browsers and System Dependencies
       run: npx playwright install --with-deps
-
+      
     - name: Install Geckodriver (For Firefox Selenium)
       run: npm install -g geckodriver
-
+      
     - name: Run Playwright tests (Chrome)
       run: xvfb-run --auto-servernum -- npx playwright test
-      env:
-        MONGODB_URI: mongodb://localhost:27017/citepoint_test
-        PORT: 3000
-        ALLOWED_ORIGINS: chrome-extension://
-        CI: true
-
+      
     - name: Run Selenium tests (Firefox)
       run: xvfb-run --auto-servernum -- node selenium/firefox.test.js
-
+      
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
       with:
