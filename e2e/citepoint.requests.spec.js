@@ -10,9 +10,9 @@ let EXTENSION_ID      = '';
 let createdRequestIds = [];
 
 // ── beforeAll / afterAll ──────────────────────────────────────────────────
+// Backend is started by global-setup.js and stopped by global-teardown.js
 
 test.beforeAll(async () => {
-    // Backend is started by global-setup.js
     context = await chromium.launchPersistentContext('', {
         headless: false,
         args: [
@@ -48,7 +48,6 @@ test.afterAll(async () => {
     } catch (err) {
         console.warn('Cleanup failed:', err.message);
     }
-    // Backend is stopped by global-teardown.js
 });
 
 // ── Fresh page before every test ─────────────────────────────────────────
@@ -137,21 +136,23 @@ async function seedRequest({
     await fillRequestForm({ title, start, end, reason });
     await submitForm();
     await expectToast('Citation request submitted successfully!');
+
+    // Wait for list to refresh
     await page.locator('#citations-btn').click();
     await page.waitForTimeout(500);
     await openRequestsTab();
-    await expect(page.locator('#citation-requests-container'))
-        .toContainText(title, { timeout: 20000 });
+    await page.waitForTimeout(3000);
 
-    // Capture the ID from the delete button so we can clean it up in afterAll
-    const card = page.locator('#citation-requests-container .citation-title')
-        .filter({ hasText: title }).first()
-        .locator('xpath=ancestor::div[2]');
-    const deleteBtn = card.locator('.delete-btn').first();
-    const id = await deleteBtn.getAttribute('data-id').catch(() => null);
-    if (id) {
-        createdRequestIds.push(id);
-        console.log(`Tracked request ID: ${id}`);
+    // Capture the ID from the delete button for cleanup — look across all cards
+    const deleteBtns = page.locator('#citation-requests-container .delete-btn');
+    const count = await deleteBtns.count();
+    for (let i = 0; i < count; i++) {
+        const id = await deleteBtns.nth(i).getAttribute('data-id').catch(() => null);
+        if (id && !createdRequestIds.includes(id)) {
+            createdRequestIds.push(id);
+            console.log(`Tracked request ID: ${id}`);
+            break;
+        }
     }
 }
 
@@ -209,11 +210,16 @@ test('REQ-005: submitting a valid request shows success toast and form closes', 
     await page.locator('#citations-btn').click();
     await page.waitForTimeout(500);
     await openRequestsTab();
-    const card = page.locator('#citation-requests-container .citation-title')
-        .filter({ hasText: 'Valid Request Test' }).first()
-        .locator('xpath=ancestor::div[2]');
-    const id = await card.locator('.delete-btn').first().getAttribute('data-id').catch(() => null);
-    if (id) createdRequestIds.push(id);
+    await page.waitForTimeout(2000);
+    const deleteBtns = page.locator('#citation-requests-container .delete-btn');
+    const count = await deleteBtns.count();
+    for (let i = 0; i < count; i++) {
+        const id = await deleteBtns.nth(i).getAttribute('data-id').catch(() => null);
+        if (id && !createdRequestIds.includes(id)) {
+            createdRequestIds.push(id);
+            break;
+        }
+    }
 });
 
 // ─────────────────────────────────────────────

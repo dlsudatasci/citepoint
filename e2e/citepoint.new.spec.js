@@ -1,65 +1,18 @@
 const { test, expect, chromium } = require('@playwright/test');
 const path = require('path');
-const { spawn } = require('child_process');
 
 const EXTENSION_PATH = path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-const BACKEND_DIR    = path.resolve(__dirname, '../backend');
 
 let context;
 let page;
-let EXTENSION_ID  = '';
-let backendProcess = null;
-
-// ── Backend helpers (kept for ADD-022 which needs to kill/restart) ────────
-
-async function startBackend() {
-    return new Promise((resolve, reject) => {
-        backendProcess = spawn('node', ['server.js'], {
-            cwd: BACKEND_DIR,
-            env: {
-                ...process.env,
-                MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test',
-                PORT: process.env.PORT || '3000',
-                ALLOWED_ORIGINS: '*',
-                ALLOWED_ORIGIN: '*',
-            },
-            stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        backendProcess.stdout.on('data', (data) => {
-            const msg = data.toString();
-            console.log('[backend]', msg.trim());
-            if (msg.includes('Server running on port')) resolve();
-        });
-
-        backendProcess.stderr.on('data', (data) => {
-            console.error('[backend error]', data.toString().trim());
-        });
-
-        backendProcess.on('error', reject);
-        setTimeout(() => reject(new Error('Backend did not start in time')), 30000);
-    });
-}
-
-async function stopBackend() {
-    // First try to kill our own tracked process
-    if (backendProcess) {
-        backendProcess.kill('SIGTERM');
-        backendProcess = null;
-        return;
-    }
-    // Fallback: kill the globally started backend via its PID
-    const pid = process.env._BACKEND_PID;
-    if (pid) {
-        try { process.kill(Number(pid), 'SIGTERM'); } catch (_) {}
-    }
-}
+let EXTENSION_ID = '';
 
 // ── beforeAll / afterAll ──────────────────────────────────────────────────
+// Backend is started by global-setup.js and stopped by global-teardown.js
+// No startBackend/stopBackend needed here except for ADD-022
 
 test.beforeAll(async () => {
-    // Backend is started by global-setup.js — no need to start it here
     context = await chromium.launchPersistentContext('', {
         headless: false,
         args: [
@@ -77,7 +30,6 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
     await context.close();
-    // Backend is stopped by global-teardown.js — no need to stop it here
 });
 
 // ── Fresh page before every test ─────────────────────────────────────────
@@ -374,11 +326,19 @@ test('ADD-020: submitting during an ad shows the ad-playing toast', async () => 
 
 // ─────────────────────────────────────────────
 // ADD-022: Backend Offline
+// Points the extension at a dead port instead of killing the shared backend
 // ─────────────────────────────────────────────
 
 test('ADD-022: when backend is offline an error toast is shown and form stays open', async () => {
-    await stopBackend();
-    await page.waitForTimeout(1000);
+    const sw = context.serviceWorkers().find(w => w.url().includes(EXTENSION_ID));
+
+    // Redirect API calls to a dead port
+    if (sw) {
+        await sw.evaluate(() => {
+            globalThis._savedApiBase = API_BASE_URL;
+            API_BASE_URL = 'http://localhost:19999/api';
+        });
+    }
 
     await openAddForm();
     await fillForm({ title: 'Backend Offline Test' });
@@ -390,10 +350,12 @@ test('ADD-022: when backend is offline an error toast is shown and form stays op
     await expect(toast).not.toContainText('Citation added successfully!');
     await expect(page.locator('#add-form-container #submit-btn')).toBeEnabled({ timeout: 5000 });
 
-    // Restart so subsequent tests still work
-    await startBackend();
-    // Update the global PID so teardown can clean up
-    process.env._BACKEND_PID = String(backendProcess.pid);
+    // Restore the real API URL
+    if (sw) {
+        await sw.evaluate(() => {
+            API_BASE_URL = globalThis._savedApiBase;
+        });
+    }
 });
 
 // ─────────────────────────────────────────────
