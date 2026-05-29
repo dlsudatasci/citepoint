@@ -20,6 +20,7 @@ module.exports = defineConfig({
             testMatch: [
                 '**/extension.spec.js',
                 '**/citepoint.new.spec.js',
+                '**/citepoint.requests.spec.js',
             ],
             use: {
                 launchOptions: {
