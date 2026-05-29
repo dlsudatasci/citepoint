@@ -23,6 +23,7 @@ module.exports = defineConfig({
                 '**/extension.spec.js',
                 '**/citepoint.new.spec.js',
                 '**/citepoint.requests.spec.js',
+                '**/citepoint.recording.spec.js',
             ],
             use: {
                 launchOptions: {
