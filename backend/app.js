@@ -6,9 +6,6 @@ const rateLimit    = require('express-rate-limit');
 const app = express();
 
 // ── CORS ──────────────────────────────────────
-// Accepts requests from any installed chrome-extension:// or moz-extension://
-// origin (required because extension IDs differ per user/browser).
-// For production, scope this further by comparing against a list of published IDs.
 const allowedOrigins = process.env.ALLOWED_ORIGINS
     ? process.env.ALLOWED_ORIGINS.split(',').map(s => s.trim())
     : process.env.ALLOWED_ORIGIN
@@ -33,15 +30,14 @@ app.use(cors({
 
 app.use(express.json({ limit: '64kb' }));
 
-// HTTP request logging — 'dev' in development, 'combined' (Apache-style) for production logs
+// HTTP request logging
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 // ── Rate limiting ─────────────────────────────
-// General limit: 200 requests per 15 minutes per IP.
-// Mutation endpoints have a tighter 60/15 min limit.
+// Disabled in test environment to prevent 429s during parallel test runs
 const generalLimiter = rateLimit({
     windowMs:        15 * 60 * 1000,
-    max:             200,
+    max:             process.env.NODE_ENV === 'test' ? 10000 : 200,
     standardHeaders: true,
     legacyHeaders:   false,
     message:         { success: false, error: 'Too many requests — please slow down.' },
@@ -49,7 +45,7 @@ const generalLimiter = rateLimit({
 
 const mutationLimiter = rateLimit({
     windowMs:        15 * 60 * 1000,
-    max:             60,
+    max:             process.env.NODE_ENV === 'test' ? 10000 : 60,
     standardHeaders: true,
     legacyHeaders:   false,
     message:         { success: false, error: 'Too many requests — please slow down.' },
