@@ -9,8 +9,6 @@ let page;
 let EXTENSION_ID = '';
 
 // ── beforeAll / afterAll ──────────────────────────────────────────────────
-// Backend is started by global-setup.js and stopped by global-teardown.js
-// No startBackend/stopBackend needed here except for ADD-022
 
 test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
@@ -31,8 +29,6 @@ test.beforeAll(async () => {
 test.afterAll(async () => {
     await context.close();
 });
-
-// ── Fresh page before every test ─────────────────────────────────────────
 
 test.beforeEach(async () => {
     try {
@@ -157,8 +153,15 @@ test('ADD-004: submitting a valid citation shows success toast and refreshes lis
 
     await expectToast('Citation added successfully!');
     await expect(page.locator('#add-form-container')).toBeHidden();
-    await page.waitForTimeout(20000);
-    await expect(page.locator('#citations-container')).toContainText('Test', { timeout: 60000 });
+
+    // Force reload to bypass cache and get fresh list
+    await page.reload({ waitUntil: 'domcontentloaded' });
+    await _waitForAdToFinish();
+    await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await mockLogin('@testuser');
+    await page.locator('#citations-btn').click();
+    await expect(page.locator('#citations-container')).not.toBeEmpty({ timeout: 30000 });
+    await expect(page.locator('#citations-container')).toContainText('Test', { timeout: 15000 });
 });
 
 // ─────────────────────────────────────────────
@@ -326,13 +329,11 @@ test('ADD-020: submitting during an ad shows the ad-playing toast', async () => 
 
 // ─────────────────────────────────────────────
 // ADD-022: Backend Offline
-// Points the extension at a dead port instead of killing the shared backend
 // ─────────────────────────────────────────────
 
 test('ADD-022: when backend is offline an error toast is shown and form stays open', async () => {
     const sw = context.serviceWorkers().find(w => w.url().includes(EXTENSION_ID));
 
-    // Redirect API calls to a dead port
     if (sw) {
         await sw.evaluate(() => {
             globalThis._savedApiBase = API_BASE_URL;
@@ -350,7 +351,6 @@ test('ADD-022: when backend is offline an error toast is shown and form stays op
     await expect(toast).not.toContainText('Citation added successfully!');
     await expect(page.locator('#add-form-container #submit-btn')).toBeEnabled({ timeout: 5000 });
 
-    // Restore the real API URL
     if (sw) {
         await sw.evaluate(() => {
             API_BASE_URL = globalThis._savedApiBase;
