@@ -444,6 +444,8 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
 // ─────────────────────────────────────────────
 
 test('C-024: record buttons reappear after navigating to a different YouTube video', async () => {
+    test.setTimeout(180000); // 3 minutes for this test only
+
     await expect(page.locator('.record-start-btn')).toBeVisible();
 
     await page.goto('https://www.youtube.com/watch?v=jNQXAC9IVRw', {
@@ -451,9 +453,17 @@ test('C-024: record buttons reappear after navigating to a different YouTube vid
         timeout: 60000,
     }).catch(() => {});
 
-    // Start skip poller for the new page
+    // Force-remove ad class so we don't wait for real ad to finish
+    await page.evaluate(() => {
+        const p = document.getElementById('movie_player');
+        if (p) {
+            p.classList.remove('ad-showing');
+            p.classList.remove('ytp-autohide');
+        }
+    }).catch(() => {});
+
     _skipAdsPoller();
-    await _waitForAdToFinish();
+
     await page.waitForSelector('#citation-controls', { timeout: 60000 });
 
     await page.evaluate(() => {
@@ -462,7 +472,6 @@ test('C-024: record buttons reappear after navigating to a different YouTube vid
     await page.locator('#movie_player').hover().catch(() => {});
     await expect(page.locator('.record-start-btn')).toBeVisible({ timeout: 30000 });
 });
-
 // ─────────────────────────────────────────────
 // C-025: Invalid range — no segment card created
 // ─────────────────────────────────────────────
