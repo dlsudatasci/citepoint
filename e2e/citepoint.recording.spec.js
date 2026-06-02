@@ -69,12 +69,14 @@ async function _waitForAdToFinish(maxWaitMs = 60000) {
 }
 
 async function startRecording() {
-    // Hover player to ensure controls are visible
-    await page.locator('#movie_player').hover().catch(() => {});
-    await page.waitForTimeout(500);
-    
-    // Force click in case controls are partially hidden
+    // Remove autohide and keep mouse over player
+    await page.evaluate(() => {
+        document.getElementById('movie_player')?.classList.remove('ytp-autohide');
+    });
+    await page.locator('#movie_player').hover();
     await page.locator('.record-start-btn').click({ force: true });
+    // Keep hovering so controls stay visible
+    await page.locator('#movie_player').hover();
     await expect(page.locator('.record-end-btn')).toBeVisible({ timeout: 10000 });
 }
 
@@ -231,7 +233,7 @@ test('C-013: recording resumes and shows toast when ad finishes', async () => {
 
 test('C-014: dragging the start bar updates the start timestamp field', async () => {
     await startRecording();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2000);
     await endRecording();
 
     await expect(page.locator('.recorded-segment')).toBeVisible({ timeout: 10000 });
