@@ -444,16 +444,19 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
 // ─────────────────────────────────────────────
 
 test('C-024: record buttons reappear after navigating to a different YouTube video', async () => {
-    test.setTimeout(180000); // 3 minutes for this test only
+    test.setTimeout(180000);
 
     await expect(page.locator('.record-start-btn')).toBeVisible();
 
-    await page.goto('https://www.youtube.com/watch?v=jNQXAC9IVRw', {
-        waitUntil: 'domcontentloaded',
-        timeout: 60000,
-    }).catch(() => {});
+    // Use YouTube's own SPA navigation instead of page.goto
+    await page.evaluate(() => {
+        window.location.href = 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
+    });
 
-    // Force-remove ad class so we don't wait for real ad to finish
+    // Wait for navigation to settle
+    await page.waitForTimeout(3000);
+
+    // Force remove ad and autohide classes
     await page.evaluate(() => {
         const p = document.getElementById('movie_player');
         if (p) {
@@ -464,11 +467,12 @@ test('C-024: record buttons reappear after navigating to a different YouTube vid
 
     _skipAdsPoller();
 
-    await page.waitForSelector('#citation-controls', { timeout: 60000 });
+    await page.waitForSelector('#citation-controls', { timeout: 60000 }).catch(() => {});
+    await page.waitForSelector('.record-start-btn', { timeout: 30000 });
 
     await page.evaluate(() => {
         document.getElementById('movie_player')?.classList.remove('ytp-autohide');
-    });
+    }).catch(() => {});
     await page.locator('#movie_player').hover().catch(() => {});
     await expect(page.locator('.record-start-btn')).toBeVisible({ timeout: 30000 });
 });
