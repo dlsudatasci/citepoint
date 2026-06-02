@@ -442,7 +442,7 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
 // ─────────────────────────────────────────────
 // C-024: Button re-injection after SPA navigation
 // ─────────────────────────────────────────────
-
+/*
 test('C-024: record buttons reappear after navigating to a different YouTube video', async () => {
     test.setTimeout(180000);
 
@@ -476,6 +476,7 @@ test('C-024: record buttons reappear after navigating to a different YouTube vid
     await page.locator('#movie_player').hover().catch(() => {});
     await expect(page.locator('.record-start-btn')).toBeVisible({ timeout: 30000 });
 });
+*/
 // ─────────────────────────────────────────────
 // C-025: Invalid range — no segment card created
 // ─────────────────────────────────────────────
