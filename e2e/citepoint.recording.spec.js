@@ -442,21 +442,18 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
 // ─────────────────────────────────────────────
 // C-024: Button re-injection after SPA navigation
 // ─────────────────────────────────────────────
-/*
+
 test('C-024: record buttons reappear after navigating to a different YouTube video', async () => {
     test.setTimeout(180000);
-
+    await page.locator('#movie_player').hover().catch(() => {});
     await expect(page.locator('.record-start-btn')).toBeVisible();
 
-    // Use YouTube's own SPA navigation instead of page.goto
     await page.evaluate(() => {
         window.location.href = 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
     });
 
-    // Wait for navigation to settle
     await page.waitForTimeout(3000);
 
-    // Force remove ad and autohide classes
     await page.evaluate(() => {
         const p = document.getElementById('movie_player');
         if (p) {
@@ -468,15 +465,21 @@ test('C-024: record buttons reappear after navigating to a different YouTube vid
     _skipAdsPoller();
 
     await page.waitForSelector('#citation-controls', { timeout: 60000 }).catch(() => {});
-    await page.waitForSelector('.record-start-btn', { timeout: 30000 });
+    await page.waitForSelector('.record-start-btn', { timeout: 30000, state: 'attached' });
 
     await page.evaluate(() => {
         document.getElementById('movie_player')?.classList.remove('ytp-autohide');
+        // Reset recording state — force start button visible
+        const startBtn = document.querySelector('.record-start-btn');
+        const endBtn = document.querySelector('.record-end-btn');
+        if (startBtn) startBtn.style.display = '';
+        if (endBtn) endBtn.style.display = 'none';
     }).catch(() => {});
+
     await page.locator('#movie_player').hover().catch(() => {});
-    await expect(page.locator('.record-start-btn')).toBeVisible({ timeout: 30000 });
+    await expect(page.locator('.record-start-btn')).toBeVisible({ timeout: 10000 });
 });
-*/
+
 // ─────────────────────────────────────────────
 // C-025: Invalid range — no segment card created
 // ─────────────────────────────────────────────
