@@ -36,8 +36,13 @@ test.beforeEach(async () => {
     } catch (_) {}
 
     page = await context.newPage();
+
     await page.goto(TEST_VIDEO, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('ytd-watch-metadata', { timeout: 30000 });
+
+    // Start skip-ad poller in background
+    _skipAdsPoller();
+
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
     await mockLogin('@testuser');
@@ -68,14 +73,35 @@ async function _waitForAdToFinish(maxWaitMs = 60000) {
     }
 }
 
+// Polls every second and clicks the skip button if it appears
+function _skipAdsPoller() {
+    const interval = setInterval(async () => {
+        if (!page || page.isClosed()) {
+            clearInterval(interval);
+            return;
+        }
+        try {
+            const skipBtn = page.locator('.ytp-skip-ad-button, .ytp-ad-skip-button');
+            const count = await skipBtn.count();
+            if (count > 0) {
+                await skipBtn.first().click({ force: true }).catch(() => {});
+                console.log('[ad] Skipped ad');
+            }
+        } catch (_) {}
+    }, 1000);
+
+    // Stop after 90 seconds
+    setTimeout(() => clearInterval(interval), 90000);
+}
+
 async function startRecording() {
-    // Remove autohide and keep mouse over player
+    // Remove autohide so controls stay visible
     await page.evaluate(() => {
         document.getElementById('movie_player')?.classList.remove('ytp-autohide');
     });
     await page.locator('#movie_player').hover();
     await page.locator('.record-start-btn').click({ force: true });
-    // Keep hovering so controls stay visible
+    // Keep hovering so controls stay visible after click
     await page.locator('#movie_player').hover();
     await expect(page.locator('.record-end-btn')).toBeVisible({ timeout: 10000 });
 }
@@ -416,19 +442,23 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
 test('C-024: record buttons reappear after navigating to a different YouTube video', async () => {
     await expect(page.locator('.record-start-btn')).toBeVisible();
 
-    // Navigate directly — the extension's ensureRecordingFeatureWorks() re-injects on new pages
     await page.goto('https://www.youtube.com/watch?v=9bZkp7q19f0', {
         waitUntil: 'domcontentloaded',
         timeout: 60000,
     }).catch(() => {});
 
+    // Start skip poller for the new page
+    _skipAdsPoller();
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 60000 });
 
-    // Hover to make player controls visible
+    await page.evaluate(() => {
+        document.getElementById('movie_player')?.classList.remove('ytp-autohide');
+    });
     await page.locator('#movie_player').hover().catch(() => {});
     await expect(page.locator('.record-start-btn')).toBeVisible({ timeout: 30000 });
 });
+
 // ─────────────────────────────────────────────
 // C-025: Invalid range — no segment card created
 // ─────────────────────────────────────────────
