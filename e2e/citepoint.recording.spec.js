@@ -69,10 +69,12 @@ async function _waitForAdToFinish(maxWaitMs = 60000) {
 }
 
 async function startRecording() {
-    // Hover player to ensure controls are visible before clicking
+    // Hover player to ensure controls are visible
     await page.locator('#movie_player').hover().catch(() => {});
     await page.waitForTimeout(500);
-    await page.locator('.record-start-btn').click();
+    
+    // Force click in case controls are partially hidden
+    await page.locator('.record-start-btn').click({ force: true });
     await expect(page.locator('.record-end-btn')).toBeVisible({ timeout: 10000 });
 }
 
