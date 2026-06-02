@@ -95,14 +95,18 @@ function _skipAdsPoller() {
 }
 
 async function startRecording() {
-    // Remove autohide so controls stay visible
     await page.evaluate(() => {
         document.getElementById('movie_player')?.classList.remove('ytp-autohide');
     });
     await page.locator('#movie_player').hover();
     await page.locator('.record-start-btn').click({ force: true });
-    // Keep hovering so controls stay visible after click
+
+    // Remove again — YouTube re-adds ytp-autohide after the click
+    await page.evaluate(() => {
+        document.getElementById('movie_player')?.classList.remove('ytp-autohide');
+    });
     await page.locator('#movie_player').hover();
+
     await expect(page.locator('.record-end-btn')).toBeVisible({ timeout: 10000 });
 }
 
@@ -442,7 +446,7 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
 test('C-024: record buttons reappear after navigating to a different YouTube video', async () => {
     await expect(page.locator('.record-start-btn')).toBeVisible();
 
-    await page.goto('https://www.youtube.com/watch?v=9bZkp7q19f0', {
+    await page.goto('https://www.youtube.com/watch?v=jNQXAC9IVRw', {
         waitUntil: 'domcontentloaded',
         timeout: 60000,
     }).catch(() => {});
