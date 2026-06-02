@@ -448,12 +448,20 @@ test('C-024: record buttons reappear after navigating to a different YouTube vid
 
     await expect(page.locator('.record-start-btn')).toBeVisible();
 
-    // Scroll down to load related videos
-    await page.evaluate(() => window.scrollBy(0, 500));
-    await page.waitForTimeout(2000);
+    // Scroll to load related videos
+    await page.evaluate(() => window.scrollBy(0, 800));
+    await page.waitForTimeout(3000);
 
-    // Find and click a related video link on the current page
-    const related = page.locator('ytd-compact-video-renderer a#thumbnail').first();
+    // Log available links for debugging
+    const links = await page.evaluate(() =>
+        [...document.querySelectorAll('a[href*="/watch?v="]')]
+            .map(a => a.href)
+            .slice(0, 5)
+    );
+    console.log('C-024 available links:', links);
+
+    // Find any YouTube video link on the page
+    const related = page.locator('a[href*="/watch?v="]').first();
     await expect(related).toBeVisible({ timeout: 15000 });
     await related.click();
 
