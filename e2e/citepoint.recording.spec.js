@@ -445,15 +445,22 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
 
 test('C-024: record buttons reappear after navigating to a different YouTube video', async () => {
     test.setTimeout(180000);
-    await page.locator('#movie_player').hover().catch(() => {});
+
     await expect(page.locator('.record-start-btn')).toBeVisible();
 
-    await page.evaluate(() => {
-        window.location.href = 'https://www.youtube.com/watch?v=jNQXAC9IVRw';
-    });
+    // Scroll down to load related videos
+    await page.evaluate(() => window.scrollBy(0, 500));
+    await page.waitForTimeout(2000);
 
-    await page.waitForTimeout(3000);
+    // Find and click a related video link on the current page
+    const related = page.locator('ytd-compact-video-renderer a#thumbnail').first();
+    await expect(related).toBeVisible({ timeout: 15000 });
+    await related.click();
 
+    // Start skip poller for the new page
+    _skipAdsPoller();
+
+    // Force remove ad class
     await page.evaluate(() => {
         const p = document.getElementById('movie_player');
         if (p) {
@@ -462,14 +469,12 @@ test('C-024: record buttons reappear after navigating to a different YouTube vid
         }
     }).catch(() => {});
 
-    _skipAdsPoller();
-
+    await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 60000 }).catch(() => {});
     await page.waitForSelector('.record-start-btn', { timeout: 30000, state: 'attached' });
 
     await page.evaluate(() => {
         document.getElementById('movie_player')?.classList.remove('ytp-autohide');
-        // Reset recording state — force start button visible
         const startBtn = document.querySelector('.record-start-btn');
         const endBtn = document.querySelector('.record-end-btn');
         if (startBtn) startBtn.style.display = '';
