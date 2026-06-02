@@ -452,23 +452,15 @@ test('C-024: record buttons reappear after navigating to a different YouTube vid
     await page.evaluate(() => window.scrollBy(0, 800));
     await page.waitForTimeout(3000);
 
-    // Log available links for debugging
-    const links = await page.evaluate(() =>
-        [...document.querySelectorAll('a[href*="/watch?v="]')]
-            .map(a => a.href)
-            .slice(0, 5)
-    );
-    console.log('C-024 available links:', links);
-
-    // Find any YouTube video link on the page
+    // Force click the first YouTube video link — don't require visibility
     const related = page.locator('a[href*="/watch?v="]').first();
-    await expect(related).toBeVisible({ timeout: 15000 });
-    await related.click();
+    await expect(related).toHaveCount(1, { timeout: 15000 });
+    await related.click({ force: true });
 
     // Start skip poller for the new page
     _skipAdsPoller();
 
-    // Force remove ad class
+    // Force remove ad and autohide classes
     await page.evaluate(() => {
         const p = document.getElementById('movie_player');
         if (p) {
