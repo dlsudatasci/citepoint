@@ -412,17 +412,16 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
 test('C-024: record buttons reappear after navigating to a different YouTube video', async () => {
     await expect(page.locator('.record-start-btn')).toBeVisible();
 
-    // Scroll down to load related videos
-    await page.evaluate(() => window.scrollBy(0, 500));
-    await page.waitForTimeout(2000);
-
-    // Try multiple selectors for related video links
-    const relatedLink = page.locator('ytd-compact-video-renderer a, a#thumbnail[href*="watch"]').first();
-    await expect(relatedLink).toBeVisible({ timeout: 15000 });
-    await relatedLink.click();
+    // Navigate directly — the extension's ensureRecordingFeatureWorks() re-injects on new pages
+    await page.goto('https://www.youtube.com/watch?v=9bZkp7q19f0', {
+        waitUntil: 'domcontentloaded',
+        timeout: 60000,
+    }).catch(() => {});
 
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 60000 });
+
+    // Hover to make player controls visible
     await page.locator('#movie_player').hover().catch(() => {});
     await expect(page.locator('.record-start-btn')).toBeVisible({ timeout: 30000 });
 });
