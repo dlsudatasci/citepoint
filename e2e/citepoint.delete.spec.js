@@ -15,7 +15,7 @@ test.beforeAll(async () => {
     try {
         const mongoose = require('mongoose');
         await mongoose.connect(
-            process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint'
+            process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test'
         );
         await mongoose.connection.collection('citations').deleteMany({
             videoId: 'dQw4w9WgXcQ',
@@ -80,6 +80,10 @@ async function mockLogin(handle = '@testuser') {
         if (typeof chrome !== 'undefined' && chrome.storage) {
             chrome.storage.local.set({ youtubeUsername: h });
         }
+        // Reset citations.js internal username cache
+        if (typeof _currentUsername !== 'undefined') {
+            _currentUsername = null;
+        }
     }, handle).catch(() => {});
 }
 
@@ -112,7 +116,6 @@ async function openCitationsTab() {
 async function refreshCitationsList(deletedTitle = null) {
     await page.locator('#citation-requests-btn').click();
     await page.waitForSelector('#citation-requests-container', { timeout: 10000 });
-    await page.waitForTimeout(3000);
     await page.locator('#citations-btn').click();
     await page.waitForSelector('#citations-container', { timeout: 10000 });
 
@@ -131,7 +134,6 @@ async function refreshCitationsList(deletedTitle = null) {
 
 async function seedCitation(title = 'Test Citation') {
     await mockLogin('@testuser');
-    await page.waitForTimeout(1000);
     await openCitationsTab();
 
     await page.locator('#add-item-btn').click();
@@ -165,7 +167,6 @@ async function seedCitation(title = 'Test Citation') {
 
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
     await mockLogin('@testuser');
-    await page.waitForTimeout(1000);
     await openCitationsTab();
 
     // Wait until the citation actually appears
@@ -304,30 +305,32 @@ test('DEL-006: clicking outside the confirm dialog dismisses it without deleting
 // ─────────────────────────────────────────────
 
 test('DEL-007: delete button is not visible on citations by other users', async () => {
-    await mockLogin('@otheruserxyz');
-    await page.waitForTimeout(1000);
-    await seedCitation('DEL-007 Other Citation');
+    // Insert citation directly as @otheruserxyz — no extension involved
+    const mongoose = require('mongoose');
+    await mongoose.connect(
+        process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test'
+    );
+    await mongoose.connection.collection('citations').insertOne({
+        videoId: 'dQw4w9WgXcQ',
+        citationTitle: 'DEL-007 Other Citation',
+        username: '@otheruserxyz',
+        timestampStart: '00:01:00',
+        timestampEnd: '00:02:00',
+        source: 'https://example.com',
+        description: 'test description',
+        dateAdded: new Date(),
+        voteScore: 0,
+        requestId: null,
+    });
+    await mongoose.disconnect();
 
+    // Reload as testuser and verify no delete button
     await mockLogin('@testuser');
     await page.reload({ waitUntil: 'domcontentloaded' }).catch(() => {});
-    if (!page || page.isClosed()) return;
-
-    const skipInterval = setInterval(async () => {
-        if (!page || page.isClosed()) { clearInterval(skipInterval); return; }
-        try {
-            const skipBtn = page.locator('.ytp-skip-ad-button, .ytp-ad-skip-button');
-            if (await skipBtn.count() > 0) await skipBtn.first().click({ force: true }).catch(() => {});
-        } catch (_) {}
-    }, 1000);
-    setTimeout(() => clearInterval(skipInterval), 60000);
-
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
     await mockLogin('@testuser');
-    await page.waitForTimeout(1000);
-
-    // Switch to requests then back to citations to force fresh fetch as testuser
-    await refreshCitationsList();
+    await openCitationsTab();
 
     await page.waitForFunction(() => {
         const container = document.querySelector('#citations-container');
@@ -349,7 +352,6 @@ test('DEL-007: delete button is not visible on citations by other users', async 
 
 test('DEL-009: delete own citation request removes it from the list', async () => {
     await mockLogin('@testuser');
-    await page.waitForTimeout(1000);
     await page.locator('#citation-requests-btn').click();
     await page.waitForSelector('#citation-requests-container', { timeout: 10000 });
     await page.locator('#add-item-btn').click();
@@ -367,15 +369,12 @@ test('DEL-009: delete own citation request removes it from the list', async () =
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
     await mockLogin('@testuser');
-    await page.waitForTimeout(1000);
 
     // Switch citations then requests to force fresh fetch
     await page.locator('#citations-btn').click();
     await page.waitForSelector('#citations-container', { timeout: 10000 });
-    await page.waitForTimeout(1000);
     await page.locator('#citation-requests-btn').click();
     await page.waitForSelector('#citation-requests-container', { timeout: 10000 });
-    await page.waitForTimeout(2000);
 
     await page.waitForFunction(() => {
         const container = document.querySelector('#citation-requests-container');
@@ -399,10 +398,8 @@ test('DEL-009: delete own citation request removes it from the list', async () =
     // Switch to citations then back to requests to force re-fetch
     await page.locator('#citations-btn').click();
     await page.waitForSelector('#citations-container', { timeout: 10000 });
-    await page.waitForTimeout(1000);
     await page.locator('#citation-requests-btn').click();
     await page.waitForSelector('#citation-requests-container', { timeout: 10000 });
-    await page.waitForTimeout(2000);
 
     const countAfter = await page.locator('#citation-requests-container .citation-title')
         .filter({ hasText: 'DEL-009 Request' }).count();
