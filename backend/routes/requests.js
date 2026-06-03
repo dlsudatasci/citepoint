@@ -37,7 +37,7 @@ router.get('/:videoId', async (req, res) => {
             Request.countDocuments({ videoId: req.params.videoId }),
         ]);
 
-        res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+        res.set('Cache-Control', 'no-store');
         res.json({
             success: true,
             requests,
@@ -68,7 +68,7 @@ router.get('/:videoId/by-ids', async (req, res) => {
             _id:     { $in: ids },
         }).lean();
 
-        res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+        res.set('Cache-Control', 'no-store');
         res.json({ success: true, requests });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -91,7 +91,7 @@ router.get('/:videoId/:id', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Request not found' });
         }
 
-        res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+        res.set('Cache-Control', 'no-store');
         res.json({ success: true, request });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });

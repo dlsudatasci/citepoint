@@ -85,6 +85,10 @@ function insertCitationButtons() {
     // Load initial data then start polling
     document.getElementById('citations-btn').classList.add('active');
     document.getElementById('citations-container').style.display = 'block';
+    // Reset cache flags so initial load always fetches fresh data from backend
+    _votesLoaded = false;
+    _votesVideoId = null;
+    _citationsLoading = false;
     loadCitations();
     startPolling();
 
@@ -205,7 +209,9 @@ function _wireTabs() {
         document.getElementById('citation-requests-container').style.display = 'none';
         document.getElementById('add-item-btn').textContent = '+ Add Citation';
         document.getElementById('add-form-container').style.display = 'none';
-        // silent=true when data is already in memory — no skeleton flash on tab switch
+        // Always fetch fresh on tab switch — silent only if data already loaded
+        _votesLoaded = false;
+        _votesVideoId = null;
         loadCitations(1, currentCitations.length > 0);
     });
 
