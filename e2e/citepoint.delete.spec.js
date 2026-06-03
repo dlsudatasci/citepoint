@@ -15,7 +15,7 @@ test.beforeAll(async () => {
     try {
         const mongoose = require('mongoose');
         await mongoose.connect(
-            process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test'
+            process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint'
         );
         await mongoose.connection.collection('citations').deleteMany({
             videoId: 'dQw4w9WgXcQ',
@@ -202,7 +202,7 @@ test('DEL-001: delete own citation removes it from the list', async () => {
     await page.locator('.cp-confirm-ok').click();
 
     // Switch to requests tab then back to citations to force re-fetch
-    await refreshCitationsList();
+    await refreshCitationsList('DEL-001 Citation');
 
     const countAfter = await page.locator('#citations-container .citation-title')
         .filter({ hasText: 'DEL-001 Citation' }).count();
@@ -285,7 +285,9 @@ test('DEL-006: clicking outside the confirm dialog dismisses it without deleting
     await deleteBtn.click();
 
     await expect(page.locator('.cp-confirm-box')).toBeVisible({ timeout: 5000 });
-    await page.locator('.cp-confirm-overlay').click();
+
+    // Click top-left corner of page — guaranteed outside the centered confirm box
+    await page.mouse.click(10, 10);
     await page.waitForTimeout(500);
     await expect(page.locator('.cp-confirm-box')).toBeHidden();
 
