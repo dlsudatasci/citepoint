@@ -54,23 +54,47 @@ function init() {
 function waitForDependencies() {
     console.log('[content] Waiting for YouTube page...');
 
+    // How many times we've retried after metadata was found but #secondary wasn't
+    let secondaryRetries = 0;
+    const MAX_SECONDARY_RETRIES = 30; // 30 × 500 ms = 15 s extra wait
+
     const check = setInterval(() => {
-        const metadata = document.querySelector('ytd-watch-metadata');
-        const video    = document.querySelector('video');
+        const metadata  = document.querySelector('ytd-watch-metadata');
 
-        if (metadata && video) {
+        // Step 1: wait for the metadata element — reliable signal that the
+        // watch page has rendered. We no longer require the <video> element
+        // because YouTube's player is lazy-loaded inside a shadow DOM in
+        // newer layouts and document.querySelector('video') can stay null
+        // even after everything else is visible.
+        if (!metadata) return;
+
+        // Step 2: #secondary must exist before we can prepend the panel.
+        // It usually appears with metadata, but give it extra retries.
+        const secondary = document.querySelector('#secondary');
+        if (!secondary) {
+            secondaryRetries++;
+            if (secondaryRetries < MAX_SECONDARY_RETRIES) return;
+            // After 15 s still no #secondary — give up so we don't loop forever.
+            console.warn('[content] #secondary never appeared — aborting init');
             clearInterval(check);
-            window._player = video;
-            console.log('[content] Page ready — initializing');
-
-            setupTimeTracking();        // player.js
-            setupVideoChangeTracking(); // player.js
-            init();
-
-            // Player controls render slightly after the page — give them a moment
-            setTimeout(setupRecordButtons, 1000); // recording.js
+            return;
         }
-    }, 100);
+
+        clearInterval(check);
+
+        // Grab the video element if available (optional — used by player.js)
+        const video = document.querySelector('video');
+        if (video) window._player = video;
+
+        console.log('[content] Page ready — initializing');
+
+        setupTimeTracking();        // player.js
+        setupVideoChangeTracking(); // player.js
+        init();
+
+        // Player controls render slightly after the page — give them a moment
+        setTimeout(setupRecordButtons, 1000); // recording.js
+    }, 500);
 
     // Give up after 30 seconds (e.g. non-video pages)
     setTimeout(() => clearInterval(check), 30000);

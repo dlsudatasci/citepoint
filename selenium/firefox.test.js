@@ -2,204 +2,41 @@ const { Builder, By, until } = require('selenium-webdriver');
 const firefox  = require('selenium-webdriver/firefox');
 const path     = require('path');
 const assert   = require('assert');
-const fs       = require('fs');
-const os       = require('os');
-const { execSync } = require('child_process');
 
-const EXTENSION_DIR  = process.env.FIREFOX_EXT_DIR || path.resolve(__dirname, '..');
+const EXTENSION_DIR  = path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-const TIMEOUT        = 60000;
-
-// Directories to exclude when copying extension to a temp folder.
-// This prevents the EMFILE "too many open files" error on Windows caused
-// by installAddon() trying to scan node_modules (thousands of files).
-const EXCLUDE_DIRS = ['node_modules', '.git', 'selenium', 'e2e', 'backend',
-                      'playwright-report', 'test-results'];
+const TIMEOUT        = 30000;
 
 let driver;
 
-/**
- * Recursively copies only the extension source files into a clean temp
- * directory, skipping node_modules and other non-extension folders.
- * Returns the path to the temp directory.
- */
-function copyExtensionToTemp() {
-    const tmpExt = path.join(os.tmpdir(), 'citepoint-ext');
-
-    // Clean any previous run
-    if (fs.existsSync(tmpExt)) {
-        fs.rmSync(tmpExt, { recursive: true, force: true });
-    }
-
-    function copyDir(src, dest) {
-        fs.mkdirSync(dest, { recursive: true });
-        for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-            if (EXCLUDE_DIRS.includes(entry.name)) continue;
-            const srcPath  = path.join(src,  entry.name);
-            const destPath = path.join(dest, entry.name);
-            if (entry.isDirectory()) {
-                copyDir(srcPath, destPath);
-            } else {
-                fs.copyFileSync(srcPath, destPath);
-            }
-        }
-    }
-
-    copyDir(EXTENSION_DIR, tmpExt);
-    return tmpExt;
-}
-
 async function setup() {
     console.log('  launching Firefox...');
-
+    
     const options = new firefox.Options();
-    options.setPreference('media.autoplay.default', 0);
-    options.setPreference('media.autoplay.allow-muted', true);
-    options.setPreference('extensions.autoDisableScopes', 0);
-    options.setPreference('extensions.enabledScopes', 15);
-    options.setPreference('xpinstall.signatures.required', false);
-    options.setPreference('extensions.experiments.enabled', true);
 
     driver = await new Builder()
         .forBrowser('firefox')
         .setFirefoxOptions(options)
         .build();
 
-    await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 60000 });
+    await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 30000 });
     console.log('  Firefox launched');
 
-    // Verify manifest exists in original dir
-    const manifestPath = path.join(EXTENSION_DIR, 'manifest.json');
-    console.log('  Extension path:', EXTENSION_DIR);
-    console.log('  manifest.json exists:', fs.existsSync(manifestPath));
-    if (fs.existsSync(manifestPath)) {
-        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-        console.log('  strict_min_version:', manifest.browser_specific_settings?.gecko?.strict_min_version);
-        console.log('  has service_worker:', !!manifest.background?.service_worker);
-        console.log('  has scripts:', !!manifest.background?.scripts);
-    }
-
-    // Copy extension to a clean temp dir (no node_modules) before installing.
-    // This is required on Windows to avoid EMFILE "too many open files" errors,
-    // and also ensures the installed extension is a clean source-only copy.
-    const tmpExt = copyExtensionToTemp();
-    console.log('  Extension temp path:', tmpExt);
-
-    console.log('  Installing temporary add-on...');
-    const addonId = await driver.installAddon(tmpExt, true);
-    console.log('  Addon ID returned:', addonId);
-
-    // Give the extension time to fully register its content script matchers
-    // before navigating to any page. Without this delay the content scripts
-    // may not inject on the first navigation after install.
-    await driver.sleep(3000);
-
-    // Navigate to about:blank to wake up the extension background script
-    await driver.get('about:blank');
-    await driver.sleep(2000);
-
-    // Navigate to about:addons to verify extension is listed
-    await driver.get('about:addons');
-    await driver.sleep(2000);
-    const pageSource = await driver.getPageSource();
-    const isInstalled = pageSource.includes('YouTube Citation') || pageSource.includes('citepoint');
-    console.log('  Extension visible in about:addons:', isInstalled);
-
+    console.log('  Installing temporary add-on natively...');
+    await driver.installAddon(EXTENSION_DIR, true);
+    
+    await driver.sleep(1000);
     console.log('  extension loaded\n');
 }
+
 
 async function teardown() {
     await driver?.quit();
 }
 
-async function waitForAdToFinish() {
-    const maxWait = 60000;
-    const start = Date.now();
-    while (Date.now() - start < maxWait) {
-        try {
-            const adShowing = await driver.executeScript(function() {
-                const p = document.getElementById('movie_player');
-                return p ? p.classList.contains('ad-showing') : false;
-            });
-            if (!adShowing) return;
-        } catch (_) { return; }
-        await driver.sleep(1000);
-    }
-}
-
-async function skipAdsIfPresent() {
-    try {
-        const skipBtns = await driver.findElements(
-            By.css('.ytp-skip-ad-button, .ytp-ad-skip-button')
-        );
-        for (const btn of skipBtns) {
-            try { await btn.click(); } catch (_) {}
-        }
-    } catch (_) {}
-}
-
-async function debugPageState() {
-    try {
-        const title = await driver.getTitle();
-        console.log('  [debug] Page title:', title);
-
-        const info = await driver.executeScript(function() {
-            return {
-                secondary:         document.querySelector('#secondary') ? 'FOUND' : 'NOT FOUND',
-                watchFlexy:        document.querySelector('ytd-watch-flexy') ? 'FOUND' : 'NOT FOUND',
-                watchMetadata:     document.querySelector('ytd-watch-metadata') ? 'FOUND' : 'NOT FOUND',
-                citationPanel:     document.querySelector('#citation-controls') ? 'FOUND' : 'NOT FOUND',
-                bodyChildren:      document.body ? document.body.children.length : 0,
-                url:               window.location.href,
-                contentRan:        typeof getCurrentVideoId === 'function' ? 'YES' : 'NO',
-                panelFnExists:     typeof insertCitationButtons === 'function' ? 'YES' : 'NO',
-                citationsFnExists: typeof loadCitations === 'function' ? 'YES' : 'NO',
-            };
-        });
-        console.log('  [debug] content.js ran (getCurrentVideoId):', info.contentRan);
-        console.log('  [debug] panel.js ran (insertCitationButtons):', info.panelFnExists);
-        console.log('  [debug] citations.js ran (loadCitations):', info.citationsFnExists);
-        console.log('  [debug] #secondary:', info.secondary);
-        console.log('  [debug] ytd-watch-flexy:', info.watchFlexy);
-        console.log('  [debug] ytd-watch-metadata:', info.watchMetadata);
-        console.log('  [debug] #citation-controls:', info.citationPanel);
-        console.log('  [debug] body children count:', info.bodyChildren);
-        console.log('  [debug] url:', info.url);
-
-        // Check which content scripts loaded
-        const fileCheck = await driver.executeScript(function() {
-            return {
-                utils:     typeof debounce === 'function' ? 'YES' : 'NO',
-                api:       typeof apiGetCitations === 'function' ? 'YES' : 'NO',
-                username:  typeof getYouTubeUsername === 'function' ? 'YES' : 'NO',
-                citations: typeof loadCitations === 'function' ? 'YES' : 'NO',
-                voting:    typeof handleVote === 'function' ? 'YES' : 'NO',
-                forms:     typeof loadPage === 'function' ? 'YES' : 'NO',
-                panel:     typeof insertCitationButtons === 'function' ? 'YES' : 'NO',
-            };
-        });
-        console.log('  [debug] utils.js loaded:', fileCheck.utils);
-        console.log('  [debug] api.js loaded:', fileCheck.api);
-        console.log('  [debug] username.js loaded:', fileCheck.username);
-        console.log('  [debug] citations.js loaded:', fileCheck.citations);
-        console.log('  [debug] voting.js loaded:', fileCheck.voting);
-        console.log('  [debug] forms.js loaded:', fileCheck.forms);
-        console.log('  [debug] panel.js loaded:', fileCheck.panel);
-
-    } catch (err) {
-        console.log('  [debug] Error getting page state:', err.message);
-    }
-}
-
 async function goToVideo() {
     await driver.get(TEST_VIDEO);
     await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
-
-    await waitForAdToFinish();
-    await skipAdsIfPresent();
-
-    await debugPageState();
-
     await driver.wait(until.elementLocated(By.id('citation-controls')), TIMEOUT);
 }
 
@@ -308,6 +145,7 @@ const tests = [
     test_multipleTabsIndependent,
 ];
 
+// Keep process alive until tests finish
 const keepAlive = setInterval(() => {}, 1000);
 
 (async () => {
