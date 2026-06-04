@@ -112,6 +112,27 @@ async function debugPageState() {
         console.log('  [debug] #citation-controls:', info.citationPanel);
         console.log('  [debug] body children count:', info.bodyChildren);
         console.log('  [debug] url:', info.url);
+
+        // ── Check which content scripts loaded ──
+        const fileCheck = await driver.executeScript(function() {
+            return {
+                utils:     typeof debounce === 'function' ? 'YES' : 'NO',
+                api:       typeof apiGetCitations === 'function' ? 'YES' : 'NO',
+                username:  typeof getYouTubeUsername === 'function' ? 'YES' : 'NO',
+                citations: typeof loadCitations === 'function' ? 'YES' : 'NO',
+                voting:    typeof handleVote === 'function' ? 'YES' : 'NO',
+                forms:     typeof loadPage === 'function' ? 'YES' : 'NO',
+                panel:     typeof insertCitationButtons === 'function' ? 'YES' : 'NO',
+            };
+        });
+        console.log('  [debug] utils.js loaded:', fileCheck.utils);
+        console.log('  [debug] api.js loaded:', fileCheck.api);
+        console.log('  [debug] username.js loaded:', fileCheck.username);
+        console.log('  [debug] citations.js loaded:', fileCheck.citations);
+        console.log('  [debug] voting.js loaded:', fileCheck.voting);
+        console.log('  [debug] forms.js loaded:', fileCheck.forms);
+        console.log('  [debug] panel.js loaded:', fileCheck.panel);
+
     } catch (err) {
         console.log('  [debug] Error getting page state:', err.message);
     }
