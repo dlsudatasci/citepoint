@@ -184,5 +184,6 @@ const keepAlive = setInterval(() => {}, 1000);
         console.log('\nFailures:');
         failures.forEach(f => console.log(`  - ${f.name}: ${f.error}`));
         process.exit(1);
+        // here
     }
 })();
