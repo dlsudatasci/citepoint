@@ -74,12 +74,14 @@ async function debugPageState() {
                 citationPanel:  document.querySelector('#citation-controls') ? 'FOUND' : 'NOT FOUND',
                 bodyChildren:   document.body ? document.body.children.length : 0,
                 url:            window.location.href,
-                // Check if content.js ran at all
                 contentRan:     typeof getCurrentVideoId === 'function' ? 'YES' : 'NO',
-                // Check if panel.js ran
                 panelFnExists:  typeof insertCitationButtons === 'function' ? 'YES' : 'NO',
+                citationsFnExists: typeof loadCitations === 'function' ? 'YES' : 'NO',
             };
         });
+        console.log('  [debug] content.js ran (getCurrentVideoId):', info.contentRan);
+        console.log('  [debug] panel.js ran (insertCitationButtons):', info.panelFnExists);
+        console.log('  [debug] citations.js ran (loadCitations):', info.citationsFnExists);
         console.log('  [debug] #secondary:', info.secondary);
         console.log('  [debug] ytd-watch-flexy:', info.watchFlexy);
         console.log('  [debug] ytd-watch-metadata:', info.watchMetadata);
