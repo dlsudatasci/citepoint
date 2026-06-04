@@ -16,7 +16,9 @@
         "tabs"
     ],
     "host_permissions": [
-        "http://localhost:3000/*"
+        "http://localhost:3000/*",
+        "*://www.youtube.com/*",
+        "*://m.youtube.com/*"
     ],
     "browser_specific_settings": {
         "gecko": {

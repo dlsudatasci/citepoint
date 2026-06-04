@@ -3,12 +3,51 @@ const firefox  = require('selenium-webdriver/firefox');
 const path     = require('path');
 const assert   = require('assert');
 const fs       = require('fs');
+const os       = require('os');
+const { execSync } = require('child_process');
 
 const EXTENSION_DIR  = process.env.FIREFOX_EXT_DIR || path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
 const TIMEOUT        = 60000;
 
+// Directories to exclude when copying extension to a temp folder.
+// This prevents the EMFILE "too many open files" error on Windows caused
+// by installAddon() trying to scan node_modules (thousands of files).
+const EXCLUDE_DIRS = ['node_modules', '.git', 'selenium', 'e2e', 'backend',
+                      'playwright-report', 'test-results'];
+
 let driver;
+
+/**
+ * Recursively copies only the extension source files into a clean temp
+ * directory, skipping node_modules and other non-extension folders.
+ * Returns the path to the temp directory.
+ */
+function copyExtensionToTemp() {
+    const tmpExt = path.join(os.tmpdir(), 'citepoint-ext');
+
+    // Clean any previous run
+    if (fs.existsSync(tmpExt)) {
+        fs.rmSync(tmpExt, { recursive: true, force: true });
+    }
+
+    function copyDir(src, dest) {
+        fs.mkdirSync(dest, { recursive: true });
+        for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+            if (EXCLUDE_DIRS.includes(entry.name)) continue;
+            const srcPath  = path.join(src,  entry.name);
+            const destPath = path.join(dest, entry.name);
+            if (entry.isDirectory()) {
+                copyDir(srcPath, destPath);
+            } else {
+                fs.copyFileSync(srcPath, destPath);
+            }
+        }
+    }
+
+    copyDir(EXTENSION_DIR, tmpExt);
+    return tmpExt;
+}
 
 async function setup() {
     console.log('  launching Firefox...');
@@ -29,7 +68,7 @@ async function setup() {
     await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 60000 });
     console.log('  Firefox launched');
 
-    // Verify manifest exists
+    // Verify manifest exists in original dir
     const manifestPath = path.join(EXTENSION_DIR, 'manifest.json');
     console.log('  Extension path:', EXTENSION_DIR);
     console.log('  manifest.json exists:', fs.existsSync(manifestPath));
@@ -40,13 +79,22 @@ async function setup() {
         console.log('  has scripts:', !!manifest.background?.scripts);
     }
 
+    // Copy extension to a clean temp dir (no node_modules) before installing.
+    // This is required on Windows to avoid EMFILE "too many open files" errors,
+    // and also ensures the installed extension is a clean source-only copy.
+    const tmpExt = copyExtensionToTemp();
+    console.log('  Extension temp path:', tmpExt);
+
     console.log('  Installing temporary add-on...');
-    const addonId = await driver.installAddon(EXTENSION_DIR, true);
+    const addonId = await driver.installAddon(tmpExt, true);
     console.log('  Addon ID returned:', addonId);
 
-    await driver.sleep(2000);
+    // Give the extension time to fully register its content script matchers
+    // before navigating to any page. Without this delay the content scripts
+    // may not inject on the first navigation after install.
+    await driver.sleep(3000);
 
-    // Navigate to about:blank first to wake up the extension background script
+    // Navigate to about:blank to wake up the extension background script
     await driver.get('about:blank');
     await driver.sleep(2000);
 
