@@ -78,17 +78,32 @@ async function setup() {
     // Install from clean directory (not zip) — matches CI behavior
     console.log('  Installing addon from directory...');
     await driver.installAddon(cleanExtDir, true);
-    await driver.sleep(1000);
+    await driver.sleep(2000);
 
     // Reload to trigger content script injection
     await driver.executeScript('location.reload()');
     await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
-    await driver.sleep(3000);
+    await driver.sleep(4000);
 
-    const hasPanel = await driver.executeScript(
+    let hasPanel = await driver.executeScript(
         'return !!document.querySelector("#citation-controls")'
     );
-    console.log('  Panel present after setup:', hasPanel);
+    console.log('  Panel present after first reload:', hasPanel);
+
+    // If panel still missing (common in CI), reinstall and reload again
+    if (!hasPanel) {
+        console.log('  Reinstalling addon and reloading again...');
+        await driver.installAddon(cleanExtDir, true);
+        await driver.sleep(2000);
+        await driver.executeScript('location.reload()');
+        await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+        await driver.sleep(4000);
+        hasPanel = await driver.executeScript(
+            'return !!document.querySelector("#citation-controls")'
+        );
+        console.log('  Panel present after second reload:', hasPanel);
+    }
+
     console.log('  extension loaded\n');
 }
 
