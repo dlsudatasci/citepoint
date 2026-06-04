@@ -16,9 +16,7 @@
         "tabs"
     ],
     "host_permissions": [
-        "http://localhost:3000/*",
-        "*://www.youtube.com/*",
-        "*://m.youtube.com/*"
+        "http://localhost:3000/*"
     ],
     "browser_specific_settings": {
         "gecko": {
@@ -50,7 +48,8 @@
         }
     ],
     "background": {
-        "scripts": ["background/background.js"]
+        "service_worker": "background/background.js",
+        "scripts":  ["background/background.js"]
     },
     "web_accessible_resources": [{
         "resources": [
