@@ -50,7 +50,7 @@ jobs:
     - name: Prepare clean extension for Firefox
       run: |
         mkdir -p /tmp/citepoint-ext
-        cp manifest_firefox.json /tmp/citepoint-ext/manifest.json
+        cp manifest.json /tmp/citepoint-ext/manifest.json
         cp -r lib /tmp/citepoint-ext/
         cp -r background /tmp/citepoint-ext/
         cp -r content /tmp/citepoint-ext/
@@ -69,17 +69,10 @@ jobs:
         MONGODB_URI: mongodb://localhost:27017/citepoint_test
         FIREFOX_EXT_DIR: /tmp/citepoint-ext
 
-    - name: Switch to Chrome manifest
-      run: cp manifest_chrome.json manifest.json
-
     - name: Run Playwright tests (Chrome)
       run: xvfb-run --auto-servernum -- npx playwright test
       env:
         MONGODB_URI: mongodb://localhost:27017/citepoint_test
-
-    - name: Restore Firefox manifest
-      if: always()
-      run: cp manifest_firefox.json manifest.json
 
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}
