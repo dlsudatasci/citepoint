@@ -22,7 +22,8 @@ app.use(cors({
         ) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            // Silently reject unknown origins — no stack trace in logs
+            callback(null, false);
         }
     },
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
