@@ -2,6 +2,7 @@ const { Builder, By, until } = require('selenium-webdriver');
 const firefox  = require('selenium-webdriver/firefox');
 const path     = require('path');
 const assert   = require('assert');
+const fs       = require('fs');
 
 const EXTENSION_DIR  = path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
@@ -18,6 +19,7 @@ async function setup() {
     options.setPreference('extensions.autoDisableScopes', 0);
     options.setPreference('extensions.enabledScopes', 15);
     options.setPreference('xpinstall.signatures.required', false);
+    options.setPreference('extensions.experiments.enabled', true);
 
     driver = await new Builder()
         .forBrowser('firefox')
@@ -27,11 +29,29 @@ async function setup() {
     await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 60000 });
     console.log('  Firefox launched');
 
-    console.log('  Installing temporary add-on natively...');
-    await driver.installAddon(EXTENSION_DIR, true);
+    // Verify manifest exists
+    const manifestPath = path.join(EXTENSION_DIR, 'manifest.json');
+    console.log('  manifest.json exists:', fs.existsSync(manifestPath));
+    if (fs.existsSync(manifestPath)) {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        console.log('  strict_min_version:', manifest.browser_specific_settings?.gecko?.strict_min_version);
+        console.log('  has service_worker:', !!manifest.background?.service_worker);
+        console.log('  has scripts:', !!manifest.background?.scripts);
+    }
 
-    // Wait longer for extension to fully initialize
-    await driver.sleep(5000);
+    console.log('  Installing temporary add-on...');
+    const addonId = await driver.installAddon(EXTENSION_DIR, true);
+    console.log('  Addon ID returned:', addonId);
+
+    await driver.sleep(3000);
+
+    // Navigate to about:addons to verify extension is listed
+    await driver.get('about:addons');
+    await driver.sleep(2000);
+    const pageSource = await driver.getPageSource();
+    const isInstalled = pageSource.includes('YouTube Citation') || pageSource.includes('citepoint');
+    console.log('  Extension visible in about:addons:', isInstalled);
+
     console.log('  extension loaded\n');
 }
 
@@ -72,14 +92,14 @@ async function debugPageState() {
 
         const info = await driver.executeScript(function() {
             return {
-                secondary:      document.querySelector('#secondary') ? 'FOUND' : 'NOT FOUND',
-                watchFlexy:     document.querySelector('ytd-watch-flexy') ? 'FOUND' : 'NOT FOUND',
-                watchMetadata:  document.querySelector('ytd-watch-metadata') ? 'FOUND' : 'NOT FOUND',
-                citationPanel:  document.querySelector('#citation-controls') ? 'FOUND' : 'NOT FOUND',
-                bodyChildren:   document.body ? document.body.children.length : 0,
-                url:            window.location.href,
-                contentRan:     typeof getCurrentVideoId === 'function' ? 'YES' : 'NO',
-                panelFnExists:  typeof insertCitationButtons === 'function' ? 'YES' : 'NO',
+                secondary:         document.querySelector('#secondary') ? 'FOUND' : 'NOT FOUND',
+                watchFlexy:        document.querySelector('ytd-watch-flexy') ? 'FOUND' : 'NOT FOUND',
+                watchMetadata:     document.querySelector('ytd-watch-metadata') ? 'FOUND' : 'NOT FOUND',
+                citationPanel:     document.querySelector('#citation-controls') ? 'FOUND' : 'NOT FOUND',
+                bodyChildren:      document.body ? document.body.children.length : 0,
+                url:               window.location.href,
+                contentRan:        typeof getCurrentVideoId === 'function' ? 'YES' : 'NO',
+                panelFnExists:     typeof insertCitationButtons === 'function' ? 'YES' : 'NO',
                 citationsFnExists: typeof loadCitations === 'function' ? 'YES' : 'NO',
             };
         });
@@ -104,7 +124,6 @@ async function goToVideo() {
     await waitForAdToFinish();
     await skipAdsIfPresent();
 
-    // Debug before waiting for panel
     await debugPageState();
 
     await driver.wait(until.elementLocated(By.id('citation-controls')), TIMEOUT);
