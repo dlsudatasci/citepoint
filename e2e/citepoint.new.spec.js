@@ -284,13 +284,16 @@ test('ADD-017: double-clicking submit only creates one citation', async () => {
     await fillForm({ title: 'ADD-017 Duplicate Test' });
 
     const btn = page.locator('#add-form-container #submit-btn');
-    await btn.click();
-    await btn.click({ force: true });
+    
+    // Click twice in rapid succession before the form closes
+    await Promise.all([
+        btn.click(),
+        btn.click({ force: true }),
+    ]);
 
     await expectToast('Citation added successfully!');
-    await page.waitForTimeout(3000); // wait for any second request to complete
+    await page.waitForTimeout(3000);
 
-    // Check DB — should only have one citation with this title
     const mongoose = require('mongoose');
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test');
     const count = await mongoose.connection.collection('citations').countDocuments({
