@@ -50,5 +50,10 @@ module.exports = defineConfig({
             testMatch: '**/citepoint.delete.spec.js',
             use: { launchOptions: { args: chromeArgs } },
         },
+        {
+            name: 'firefox-extension',
+            testMatch: '**/extension.firefox.spec.js',
+            use: { browserName: 'firefox' },
+        },
     ],
 });

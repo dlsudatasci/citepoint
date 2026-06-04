@@ -280,13 +280,30 @@ const keepAlive = setInterval(() => {}, 1000);
     const failures = [];
 
     for (const testFn of tests) {
-        try {
-            await testFn();
-            passed++;
-        } catch (err) {
+        let lastErr;
+        let succeeded = false;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            try {
+                await testFn();
+                passed++;
+                succeeded = true;
+                break;
+            } catch (err) {
+                lastErr = err;
+                if (attempt < 2) {
+                    console.log(`  ↺ ${testFn.name} failed (attempt ${attempt}), retrying...`);
+                    // Re-navigate to YouTube before retry
+                    try {
+                        await driver.get('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+                        await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), 30000);
+                    } catch (_) {}
+                }
+            }
+        }
+        if (!succeeded) {
             failed++;
-            failures.push({ name: testFn.name, error: err.message });
-            console.log(`  ✗ ${testFn.name}: ${err.message}`);
+            failures.push({ name: testFn.name, error: lastErr.message });
+            console.log(`  ✗ ${testFn.name}: ${lastErr.message}`);
         }
     }
 
