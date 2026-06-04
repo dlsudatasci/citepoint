@@ -145,6 +145,7 @@ async function seedCitation(title = 'Test Citation') {
     await form.locator('#timestampEnd').fill('00:02:00');
     await form.locator('#source').fill('https://example.com');
     await form.locator('#description').fill('test description');
+    await _waitForAdToFinish();
     await page.locator('#add-form-container #submit-btn').click();
 
     await expectToast('Citation added successfully!');

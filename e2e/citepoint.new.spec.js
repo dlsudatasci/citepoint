@@ -283,6 +283,8 @@ test('ADD-017: double-clicking submit only creates one citation', async () => {
     await openAddForm();
     await fillForm({ title: 'ADD-017 Duplicate Test' });
 
+    // Wait for any ad to finish before submitting
+    await _waitForAdToFinish();
     // Double-click via JS — bypasses Playwright visibility checks
     await page.evaluate(() => {
         const btn = document.querySelector('#add-form-container #submit-btn');
