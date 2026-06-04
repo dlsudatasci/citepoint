@@ -125,12 +125,21 @@ async function goToVideo() {
         await driver.get(TEST_VIDEO);
         await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
         await driver.sleep(1000);
-        // Reinstall forces Firefox to re-register content script matchers
-        await driver.installAddon(cleanExtDir, true);
-        await driver.sleep(1000);
-        await driver.executeScript('location.reload()');
-        await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
-        await driver.sleep(4000);
+
+        // Retry loop — CI sometimes needs multiple reinstall+reload cycles
+        let crossPanel = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            await driver.installAddon(cleanExtDir, true);
+            await driver.sleep(2000);
+            await driver.executeScript('location.reload()');
+            await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+            await driver.sleep(4000);
+            crossPanel = await driver.executeScript(
+                'return !!document.querySelector("#citation-controls")'
+            );
+            console.log(`  [goToVideo] cross-domain attempt ${attempt} panel:`, crossPanel);
+            if (crossPanel) break;
+        }
     }
 
     const hasPanel = await driver.executeScript('return !!document.querySelector("#citation-controls")');
