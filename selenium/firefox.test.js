@@ -60,9 +60,15 @@ async function setup() {
     await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 60000 });
     console.log('  Firefox launched');
 
-    // Build clean dir (no node_modules) — same as what CI does with cp
-    cleanExtDir = buildCleanDir(EXTENSION_DIR);
-    console.log('  Clean extension dir:', cleanExtDir);
+    // In CI, FIREFOX_EXT_DIR is already a clean dir prepared by the workflow.
+    // Locally on Windows, we build a clean dir to avoid EMFILE from node_modules.
+    if (process.env.FIREFOX_EXT_DIR) {
+        cleanExtDir = process.env.FIREFOX_EXT_DIR;
+        console.log('  Using CI extension dir:', cleanExtDir);
+    } else {
+        cleanExtDir = buildCleanDir(EXTENSION_DIR);
+        console.log('  Built clean extension dir:', cleanExtDir);
+    }
 
     // Go to YouTube first
     await driver.get(TEST_VIDEO);
@@ -98,7 +104,7 @@ async function goToVideo() {
         // SPA navigation — content.js yt-navigate-finish listener rebuilds the panel
         await driver.executeScript(`window.location.href = arguments[0]`, TEST_VIDEO);
         await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
-        await driver.sleep(3000);
+        await driver.sleep(4000); // extra wait for panel DOM to fully stabilize
     } else {
         // Cross-domain — reinstall addon then reload to re-inject content scripts
         await driver.get(TEST_VIDEO);
@@ -168,7 +174,9 @@ async function test_toggleCollapseExpand() {
 async function test_citationsTab() {
     console.log('  running: Citations tab works');
     await goToVideo();
+    // Re-find elements fresh after navigation to avoid stale element errors
     await driver.findElement(By.id('citations-btn')).click();
+    await driver.sleep(500);
     const title = await driver.findElement(By.id('citation-title')).getText();
     assert.ok(title.includes('Citation'), `Expected "Citation" in title, got "${title}"`);
     console.log('  ✓ Citations tab works');
