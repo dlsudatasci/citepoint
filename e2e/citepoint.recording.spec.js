@@ -158,7 +158,18 @@ test('C-002: clicking Start Record hides start button and shows end button', asy
     await startRecording();
 
     await expect(page.locator('.record-end-btn')).toBeVisible();
-    await expect(page.locator('.record-start-btn')).toBeHidden();
+    // Start button may still be briefly visible while player controls auto-hide;
+    // check CSS display rather than Playwright visibility which includes opacity
+    await page.waitForFunction(() => {
+        const btn = document.querySelector('.record-start-btn');
+        return !btn || btn.style.display === 'none' || getComputedStyle(btn).display === 'none';
+    }, { timeout: 5000 }).catch(() => {});
+    // If CSS hidden, that's sufficient — Playwright toBeHidden checks display:none
+    const startHidden = await page.evaluate(() => {
+        const btn = document.querySelector('.record-start-btn');
+        return !btn || btn.style.display === 'none' || getComputedStyle(btn).display === 'none';
+    });
+    expect(startHidden).toBe(true);
 });
 
 // ─────────────────────────────────────────────

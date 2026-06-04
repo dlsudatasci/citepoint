@@ -123,8 +123,8 @@ async function submitForm() {
     await page.locator('#add-form-container #submit-btn').click();
 }
 
-// Insert request directly into MongoDB — bypasses rate limiter entirely.
-// Used by tests that need a request seeded but don't test the submission flow.
+// Seed a request via direct API call — bypasses rate limiter,
+// and the data is immediately visible to the extension on next fetch.
 async function seedRequestDirect({
     title    = 'Seeded Request',
     start    = '00:01:00',
@@ -132,64 +132,50 @@ async function seedRequestDirect({
     reason   = 'Need source',
     username = '@testuser',
 } = {}) {
-    const mongoose = require('mongoose');
-    const isConnected = mongoose.connection.readyState === 1;
-    if (!isConnected) {
-        await mongoose.connect(
-            process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test'
-        );
+    // Submit via fetch API directly — skips rate limiter in test mode
+    const res = await page.evaluate(async ({ title, start, end, reason, username }) => {
+        const r = await fetch('http://localhost:3000/api/requests/dQw4w9WgXcQ', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title, timestampStart: start, timestampEnd: end,
+                reason, username, anonymous: false,
+            }),
+        });
+        const data = await r.json();
+        return { status: r.status, id: data._id || data.id || null };
+    }, { title, start, end, reason, username });
+
+    if (res.id) {
+        createdRequestIds.push(res.id);
+        console.log(`Seeded request directly: ${res.id}`);
     }
 
-    const result = await mongoose.connection.collection('requests').insertOne({
-        videoId:        'dQw4w9WgXcQ',
-        title,
-        username,
-        timestampStart: start,
-        timestampEnd:   end,
-        reason,
-        dateAdded:      new Date(),
-        voteScore:      0,
-    });
-
-    const id = result.insertedId.toString();
-    createdRequestIds.push(id);
-    console.log(`Seeded request directly: ${id}`);
-
-    if (!isConnected) await mongoose.disconnect();
-
-    // Reload page so the extension fetches the new request
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await _waitForAdToFinish();
-    await page.waitForSelector('#citation-controls', { timeout: 30000 });
-    await mockLogin(username);
-
-    // Force fresh fetch by toggling tabs — extensions cache requests tab data
+    // Switch to requests tab to trigger a fresh fetch
     await page.locator('#citations-btn').click();
     await page.waitForSelector('#citations-container', { timeout: 10000 });
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(500);
     await page.locator('#citation-requests-btn').click();
     await page.waitForSelector('#citation-requests-container', { timeout: 10000 });
-    await page.waitForTimeout(3000);
 
-    // Wait for request to appear; if not found toggle tabs again and retry
-    const found = await page.waitForFunction((t) => {
+    // Wait for request to appear
+    await page.waitForFunction((t) => {
         const c = document.querySelector('#citation-requests-container');
         return c && c.innerText.includes(t);
-    }, title, { timeout: 20000 }).then(() => true).catch(() => false);
-
-    if (!found) {
+    }, title, { timeout: 15000 }).catch(async () => {
+        // Retry once more with a tab toggle
         await page.locator('#citations-btn').click();
         await page.waitForTimeout(500);
         await page.locator('#citation-requests-btn').click();
         await page.waitForSelector('#citation-requests-container', { timeout: 10000 });
-        await page.waitForTimeout(5000);
+        await page.waitForTimeout(3000);
         await page.waitForFunction((t) => {
             const c = document.querySelector('#citation-requests-container');
             return c && c.innerText.includes(t);
-        }, title, { timeout: 20000 });
-    }
+        }, title, { timeout: 15000 });
+    });
 
-    return id;
+    return res.id;
 }
 
 // Original UI-based seedRequest — used only for REQ-001 and REQ-005
