@@ -40,7 +40,7 @@ async function waitForAdToFinish() {
     const start = Date.now();
     while (Date.now() - start < maxWait) {
         try {
-            const adShowing = await driver.executeScript(() => {
+            const adShowing = await driver.executeScript(function() {
                 const p = document.getElementById('movie_player');
                 return p ? p.classList.contains('ad-showing') : false;
             });
@@ -61,17 +61,42 @@ async function skipAdsIfPresent() {
     } catch (_) {}
 }
 
+async function debugPageState() {
+    try {
+        const title = await driver.getTitle();
+        console.log('  [debug] Page title:', title);
+
+        const info = await driver.executeScript(function() {
+            return {
+                secondary:      document.querySelector('#secondary') ? 'FOUND' : 'NOT FOUND',
+                watchFlexy:     document.querySelector('ytd-watch-flexy') ? 'FOUND' : 'NOT FOUND',
+                watchMetadata:  document.querySelector('ytd-watch-metadata') ? 'FOUND' : 'NOT FOUND',
+                citationPanel:  document.querySelector('#citation-controls') ? 'FOUND' : 'NOT FOUND',
+                bodyChildren:   document.body ? document.body.children.length : 0,
+                url:            window.location.href,
+            };
+        });
+        console.log('  [debug] #secondary:', info.secondary);
+        console.log('  [debug] ytd-watch-flexy:', info.watchFlexy);
+        console.log('  [debug] ytd-watch-metadata:', info.watchMetadata);
+        console.log('  [debug] #citation-controls:', info.citationPanel);
+        console.log('  [debug] body children count:', info.bodyChildren);
+        console.log('  [debug] url:', info.url);
+    } catch (err) {
+        console.log('  [debug] Error getting page state:', err.message);
+    }
+}
+
 async function goToVideo() {
     await driver.get(TEST_VIDEO);
     await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
 
-    // Wait for ads to finish
     await waitForAdToFinish();
-
-    // Try to skip any skippable ads
     await skipAdsIfPresent();
 
-    // Wait for panel to appear
+    // Debug before waiting for panel
+    await debugPageState();
+
     await driver.wait(until.elementLocated(By.id('citation-controls')), TIMEOUT);
 }
 
@@ -180,7 +205,6 @@ const tests = [
     test_multipleTabsIndependent,
 ];
 
-// Keep process alive until tests finish
 const keepAlive = setInterval(() => {}, 1000);
 
 (async () => {
