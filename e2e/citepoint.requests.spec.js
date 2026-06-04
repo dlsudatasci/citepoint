@@ -162,25 +162,32 @@ async function seedRequestDirect({
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
     await mockLogin(username);
-    await openRequestsTab();
+
+    // Force fresh fetch by toggling tabs — extensions cache requests tab data
+    await page.locator('#citations-btn').click();
+    await page.waitForSelector('#citations-container', { timeout: 10000 });
+    await page.waitForTimeout(1000);
+    await page.locator('#citation-requests-btn').click();
+    await page.waitForSelector('#citation-requests-container', { timeout: 10000 });
     await page.waitForTimeout(3000);
 
-    // Wait until the request appears — may need multiple poll cycles
-    await page.waitForFunction((t) => {
-        const container = document.querySelector('#citation-requests-container');
-        return container && container.innerText.includes(t);
-    }, title, { timeout: 30000 }).catch(async () => {
-        // If not found, reload and try once more
-        await page.reload({ waitUntil: 'domcontentloaded' });
-        await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    // Wait for request to appear; if not found toggle tabs again and retry
+    const found = await page.waitForFunction((t) => {
+        const c = document.querySelector('#citation-requests-container');
+        return c && c.innerText.includes(t);
+    }, title, { timeout: 20000 }).then(() => true).catch(() => false);
+
+    if (!found) {
+        await page.locator('#citations-btn').click();
+        await page.waitForTimeout(500);
         await page.locator('#citation-requests-btn').click();
         await page.waitForSelector('#citation-requests-container', { timeout: 10000 });
-        await page.waitForTimeout(3000);
+        await page.waitForTimeout(5000);
         await page.waitForFunction((t) => {
-            const container = document.querySelector('#citation-requests-container');
-            return container && container.innerText.includes(t);
-        }, title, { timeout: 15000 });
-    });
+            const c = document.querySelector('#citation-requests-container');
+            return c && c.innerText.includes(t);
+        }, title, { timeout: 20000 });
+    }
 
     return id;
 }
