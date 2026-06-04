@@ -2,41 +2,119 @@ const { Builder, By, until } = require('selenium-webdriver');
 const firefox  = require('selenium-webdriver/firefox');
 const path     = require('path');
 const assert   = require('assert');
+const fs       = require('fs');
+const os       = require('os');
 
-const EXTENSION_DIR  = path.resolve(__dirname, '..');
+const EXTENSION_DIR  = process.env.FIREFOX_EXT_DIR || path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-const TIMEOUT        = 30000;
+const TIMEOUT        = 60000;
+
+// Only copy these — no node_modules, no backend, no test files
+const EXTENSION_FILES = [
+    'manifest.json', 'background', 'content', 'config',
+    'forms', 'icons', 'lib', 'popup', 'styles', 'utils',
+];
 
 let driver;
+let cleanExtDir;
+
+function buildCleanDir(srcDir) {
+    const dest = path.join(os.tmpdir(), 'citepoint-ext');
+    if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
+    fs.mkdirSync(dest);
+
+    function copyDir(src, dst) {
+        fs.mkdirSync(dst, { recursive: true });
+        for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+            const s = path.join(src, entry.name);
+            const d = path.join(dst, entry.name);
+            if (entry.isDirectory()) copyDir(s, d);
+            else fs.copyFileSync(s, d);
+        }
+    }
+
+    for (const entry of EXTENSION_FILES) {
+        const full = path.join(srcDir, entry);
+        if (!fs.existsSync(full)) { console.warn('  [warn] missing:', entry); continue; }
+        if (fs.statSync(full).isDirectory()) copyDir(full, path.join(dest, entry));
+        else fs.copyFileSync(full, path.join(dest, entry));
+    }
+
+    return dest;
+}
 
 async function setup() {
     console.log('  launching Firefox...');
-    
+
     const options = new firefox.Options();
+    options.setPreference('xpinstall.signatures.required', false);
+    options.setPreference('extensions.autoDisableScopes', 0);
+    options.setPreference('extensions.enabledScopes', 15);
+    options.setPreference('media.autoplay.default', 0);
 
     driver = await new Builder()
         .forBrowser('firefox')
         .setFirefoxOptions(options)
         .build();
 
-    await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 30000 });
+    await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 60000 });
     console.log('  Firefox launched');
 
-    console.log('  Installing temporary add-on natively...');
-    await driver.installAddon(EXTENSION_DIR, true);
-    
+    // Build clean dir (no node_modules) — same as what CI does with cp
+    cleanExtDir = buildCleanDir(EXTENSION_DIR);
+    console.log('  Clean extension dir:', cleanExtDir);
+
+    // Go to YouTube first
+    await driver.get(TEST_VIDEO);
+    await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
     await driver.sleep(1000);
+
+    // Install from clean directory (not zip) — matches CI behavior
+    console.log('  Installing addon from directory...');
+    await driver.installAddon(cleanExtDir, true);
+    await driver.sleep(1000);
+
+    // Reload to trigger content script injection
+    await driver.executeScript('location.reload()');
+    await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+    await driver.sleep(3000);
+
+    const hasPanel = await driver.executeScript(
+        'return !!document.querySelector("#citation-controls")'
+    );
+    console.log('  Panel present after setup:', hasPanel);
     console.log('  extension loaded\n');
 }
 
-
 async function teardown() {
-    await driver?.quit();
+    try { await driver?.quit(); } catch (_) {}
 }
 
 async function goToVideo() {
-    await driver.get(TEST_VIDEO);
-    await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+    const currentUrl = await driver.getCurrentUrl();
+    console.log('  [goToVideo] current url:', currentUrl);
+
+    if (currentUrl.includes('youtube.com')) {
+        // SPA navigation — content.js yt-navigate-finish listener rebuilds the panel
+        await driver.executeScript(`window.location.href = arguments[0]`, TEST_VIDEO);
+        await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+        await driver.sleep(3000);
+    } else {
+        // Cross-domain — reinstall addon then reload to re-inject content scripts
+        await driver.get(TEST_VIDEO);
+        await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+        await driver.sleep(1000);
+        // Reinstall forces Firefox to re-register content script matchers
+        await driver.installAddon(cleanExtDir, true);
+        await driver.sleep(1000);
+        await driver.executeScript('location.reload()');
+        await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+        await driver.sleep(4000);
+    }
+
+    const hasPanel = await driver.executeScript('return !!document.querySelector("#citation-controls")');
+    console.log('  [goToVideo] panel present:', hasPanel);
+
     await driver.wait(until.elementLocated(By.id('citation-controls')), TIMEOUT);
 }
 
@@ -44,14 +122,11 @@ async function isVisible(selector) {
     try {
         const el = await driver.findElement(By.css(selector));
         return await el.isDisplayed();
-    } catch {
-        return false;
-    }
+    } catch { return false; }
 }
 
 async function elementCount(selector) {
-    const els = await driver.findElements(By.css(selector));
-    return els.length;
+    return (await driver.findElements(By.css(selector))).length;
 }
 
 async function test_panelAppearsOnYouTube() {
@@ -145,7 +220,6 @@ const tests = [
     test_multipleTabsIndependent,
 ];
 
-// Keep process alive until tests finish
 const keepAlive = setInterval(() => {}, 1000);
 
 (async () => {
@@ -160,8 +234,7 @@ const keepAlive = setInterval(() => {}, 1000);
         process.exit(1);
     }
 
-    let passed = 0;
-    let failed = 0;
+    let passed = 0, failed = 0;
     const failures = [];
 
     for (const testFn of tests) {
@@ -179,7 +252,6 @@ const keepAlive = setInterval(() => {}, 1000);
     clearInterval(keepAlive);
 
     console.log(`\nResults: ${passed} passed, ${failed} failed out of ${tests.length} tests`);
-
     if (failures.length) {
         console.log('\nFailures:');
         failures.forEach(f => console.log(`  - ${f.name}: ${f.error}`));
