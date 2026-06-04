@@ -113,7 +113,14 @@ async function loadCitations(page = 1, silent = false) {
 
         const username = await getYouTubeUsername();
         if (username) {
-            chrome.storage.local.set({ youtubeUsername: username });
+            // Use chrome.storage.local if available, fallback to localStorage
+            try {
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    chrome.storage.local.set({ youtubeUsername: username });
+                } else {
+                    localStorage.setItem('youtubeUsername', username);
+                }
+            } catch (_) {}
             _currentUsername = username;
         } else {
             _currentUsername = await getCachedUsername();
@@ -149,9 +156,18 @@ async function loadCitations(page = 1, silent = false) {
 
         // ── Load reported items once per video for button state (#10) ─────
         if (page === 1 && _votesVideoId === videoId) {
-            const reportedKey  = `reported_items_${videoId}`;
-            const storedData   = await new Promise(r => chrome.storage.local.get(reportedKey, r));
-            _reportedItems = storedData[reportedKey] || {};
+            const reportedKey = `reported_items_${videoId}`;
+            try {
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    const storedData = await new Promise(r => chrome.storage.local.get(reportedKey, r));
+                    _reportedItems = storedData[reportedKey] || {};
+                } else {
+                    const stored = localStorage.getItem(reportedKey);
+                    _reportedItems = stored ? JSON.parse(stored) : {};
+                }
+            } catch (_) {
+                _reportedItems = {};
+            }
         }
 
         if (container.style.display !== 'none') {

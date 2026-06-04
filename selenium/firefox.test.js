@@ -74,6 +74,10 @@ async function debugPageState() {
                 citationPanel:  document.querySelector('#citation-controls') ? 'FOUND' : 'NOT FOUND',
                 bodyChildren:   document.body ? document.body.children.length : 0,
                 url:            window.location.href,
+                // Check if content.js ran at all
+                contentRan:     typeof getCurrentVideoId === 'function' ? 'YES' : 'NO',
+                // Check if panel.js ran
+                panelFnExists:  typeof insertCitationButtons === 'function' ? 'YES' : 'NO',
             };
         });
         console.log('  [debug] #secondary:', info.secondary);
