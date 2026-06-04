@@ -47,10 +47,26 @@ jobs:
         echo "Backend PID: $!"
         sleep 5
 
+    - name: Prepare clean extension for Firefox
+      run: |
+        mkdir -p /tmp/citepoint-ext
+        cp manifest.json /tmp/citepoint-ext/
+        cp -r lib /tmp/citepoint-ext/
+        cp -r background /tmp/citepoint-ext/
+        cp -r content /tmp/citepoint-ext/
+        cp -r popup /tmp/citepoint-ext/
+        cp -r forms /tmp/citepoint-ext/
+        cp -r styles /tmp/citepoint-ext/
+        cp -r icons /tmp/citepoint-ext/
+        cp -r utils /tmp/citepoint-ext/
+        echo "Extension files:"
+        ls /tmp/citepoint-ext/
+
     - name: Run Selenium tests (Firefox)
       run: xvfb-run --auto-servernum -- node selenium/firefox.test.js
       env:
         MONGODB_URI: mongodb://localhost:27017/citepoint_test
+        FIREFOX_EXT_DIR: /tmp/citepoint-ext
 
     - name: Run Playwright tests (Chrome)
       run: xvfb-run --auto-servernum -- npx playwright test

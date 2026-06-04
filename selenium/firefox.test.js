@@ -4,7 +4,7 @@ const path     = require('path');
 const assert   = require('assert');
 const fs       = require('fs');
 
-const EXTENSION_DIR  = path.resolve(__dirname, '..');
+const EXTENSION_DIR  = process.env.FIREFOX_EXT_DIR || path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
 const TIMEOUT        = 60000;
 
@@ -31,6 +31,7 @@ async function setup() {
 
     // Verify manifest exists
     const manifestPath = path.join(EXTENSION_DIR, 'manifest.json');
+    console.log('  Extension path:', EXTENSION_DIR);
     console.log('  manifest.json exists:', fs.existsSync(manifestPath));
     if (fs.existsSync(manifestPath)) {
         const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -43,7 +44,11 @@ async function setup() {
     const addonId = await driver.installAddon(EXTENSION_DIR, true);
     console.log('  Addon ID returned:', addonId);
 
-    await driver.sleep(3000);
+    await driver.sleep(2000);
+
+    // Navigate to about:blank first to wake up the extension background script
+    await driver.get('about:blank');
+    await driver.sleep(2000);
 
     // Navigate to about:addons to verify extension is listed
     await driver.get('about:addons');
@@ -113,7 +118,7 @@ async function debugPageState() {
         console.log('  [debug] body children count:', info.bodyChildren);
         console.log('  [debug] url:', info.url);
 
-        // ── Check which content scripts loaded ──
+        // Check which content scripts loaded
         const fileCheck = await driver.executeScript(function() {
             return {
                 utils:     typeof debounce === 'function' ? 'YES' : 'NO',
