@@ -283,11 +283,11 @@ test('ADD-017: double-clicking submit only creates one citation', async () => {
     await openAddForm();
     await fillForm({ title: 'ADD-017 Duplicate Test' });
 
-    const btn = page.locator('#add-form-container #submit-btn');
-
-    // Click twice rapidly — don't wait between clicks
-    await btn.click({ force: true });
-    await btn.click({ force: true }).catch(() => {}); // ignore if form already closed
+    // Double-click via JS — bypasses Playwright visibility checks
+    await page.evaluate(() => {
+        const btn = document.querySelector('#add-form-container #submit-btn');
+        if (btn) { btn.click(); btn.click(); }
+    });
 
     await expectToast('Citation added successfully!');
     await page.waitForTimeout(3000);
