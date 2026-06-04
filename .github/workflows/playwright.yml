@@ -35,44 +35,17 @@ jobs:
     - name: Install Geckodriver (For Firefox Selenium)
       run: npm install -g geckodriver
 
+    - name: Check Firefox and Geckodriver versions
+      run: |
+        firefox --version
+        geckodriver --version
+
     - name: Start backend for Selenium
       run: |
         cd backend
         MONGODB_URI=mongodb://localhost:27017/citepoint_test PORT=3000 npm start &
         echo "Backend PID: $!"
         sleep 5
-
-    - name: Debug Firefox YouTube load
-      run: |
-        xvfb-run --auto-servernum -- node -e "
-          const { Builder } = require('selenium-webdriver');
-          const firefox = require('selenium-webdriver/firefox');
-          (async () => {
-            const driver = await new Builder().forBrowser('firefox').build();
-            await driver.installAddon(process.cwd(), true);
-            await driver.get('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-            await driver.sleep(15000);
-            const title = await driver.getTitle();
-            console.log('Title:', title);
-            const secondary = await driver.executeScript(() => {
-              return document.querySelector('#secondary')?.tagName || 'NOT FOUND';
-            });
-            console.log('#secondary:', secondary);
-            const flexy = await driver.executeScript(() => {
-              return document.querySelector('ytd-watch-flexy')?.tagName || 'NOT FOUND';
-            });
-            console.log('ytd-watch-flexy:', flexy);
-            const panel = await driver.executeScript(() => {
-              return document.querySelector('#citation-controls')?.tagName || 'NOT FOUND';
-            });
-            console.log('#citation-controls:', panel);
-            const errors = await driver.executeScript(() => {
-              return window._extensionErrors || 'no errors captured';
-            });
-            console.log('Extension errors:', errors);
-            await driver.quit();
-          })().catch(e => { console.error(e.message); process.exit(0); });
-        "
 
     - name: Run Selenium tests (Firefox)
       run: xvfb-run --auto-servernum -- node selenium/firefox.test.js
