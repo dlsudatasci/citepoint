@@ -14,7 +14,6 @@
 async function getYouTubeUsername() {
     try {
         // 1. Check cache first — covers test mockLogin and returning users.
-        //    Once detected, cache is permanent until user clears extension storage.
         const cached = await getCachedUsername();
         if (cached) {
             console.log('[username] Using cached handle:', cached);
@@ -52,15 +51,28 @@ async function getYouTubeUsername() {
 }
 
 /**
- * Return cached username from chrome.storage.local.
+ * Return cached username.
+ * Tries chrome.storage.local first, falls back to localStorage.
  * @returns {Promise<string|null>}
  */
 async function getCachedUsername() {
-    return new Promise(resolve => {
-        chrome.storage.local.get(['youtubeUsername'], result => {
-            resolve(result.youtubeUsername || null);
-        });
-    });
+    // Try chrome.storage.local first
+    try {
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            return new Promise(resolve => {
+                chrome.storage.local.get(['youtubeUsername'], result => {
+                    resolve(result.youtubeUsername || null);
+                });
+            });
+        }
+    } catch (_) {}
+
+    // Fallback to localStorage
+    try {
+        return localStorage.getItem('youtubeUsername') || null;
+    } catch (_) {}
+
+    return null;
 }
 
 // ── Private helpers ───────────────────────────
@@ -147,7 +159,7 @@ async function _getHandleViaMenu(avatarBtn) {
 
         observer.observe(document.body, { childList: true, subtree: true });
 
-        // Give up after 500ms — much faster than original 2000ms
+        // Give up after 500ms
         timeoutId = setTimeout(() => finish(null), 500);
 
         avatarBtn.click();
@@ -165,10 +177,24 @@ function _closeMenu(avatarBtn) {
     if (isOpen) avatarBtn?.click();
 }
 
+/**
+ * Cache username.
+ * Writes to chrome.storage.local and localStorage as fallback.
+ */
 function _cacheUsername(handle) {
-    chrome.storage.local.set({ youtubeUsername: handle }, () => {
-        console.log('[username] Cached:', handle);
-    });
+    // chrome.storage.local — primary
+    try {
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({ youtubeUsername: handle }, () => {
+                console.log('[username] Cached:', handle);
+            });
+        }
+    } catch (_) {}
+
+    // localStorage — fallback for Firefox/Selenium environments
+    try {
+        localStorage.setItem('youtubeUsername', handle);
+    } catch (_) {}
 }
 
 /** Ensure handle starts with @ and is non-empty, else return null. */
