@@ -231,6 +231,16 @@ async function test_multipleTabsIndependent() {
     await driver.executeScript('window.open("https://www.youtube.com/watch?v=9bZkp7q19f0")');
     const handles = await driver.getAllWindowHandles();
     await driver.switchTo().window(handles[1]);
+
+    // Wait for YouTube to load in the new tab
+    await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+    await driver.sleep(1000);
+
+    // Reload to trigger content script injection in the new tab
+    await driver.executeScript('location.reload()');
+    await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+    await driver.sleep(3000);
+
     await driver.wait(until.elementLocated(By.id('citation-controls')), TIMEOUT);
     assert.ok(await isVisible('#citation-controls'), 'Tab 2 should have panel');
     await driver.switchTo().window(handles[0]);
