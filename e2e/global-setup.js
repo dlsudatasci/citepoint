@@ -1,9 +1,25 @@
 const { spawn } = require('child_process');
 const path = require('path');
+const net  = require('net');
 
 const BACKEND_DIR = path.resolve(__dirname, '../backend');
 
+function isPortInUse(port) {
+    return new Promise((resolve) => {
+        const server = net.createServer();
+        server.once('error', () => resolve(true));
+        server.once('listening', () => { server.close(); resolve(false); });
+        server.listen(port);
+    });
+}
+
 module.exports = async () => {
+    // If backend is already running, skip starting it
+    if (await isPortInUse(3000)) {
+        console.log('Backend already running on port 3000 — skipping start');
+        return;
+    }
+
     await new Promise((resolve, reject) => {
         const backend = spawn('node', ['server.js'], {
             cwd: BACKEND_DIR,
@@ -13,7 +29,6 @@ module.exports = async () => {
                 PORT: '3000',
                 ALLOWED_ORIGINS: '*',
                 ALLOWED_ORIGIN: '*',
-                // Disable rate limiting during tests if your backend supports this env var
                 DISABLE_RATE_LIMIT: 'true',
                 NODE_ENV: 'test',
             },
