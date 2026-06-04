@@ -12,25 +12,12 @@ let driver;
 async function setup() {
     console.log('  launching Firefox...');
 
-    const fs = require('fs');
-    const os = require('os');
-
-    // Create a Firefox profile with the extension installed
-    const profileDir = fs.mkdtempSync(path.join(os.tmpdir(), 'firefox-profile-'));
-    const extensionsDir = path.join(profileDir, 'extensions');
-    fs.mkdirSync(extensionsDir, { recursive: true });
-
-    // Symlink extension directory using the extension ID from manifest
-    const extId = 'citepoint@altdsi.internal';
-    fs.symlinkSync(EXTENSION_DIR, path.join(extensionsDir, extId));
-    console.log('  Extension symlinked to profile');
-
     const options = new firefox.Options();
     options.setPreference('media.autoplay.default', 0);
     options.setPreference('media.autoplay.allow-muted', true);
     options.setPreference('extensions.autoDisableScopes', 0);
     options.setPreference('extensions.enabledScopes', 15);
-    options.setProfile(profileDir);
+    options.setPreference('xpinstall.signatures.required', false);
 
     driver = await new Builder()
         .forBrowser('firefox')
@@ -40,7 +27,11 @@ async function setup() {
     await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 60000 });
     console.log('  Firefox launched');
 
-    await driver.sleep(3000);
+    console.log('  Installing temporary add-on natively...');
+    await driver.installAddon(EXTENSION_DIR, true);
+
+    // Wait longer for extension to fully initialize
+    await driver.sleep(5000);
     console.log('  extension loaded\n');
 }
 
