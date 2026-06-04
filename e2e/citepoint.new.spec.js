@@ -270,6 +270,7 @@ test('ADD-015: submitting without YouTube login shows login error toast', async 
     await clearLogin();
     await openAddForm();
     await fillForm();
+    await _waitForAdToFinish();
     await submitForm();
 
     await expectToast('You must be logged in to submit a citation.');

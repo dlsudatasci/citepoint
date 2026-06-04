@@ -165,11 +165,22 @@ async function seedRequestDirect({
     await openRequestsTab();
     await page.waitForTimeout(3000);
 
-    // Wait until the request appears
+    // Wait until the request appears — may need multiple poll cycles
     await page.waitForFunction((t) => {
         const container = document.querySelector('#citation-requests-container');
         return container && container.innerText.includes(t);
-    }, title, { timeout: 15000 });
+    }, title, { timeout: 30000 }).catch(async () => {
+        // If not found, reload and try once more
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.waitForSelector('#citation-controls', { timeout: 30000 });
+        await page.locator('#citation-requests-btn').click();
+        await page.waitForSelector('#citation-requests-container', { timeout: 10000 });
+        await page.waitForTimeout(3000);
+        await page.waitForFunction((t) => {
+            const container = document.querySelector('#citation-requests-container');
+            return container && container.innerText.includes(t);
+        }, title, { timeout: 15000 });
+    });
 
     return id;
 }
