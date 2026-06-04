@@ -16,6 +16,15 @@ const _CP_API_BASE = (() => {
     }
 })();
 
+// ── Cross-browser runtime ─────────────────────
+// Firefox exposes `browser`, Chrome exposes `chrome`.
+// Both are available via the browser-polyfill, but guard anyway.
+const _runtime = (() => {
+    if (typeof browser !== 'undefined' && browser.runtime) return browser.runtime;
+    if (typeof chrome !== 'undefined' && chrome.runtime) return chrome.runtime;
+    return null;
+})();
+
 /**
  * Internal wrapper — send a message to background.js and return the response.
  * Rejects if response.success is false.
@@ -23,9 +32,13 @@ const _CP_API_BASE = (() => {
 async function _send(payload) {
     return new Promise((resolve, reject) => {
         try {
-            chrome.runtime.sendMessage(payload, (response) => {
-                if (chrome.runtime.lastError) {
-                    return reject(new Error(chrome.runtime.lastError.message));
+            if (!_runtime) {
+                return reject(new Error('No runtime API available'));
+            }
+            _runtime.sendMessage(payload, (response) => {
+                const lastError = _runtime.lastError;
+                if (lastError) {
+                    return reject(new Error(lastError.message));
                 }
                 if (!response) {
                     return reject(new Error('No response from background script'));
@@ -70,12 +83,6 @@ async function apiGetRequests(videoId, page = 1, limit = 20) {
 
 /**
  * Fetch a specific subset of requests by ID.
- * Used to populate request-response groups on the Citations tab without
- * pulling the full requests list (replaces the old blanket 200-item fetch).
- *
- * @param {string}   videoId
- * @param {string[]} ids  — array of request IDs to fetch; duplicates are handled server-side
- * @returns {{ requests: Array }}
  */
 async function apiGetRequestsByIds(videoId, ids) {
     if (!ids || ids.length === 0) return { requests: [] };
@@ -98,21 +105,10 @@ async function apiDeleteRequest(requestId, videoId, username) {
 
 // ── Votes ────────────────────────────────────
 
-/**
- * @param {string} itemId
- * @param {'up'|'down'} voteType
- * @param {'citation'|'request'} itemType
- * @param {string} videoId
- */
 async function apiUpdateVote(itemId, voteType, itemType, videoId) {
     return _send({ type: 'updateVotes', itemId, voteType, itemType, videoId });
 }
 
-/**
- * @param {string} videoId
- * @param {'citation'|'request'} itemType
- * @returns {Object}  map of itemId → 'up'|'down'|null
- */
 async function apiGetUserVotes(videoId, itemType = 'citation') {
     const res = await _send({ type: 'getUserVotes', videoId, itemType });
     return res.votes || {};
@@ -129,14 +125,6 @@ async function apiReportItem({ videoId, itemId, itemType, reason, additionalInfo
 
 // ── SSE ──────────────────────────────────────
 
-/**
- * Build the EventSource URL for real-time updates on a given video.
- * The content script opens this URL directly (EventSource cannot go through
- * the background service worker — SW context cannot maintain open connections).
- *
- * @param {string} videoId
- * @returns {string}
- */
 function apiGetSSEUrl(videoId) {
     return `${_CP_API_BASE}/api/events?videoId=${encodeURIComponent(videoId)}`;
 }
