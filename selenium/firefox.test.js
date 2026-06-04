@@ -12,6 +12,18 @@ let driver;
 async function setup() {
     console.log('  launching Firefox...');
 
+    // Verify extension path and manifest
+    const fs = require('fs');
+    const manifestPath = path.join(EXTENSION_DIR, 'manifest.json');
+    console.log('  Extension path:', EXTENSION_DIR);
+    console.log('  manifest.json exists:', fs.existsSync(manifestPath));
+    if (fs.existsSync(manifestPath)) {
+        const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+        console.log('  Extension name:', manifest.name);
+        console.log('  Manifest version:', manifest.manifest_version);
+        console.log('  strict_min_version:', manifest.browser_specific_settings?.gecko?.strict_min_version);
+    }
+
     const options = new firefox.Options();
     options.setPreference('media.autoplay.default', 0);
     options.setPreference('media.autoplay.allow-muted', true);
@@ -23,6 +35,10 @@ async function setup() {
 
     await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 60000 });
     console.log('  Firefox launched');
+
+    // Log Firefox version
+    const caps = await driver.getCapabilities();
+    console.log('  Firefox version:', caps.get('moz:geckodriverVersion') || caps.get('browserVersion') || 'unknown');
 
     console.log('  Installing temporary add-on natively...');
     await driver.installAddon(EXTENSION_DIR, true);
