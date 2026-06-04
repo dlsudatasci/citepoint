@@ -5,38 +5,73 @@ const assert   = require('assert');
 
 const EXTENSION_DIR  = path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-const TIMEOUT        = 30000;
+const TIMEOUT        = 60000;
 
 let driver;
 
 async function setup() {
     console.log('  launching Firefox...');
-    
+
     const options = new firefox.Options();
+    options.setPreference('media.autoplay.default', 0);
+    options.setPreference('media.autoplay.allow-muted', true);
 
     driver = await new Builder()
         .forBrowser('firefox')
         .setFirefoxOptions(options)
         .build();
 
-    await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 30000 });
+    await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 60000 });
     console.log('  Firefox launched');
 
     console.log('  Installing temporary add-on natively...');
     await driver.installAddon(EXTENSION_DIR, true);
-    
-    await driver.sleep(1000);
+
+    await driver.sleep(2000);
     console.log('  extension loaded\n');
 }
-
 
 async function teardown() {
     await driver?.quit();
 }
 
+async function waitForAdToFinish() {
+    const maxWait = 60000;
+    const start = Date.now();
+    while (Date.now() - start < maxWait) {
+        try {
+            const adShowing = await driver.executeScript(() => {
+                const p = document.getElementById('movie_player');
+                return p ? p.classList.contains('ad-showing') : false;
+            });
+            if (!adShowing) return;
+        } catch (_) { return; }
+        await driver.sleep(1000);
+    }
+}
+
+async function skipAdsIfPresent() {
+    try {
+        const skipBtns = await driver.findElements(
+            By.css('.ytp-skip-ad-button, .ytp-ad-skip-button')
+        );
+        for (const btn of skipBtns) {
+            try { await btn.click(); } catch (_) {}
+        }
+    } catch (_) {}
+}
+
 async function goToVideo() {
     await driver.get(TEST_VIDEO);
     await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+
+    // Wait for ads to finish
+    await waitForAdToFinish();
+
+    // Try to skip any skippable ads
+    await skipAdsIfPresent();
+
+    // Wait for panel to appear
     await driver.wait(until.elementLocated(By.id('citation-controls')), TIMEOUT);
 }
 
