@@ -281,16 +281,25 @@ test('ADD-015: submitting without YouTube login shows login error toast', async 
 
 test('ADD-017: double-clicking submit only creates one citation', async () => {
     await openAddForm();
-    await fillForm({ title: 'Duplicate Test' });
+    await fillForm({ title: 'ADD-017 Duplicate Test' });
 
     const btn = page.locator('#add-form-container #submit-btn');
     await btn.click();
-    await expect(btn).toBeDisabled();
     await btn.click({ force: true });
 
-    await page.waitForTimeout(2000);
-    const toastCount = await page.locator('.cp-toast').count();
-    expect(toastCount).toBeLessThanOrEqual(1);
+    await expectToast('Citation added successfully!');
+    await page.waitForTimeout(3000); // wait for any second request to complete
+
+    // Check DB — should only have one citation with this title
+    const mongoose = require('mongoose');
+    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test');
+    const count = await mongoose.connection.collection('citations').countDocuments({
+        videoId: 'dQw4w9WgXcQ',
+        citationTitle: 'ADD-017 Duplicate Test',
+    });
+    await mongoose.disconnect();
+
+    expect(count).toBe(1);
 });
 
 // ─────────────────────────────────────────────
