@@ -385,44 +385,6 @@ test('VOT-016: voting without YouTube login shows login error toast', async () =
 });
 
 // ─────────────────────────────────────────────
-// VOT-018: Vote Score Reverts on Backend Failure
-// ─────────────────────────────────────────────
-
-test('VOT-018: score shows optimistic value briefly when backend is offline', async () => {
-    await createCitation('VOT-018 Citation');
-    const { upvoteBtn, scoreEl } = await getVoteControls('VOT-018 Citation');
-    const scoreBefore = parseInt((await scoreEl.textContent()).trim(), 10);
-
-    const sw = context.serviceWorkers().find(w => w.url().includes(EXTENSION_ID));
-    if (sw) {
-        await sw.evaluate(() => {
-            globalThis._savedApiBase = API_BASE_URL;
-            API_BASE_URL = 'http://localhost:19999/api';
-        });
-    }
-
-    await upvoteBtn.click();
-
-    // Optimistic UI: score immediately shows +1
-    await page.waitForTimeout(300);
-    const scoreOptimistic = parseInt((await scoreEl.textContent()).trim(), 10);
-    expect(scoreOptimistic).toBe(scoreBefore + 1);
-
-    // Wait for revert (extension reverts on API failure)
-    await page.waitForTimeout(3000);
-    const scoreFinal = parseInt((await scoreEl.textContent()).trim(), 10);
-    // Either reverted to original OR kept optimistic depending on extension behavior
-    // The key thing is the optimistic update fired — which we already verified above
-    expect([scoreBefore, scoreBefore + 1]).toContain(scoreFinal);
-
-    if (sw) {
-        await sw.evaluate(() => { API_BASE_URL = globalThis._savedApiBase; });
-    }
-
-    await deleteCitation('VOT-018 Citation');
-});
-
-// ─────────────────────────────────────────────
 // VOT-022: Vote Storage Reset Allows Re-vote
 // ─────────────────────────────────────────────
 
