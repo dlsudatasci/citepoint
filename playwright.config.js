@@ -51,9 +51,9 @@ module.exports = defineConfig({
             use: { launchOptions: { args: chromeArgs } },
         },
         {
-            name: 'firefox-extension',
-            testMatch: '**/extension.firefox.spec.js',
-            use: { browserName: 'firefox' },
+            name: 'chrome-voting',
+            testMatch: '**/citepoint.voting.spec.js',
+            use: { launchOptions: { args: chromeArgs } },
         },
     ],
 });
