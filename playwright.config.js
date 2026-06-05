@@ -7,6 +7,8 @@ const chromeArgs = [
     `--load-extension=${EXTENSION_PATH}`,
     `--disable-extensions-except=${EXTENSION_PATH}`,
     '--no-sandbox',
+    '--disable-web-security',
+    '--allow-running-insecure-content',
 ];
 
 module.exports = defineConfig({
@@ -15,7 +17,7 @@ module.exports = defineConfig({
     globalTeardown: './e2e/global-teardown.js',
     reporter: [['list'], ['html'], ['github']],
     timeout: 120000,
-    workers: 4,
+    workers: 5,
     retries: 1,
     use: {
         headless: false,
@@ -41,6 +43,11 @@ module.exports = defineConfig({
         {
             name: 'chrome-recording',
             testMatch: '**/citepoint.recording.spec.js',
+            use: { launchOptions: { args: chromeArgs } },
+        },
+        {
+            name: 'chrome-delete',
+            testMatch: '**/citepoint.delete.spec.js',
             use: { launchOptions: { args: chromeArgs } },
         },
         {

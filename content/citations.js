@@ -35,7 +35,6 @@ let _reportedItems     = {}; // itemId → true
 // We use setTimeout + self-rescheduling so the interval can adapt dynamically
 // (fast when idle-timeout hasn't triggered, slow when SSE is active or user is idle).
 let _pollTimeout        = null;
-let _pollActive         = false; // true while polling is running; guards _schedulePoll reschedule
 
 // Idle tracking (#8) — interaction resets the timer; after _IDLE_THRESHOLD_MS
 // without interaction the poll slows to _POLL_SLOW_MS.
@@ -114,7 +113,14 @@ async function loadCitations(page = 1, silent = false) {
 
         const username = await getYouTubeUsername();
         if (username) {
-            chrome.storage.local.set({ youtubeUsername: username });
+            // Use chrome.storage.local if available, fallback to localStorage
+            try {
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    chrome.storage.local.set({ youtubeUsername: username });
+                } else {
+                    localStorage.setItem('youtubeUsername', username);
+                }
+            } catch (_) {}
             _currentUsername = username;
         } else {
             _currentUsername = await getCachedUsername();
@@ -150,9 +156,18 @@ async function loadCitations(page = 1, silent = false) {
 
         // ── Load reported items once per video for button state (#10) ─────
         if (page === 1 && _votesVideoId === videoId) {
-            const reportedKey  = `reported_items_${videoId}`;
-            const storedData   = await new Promise(r => chrome.storage.local.get(reportedKey, r));
-            _reportedItems = storedData[reportedKey] || {};
+            const reportedKey = `reported_items_${videoId}`;
+            try {
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    const storedData = await new Promise(r => chrome.storage.local.get(reportedKey, r));
+                    _reportedItems = storedData[reportedKey] || {};
+                } else {
+                    const stored = localStorage.getItem(reportedKey);
+                    _reportedItems = stored ? JSON.parse(stored) : {};
+                }
+            } catch (_) {
+                _reportedItems = {};
+            }
         }
 
         if (container.style.display !== 'none') {
@@ -170,10 +185,7 @@ async function loadCitations(page = 1, silent = false) {
     } catch (err) {
         console.error('[citations] Error loading citations:', err);
         if (container.style.display !== 'none') {
-            const p = document.createElement('p');
-            p.className   = 'error-message';
-            p.textContent = `Error loading citations: ${err.message}`;
-            container.replaceChildren(p);
+            container.innerHTML = `<p class="error-message">Error loading citations: ${err.message}</p>`;
         }
         _updateCounter('citations-counter', 0);
     } finally {
@@ -243,10 +255,7 @@ async function loadCitationRequests(page = 1, silent = false) {
     } catch (err) {
         console.error('[citations] Error loading requests:', err);
         if (container.style.display !== 'none') {
-            const p = document.createElement('p');
-            p.className   = 'error-message';
-            p.textContent = `Error loading requests: ${err.message}`;
-            container.replaceChildren(p);
+            container.innerHTML = `<p class="error-message">Error loading requests: ${err.message}</p>`;
         }
         _updateCounter('requests-counter', 0);
     } finally {
@@ -427,11 +436,19 @@ async function createCitationElement(citation, userVote, currentUsername = null)
             const confirmed = await showConfirm('Delete this citation?');
             if (!confirmed) return;
 
+            // Optimistic: remove from DOM and memory immediately
+            el.remove();
+            currentCitations = currentCitations.filter(c => c.id !== citation.id);
             try {
                 await apiDeleteCitation(citation.id, getCurrentVideoId(), currentUsername);
-                loadCitations(1, true);
+                // Success — DOM already updated, no reload needed
             } catch (err) {
                 showToast('Failed to delete citation. Please try again.', 'error');
+                // Restore list on failure
+                _votesLoaded = false;
+                _votesVideoId = null;
+                _citationsLoading = false;
+                loadCitations(1, false);
             }
         });
     }
@@ -534,11 +551,19 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
                 const confirmed = await showConfirm('Delete this citation?');
                 if (!confirmed) return;
 
+                // Optimistic: remove from DOM and memory immediately
+                responseEl.remove();
+                currentCitations = currentCitations.filter(c => c.id !== citation.id);
                 try {
                     await apiDeleteCitation(citation.id, getCurrentVideoId(), currentUsername);
-                    loadCitations(1, true);
+                    // Success — DOM already updated, no reload needed
                 } catch (err) {
                     showToast('Failed to delete citation. Please try again.', 'error');
+                    // Restore list on failure
+                    _votesLoaded = false;
+                    _votesVideoId = null;
+                    _citationsLoading = false;
+                    loadCitations(1, false);
                 }
             });
         }
@@ -870,8 +895,8 @@ function _getPollingInterval() {
 }
 
 function _schedulePoll() {
-    // Only reschedule while polling is active (stopPolling sets _pollActive = false)
-    if (!_pollActive) return;
+    // Only schedule if polling is still active (stopPolling hasn't been called)
+    if (_pollTimeout === null && typeof _pollActive === 'undefined') return;
     const delay = _getPollingInterval();
     _pollTimeout = setTimeout(() => {
         _doPoll();
@@ -882,7 +907,7 @@ function _schedulePoll() {
 function startPolling() {
     // Detect video change — restart polling + SSE for the new videoId
     const videoId = getCurrentVideoId();
-    if (_pollActive && _sseVideoId && _sseVideoId === videoId) return; // already active for this video
+    if (_pollTimeout !== null && _sseVideoId && _sseVideoId === videoId) return; // already active
 
     // Clean up any previous session before starting fresh
     if (_pollTimeout !== null) {
@@ -890,8 +915,6 @@ function startPolling() {
         _pollTimeout = null;
     }
     stopSSE();
-
-    _pollActive = true;
 
     // Attempt SSE connection for real-time updates
     if (videoId) _connectSSE(videoId);
@@ -904,7 +927,6 @@ function startPolling() {
 }
 
 function stopPolling() {
-    _pollActive = false;
     if (_pollTimeout !== null) {
         clearTimeout(_pollTimeout);
         _pollTimeout = null;

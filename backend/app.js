@@ -22,7 +22,8 @@ app.use(cors({
         ) {
             callback(null, true);
         } else {
-            callback(new Error('Not allowed by CORS'));
+            // Silently reject unknown origins — no stack trace in logs
+            callback(null, false);
         }
     },
     methods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -37,7 +38,7 @@ app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 // Disabled in test environment to prevent 429s during parallel test runs
 const generalLimiter = rateLimit({
     windowMs:        15 * 60 * 1000,
-    max:             process.env.NODE_ENV === 'test' ? 10000 : 200,
+    max:             process.env.NODE_ENV === 'test' ? 10000 : 400,
     standardHeaders: true,
     legacyHeaders:   false,
     message:         { success: false, error: 'Too many requests — please slow down.' },
@@ -45,7 +46,7 @@ const generalLimiter = rateLimit({
 
 const mutationLimiter = rateLimit({
     windowMs:        15 * 60 * 1000,
-    max:             process.env.NODE_ENV === 'test' ? 10000 : 60,
+    max:             process.env.NODE_ENV === 'test' ? 10000 : 120,
     standardHeaders: true,
     legacyHeaders:   false,
     message:         { success: false, error: 'Too many requests — please slow down.' },

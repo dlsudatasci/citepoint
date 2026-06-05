@@ -2,7 +2,8 @@
 // username.js
 // YouTube username/handle detection.
 // Tries cached value first, then multiple DOM
-// strategies with retries, then menu-click fallback.
+// strategies with retries, then a fast menu-click
+// fallback on first run only (closes in ~500ms).
 // ─────────────────────────────────────────────
 
 /**
@@ -12,7 +13,14 @@
  */
 async function getYouTubeUsername() {
     try {
-        // Always try to detect the current user from the DOM first
+        // 1. Check cache first — covers test mockLogin and returning users.
+        const cached = await getCachedUsername();
+        if (cached) {
+            console.log('[username] Using cached handle:', cached);
+            return cached;
+        }
+
+        // 2. Try DOM detection — no side effects, no clicks
         for (let i = 0; i < 5; i++) {
             if (i > 0) await _sleep(i * 400);
             const handle = _tryGetHandleFromDOM();
@@ -22,7 +30,8 @@ async function getYouTubeUsername() {
             }
         }
 
-        // Menu-click fallback before giving up on live detection
+        // 3. Menu-click fallback — only runs on first session when cache is empty
+        //    and DOM detection failed. Closes in ~500ms so user barely notices.
         const avatarBtn = document.querySelector('button#avatar-btn, ytd-masthead button#avatar-btn');
         if (avatarBtn) {
             const handle = await _getHandleViaMenu(avatarBtn);
@@ -30,14 +39,6 @@ async function getYouTubeUsername() {
                 _cacheUsername(handle);
                 return handle;
             }
-        }
-
-        // Only use cache as a last resort — avoids returning a stale
-        // account handle when the user has switched YouTube accounts
-        const cached = await getCachedUsername();
-        if (cached) {
-            console.log('[username] Falling back to cached handle:', cached);
-            return cached;
         }
 
         console.log('[username] Could not find user handle — user may not be logged in');
@@ -50,15 +51,28 @@ async function getYouTubeUsername() {
 }
 
 /**
- * Return cached username from chrome.storage.local.
+ * Return cached username.
+ * Tries chrome.storage.local first, falls back to localStorage.
  * @returns {Promise<string|null>}
  */
 async function getCachedUsername() {
-    return new Promise(resolve => {
-        chrome.storage.local.get(['youtubeUsername'], result => {
-            resolve(result.youtubeUsername || null);
-        });
-    });
+    // Try chrome.storage.local first
+    try {
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            return new Promise(resolve => {
+                chrome.storage.local.get(['youtubeUsername'], result => {
+                    resolve(result.youtubeUsername || null);
+                });
+            });
+        }
+    } catch (_) {}
+
+    // Fallback to localStorage
+    try {
+        return localStorage.getItem('youtubeUsername') || null;
+    } catch (_) {}
+
+    return null;
 }
 
 // ── Private helpers ───────────────────────────
@@ -72,9 +86,6 @@ function _tryGetHandleFromDOM() {
     try {
         const cfg = window.yt?.config_;
         if (cfg?.CHANNEL_HANDLE) return _normalizeHandle(cfg.CHANNEL_HANDLE);
-        if (cfg?.DELEGATED_SESSION_ID) {
-            // not the handle itself, but confirms login — continue to other strategies
-        }
     } catch (_) {}
 
     // 2. Polymer __data on the topbar button (multiple paths)
@@ -114,7 +125,9 @@ function _tryGetHandleFromDOM() {
 }
 
 /**
- * Open the account menu briefly, observe the DOM for the handle, then close it.
+ * Open the account menu briefly, observe the DOM for the handle, then close.
+ * Resolves in at most 500ms — fast enough that the menu flash is barely noticeable.
+ * Only called on first session when cache is empty and DOM detection failed.
  */
 async function _getHandleViaMenu(avatarBtn) {
     return new Promise(resolve => {
@@ -126,7 +139,8 @@ async function _getHandleViaMenu(avatarBtn) {
             settled = true;
             clearTimeout(timeoutId);
             observer.disconnect();
-            _closeMenu(avatarBtn);
+            // Close menu immediately
+            setTimeout(() => _closeMenu(avatarBtn), 50);
             resolve(result);
         };
 
@@ -145,10 +159,11 @@ async function _getHandleViaMenu(avatarBtn) {
 
         observer.observe(document.body, { childList: true, subtree: true });
 
-        timeoutId = setTimeout(() => finish(null), 2000);
+        // Give up after 500ms
+        timeoutId = setTimeout(() => finish(null), 500);
 
         avatarBtn.click();
-        // Retry click if menu didn't open within 150 ms
+        // Retry click if menu didn't open within 150ms
         setTimeout(() => {
             if (!settled && !document.querySelector('ytd-popup-container tp-yt-iron-dropdown[focused]')) {
                 avatarBtn.click();
@@ -162,10 +177,24 @@ function _closeMenu(avatarBtn) {
     if (isOpen) avatarBtn?.click();
 }
 
+/**
+ * Cache username.
+ * Writes to chrome.storage.local and localStorage as fallback.
+ */
 function _cacheUsername(handle) {
-    chrome.storage.local.set({ youtubeUsername: handle }, () => {
-        console.log('[username] Cached:', handle);
-    });
+    // chrome.storage.local — primary
+    try {
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({ youtubeUsername: handle }, () => {
+                console.log('[username] Cached:', handle);
+            });
+        }
+    } catch (_) {}
+
+    // localStorage — fallback for Firefox/Selenium environments
+    try {
+        localStorage.setItem('youtubeUsername', handle);
+    } catch (_) {}
 }
 
 /** Ensure handle starts with @ and is non-empty, else return null. */

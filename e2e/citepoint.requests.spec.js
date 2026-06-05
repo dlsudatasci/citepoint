@@ -123,6 +123,80 @@ async function submitForm() {
     await page.locator('#add-form-container #submit-btn').click();
 }
 
+// Seed a request directly into MongoDB — bypasses rate limiter entirely.
+// Uses Node.js http module to call the API from the test process (not the browser),
+// avoiding HTTPS/CORS issues with page.evaluate on YouTube pages.
+async function seedRequestDirect({
+    title    = 'Seeded Request',
+    start    = '00:01:00',
+    end      = '00:02:00',
+    reason   = 'Need source',
+    username = '@testuser',
+} = {}) {
+    // Call the API from Node.js directly (no CORS issues)
+    const http = require('http');
+    const id = await new Promise((resolve, reject) => {
+        const body = JSON.stringify({
+            title, timestampStart: start, timestampEnd: end,
+            reason, username, anonymous: false,
+        });
+        const req = http.request({
+            hostname: 'localhost', port: 3000,
+            path: '/api/requests/dQw4w9WgXcQ',
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
+        }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    const parsed = JSON.parse(data);
+                    resolve(parsed._id || parsed.id || null);
+                } catch { resolve(null); }
+            });
+        });
+        req.on('error', reject);
+        req.write(body);
+        req.end();
+    });
+
+    if (id) {
+        createdRequestIds.push(id);
+        console.log(`Seeded request directly: ${id}`);
+    }
+
+    // Switch to requests tab to trigger a fresh fetch from the extension
+    await page.locator('#citations-btn').click();
+    await page.waitForSelector('#citations-container', { timeout: 10000 });
+    await page.waitForTimeout(500);
+    await page.locator('#citation-requests-btn').click();
+    await page.waitForSelector('#citation-requests-container', { timeout: 10000 });
+    await page.waitForTimeout(2000);
+
+    // Wait for request to appear
+    const found = await page.waitForFunction((t) => {
+        const c = document.querySelector('#citation-requests-container');
+        return c && c.innerText.includes(t);
+    }, title, { timeout: 15000 }).then(() => true).catch(() => false);
+
+    if (!found) {
+        // Retry once more with a tab toggle
+        await page.locator('#citations-btn').click();
+        await page.waitForTimeout(500);
+        await page.locator('#citation-requests-btn').click();
+        await page.waitForSelector('#citation-requests-container', { timeout: 10000 });
+        await page.waitForTimeout(4000);
+        await page.waitForFunction((t) => {
+            const c = document.querySelector('#citation-requests-container');
+            return c && c.innerText.includes(t);
+        }, title, { timeout: 15000 });
+    }
+
+    return id;
+}
+
+// Original UI-based seedRequest — used only for REQ-001 and REQ-005
+// which specifically test the submission flow itself.
 async function seedRequest({
     title  = 'Seeded Request',
     start  = '00:01:00',
@@ -135,15 +209,13 @@ async function seedRequest({
     await submitForm();
     await expectToast('Citation request submitted successfully!');
 
-    // Force reload to bypass cache — gets fresh list immediately
     await page.reload({ waitUntil: 'domcontentloaded' });
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
     await mockLogin('@testuser');
     await openRequestsTab();
-    await page.waitForTimeout(8000);
+    await page.waitForTimeout(3000);
 
-    // Capture the ID from the delete button for cleanup
     const deleteBtns = page.locator('#citation-requests-container .delete-btn');
     const count = await deleteBtns.count();
     for (let i = 0; i < count; i++) {
@@ -181,7 +253,7 @@ test('REQ-003: empty state message shown when video has no citation requests', a
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
     await mockLogin('@testuser');
     await openRequestsTab();
-await page.waitForTimeout(8000);
+    await page.waitForTimeout(3000);
     await expect(page.locator('#citation-requests-container')).toContainText(
         'No citation requests found for this video.', { timeout: 10000 }
     );
@@ -212,7 +284,7 @@ test('REQ-005: submitting a valid request shows success toast and form closes', 
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
     await mockLogin('@testuser');
     await openRequestsTab();
-    await page.waitForTimeout(8000);
+    await page.waitForTimeout(3000);
     const deleteBtns = page.locator('#citation-requests-container .delete-btn');
     const count = await deleteBtns.count();
     for (let i = 0; i < count; i++) {
@@ -230,7 +302,7 @@ test('REQ-005: submitting a valid request shows success toast and form closes', 
 
 test('REQ-007: submitting a request without a title is blocked by required field validation', async () => {
     await openRequestsTab();
-    await page.waitForTimeout(8000);
+    await page.waitForTimeout(2000);
     await openAddRequestForm();
 
     const form = page.locator('#add-form-container #request-form');
@@ -254,7 +326,7 @@ test('REQ-007: submitting a request without a title is blocked by required field
 
 test('REQ-008: submitting request with start > end shows timestamp error toast', async () => {
     await openRequestsTab();
-    await page.waitForTimeout(8000);
+    await page.waitForTimeout(2000);
     await openAddRequestForm();
     await fillRequestForm({ start: '00:05:00', end: '00:01:00' });
     await submitForm();
@@ -269,7 +341,7 @@ test('REQ-008: submitting request with start > end shows timestamp error toast',
 
 test('REQ-009: anonymous checkbox is hidden in the request form', async () => {
     await openRequestsTab();
-    await page.waitForTimeout(8000);
+    await page.waitForTimeout(2000);
     await openAddRequestForm();
 
     const anonGroup = page.locator('#add-form-container #anonymous-group');
@@ -281,14 +353,17 @@ test('REQ-009: anonymous checkbox is hidden in the request form', async () => {
 // ─────────────────────────────────────────────
 
 test('REQ-010: clicking Respond opens citation form pre-filled with request timestamps', async () => {
-    await mockLogin('@otheruserxyz');
-    await seedRequest({ title: 'REQ-010 Respond Test', start: '00:01:00', end: '00:02:00' });
+    // Seed directly as @otheruserxyz so @testuser sees a Respond button
+    await seedRequestDirect({
+        title: 'REQ-010 Respond Test', start: '00:01:00', end: '00:02:00',
+        username: '@otheruserxyz',
+    });
 
     await mockLogin('@testuser');
     await page.locator('#citations-btn').click();
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(500);
     await openRequestsTab();
-    await page.waitForTimeout(8000);
+    await page.waitForTimeout(2000);
 
     const respondBtn = page.locator('.respond-btn').first();
     await expect(respondBtn).toBeVisible({ timeout: 15000 });
@@ -308,14 +383,17 @@ test('REQ-010: clicking Respond opens citation form pre-filled with request time
 // ─────────────────────────────────────────────
 
 test('REQ-012: title and timestamp fields are read-only in the response form', async () => {
-    await mockLogin('@otheruserxyz');
-    await seedRequest({ title: 'REQ-012 Lock Test', start: '00:01:00', end: '00:02:00' });
+    await seedRequestDirect({
+        title: 'REQ-012 Lock Test', start: '00:01:00', end: '00:02:00',
+        username: '@otheruserxyz',
+    });
 
     await mockLogin('@testuser');
     await page.locator('#citations-btn').click();
-    await page.waitForTimeout(800);
+    await page.waitForTimeout(500);
     await openRequestsTab();
-await page.waitForTimeout(8000);
+    await page.waitForTimeout(2000);
+
     const respondBtn = page.locator('.respond-btn').first();
     await expect(respondBtn).toBeVisible({ timeout: 15000 });
     await respondBtn.click();
@@ -339,8 +417,7 @@ await page.waitForTimeout(8000);
 // ─────────────────────────────────────────────
 
 test('REQ-013: Respond button does not appear on own requests', async () => {
-    await mockLogin('@testuser');
-    await seedRequest({ title: 'REQ-013 Own Request' });
+    await seedRequestDirect({ title: 'REQ-013 Own Request', username: '@testuser' });
 
     const ownTitle = page.locator('#citation-requests-container .citation-title')
         .filter({ hasText: 'REQ-013 Own Request' }).first();
@@ -356,7 +433,7 @@ test('REQ-013: Respond button does not appear on own requests', async () => {
 // ─────────────────────────────────────────────
 
 test('REQ-014: Citation Requests tab counter shows a count greater than zero', async () => {
-    await seedRequest({ title: 'REQ-014 Counter Test' });
+    await seedRequestDirect({ title: 'REQ-014 Counter Test', username: '@testuser' });
 
     const counter = page.locator('#requests-counter');
     await expect(counter).toBeVisible();

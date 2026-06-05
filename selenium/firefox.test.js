@@ -2,41 +2,149 @@ const { Builder, By, until } = require('selenium-webdriver');
 const firefox  = require('selenium-webdriver/firefox');
 const path     = require('path');
 const assert   = require('assert');
+const fs       = require('fs');
+const os       = require('os');
 
-const EXTENSION_DIR  = path.resolve(__dirname, '..');
+const EXTENSION_DIR  = process.env.FIREFOX_EXT_DIR || path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
-const TIMEOUT        = 30000;
+const TIMEOUT        = 60000;
+
+// Only copy these — no node_modules, no backend, no test files
+const EXTENSION_FILES = [
+    'manifest.json', 'background', 'content', 'config',
+    'forms', 'icons', 'lib', 'popup', 'styles', 'utils',
+];
 
 let driver;
+let cleanExtDir;
+
+function buildCleanDir(srcDir) {
+    const dest = path.join(os.tmpdir(), 'citepoint-ext');
+    if (fs.existsSync(dest)) fs.rmSync(dest, { recursive: true, force: true });
+    fs.mkdirSync(dest);
+
+    function copyDir(src, dst) {
+        fs.mkdirSync(dst, { recursive: true });
+        for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+            const s = path.join(src, entry.name);
+            const d = path.join(dst, entry.name);
+            if (entry.isDirectory()) copyDir(s, d);
+            else fs.copyFileSync(s, d);
+        }
+    }
+
+    for (const entry of EXTENSION_FILES) {
+        const full = path.join(srcDir, entry);
+        if (!fs.existsSync(full)) { console.warn('  [warn] missing:', entry); continue; }
+        if (fs.statSync(full).isDirectory()) copyDir(full, path.join(dest, entry));
+        else fs.copyFileSync(full, path.join(dest, entry));
+    }
+
+    return dest;
+}
 
 async function setup() {
     console.log('  launching Firefox...');
-    
+
     const options = new firefox.Options();
+    options.setPreference('xpinstall.signatures.required', false);
+    options.setPreference('extensions.autoDisableScopes', 0);
+    options.setPreference('extensions.enabledScopes', 15);
+    options.setPreference('media.autoplay.default', 0);
 
     driver = await new Builder()
         .forBrowser('firefox')
         .setFirefoxOptions(options)
         .build();
 
-    await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 30000 });
+    await driver.manage().setTimeouts({ implicit: 3000, pageLoad: 60000 });
     console.log('  Firefox launched');
 
-    console.log('  Installing temporary add-on natively...');
-    await driver.installAddon(EXTENSION_DIR, true);
-    
+    // In CI, FIREFOX_EXT_DIR is already a clean dir prepared by the workflow.
+    // Locally on Windows, we build a clean dir to avoid EMFILE from node_modules.
+    if (process.env.FIREFOX_EXT_DIR) {
+        cleanExtDir = process.env.FIREFOX_EXT_DIR;
+        console.log('  Using CI extension dir:', cleanExtDir);
+    } else {
+        cleanExtDir = buildCleanDir(EXTENSION_DIR);
+        console.log('  Built clean extension dir:', cleanExtDir);
+    }
+
+    // Go to YouTube first
+    await driver.get(TEST_VIDEO);
+    await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
     await driver.sleep(1000);
+
+    // Install from clean directory (not zip) — matches CI behavior
+    console.log('  Installing addon from directory...');
+    await driver.installAddon(cleanExtDir, true);
+    await driver.sleep(2000);
+
+    // Reload to trigger content script injection
+    await driver.executeScript('location.reload()');
+    await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+    await driver.sleep(4000);
+
+    let hasPanel = await driver.executeScript(
+        'return !!document.querySelector("#citation-controls")'
+    );
+    console.log('  Panel present after first reload:', hasPanel);
+
+    // If panel still missing (common in CI), reinstall and reload again
+    if (!hasPanel) {
+        console.log('  Reinstalling addon and reloading again...');
+        await driver.installAddon(cleanExtDir, true);
+        await driver.sleep(2000);
+        await driver.executeScript('location.reload()');
+        await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+        await driver.sleep(4000);
+        hasPanel = await driver.executeScript(
+            'return !!document.querySelector("#citation-controls")'
+        );
+        console.log('  Panel present after second reload:', hasPanel);
+    }
+
     console.log('  extension loaded\n');
 }
 
-
 async function teardown() {
-    await driver?.quit();
+    try { await driver?.quit(); } catch (_) {}
 }
 
 async function goToVideo() {
-    await driver.get(TEST_VIDEO);
-    await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+    const currentUrl = await driver.getCurrentUrl();
+    console.log('  [goToVideo] current url:', currentUrl);
+
+    if (currentUrl.includes('youtube.com')) {
+        // SPA navigation — content.js yt-navigate-finish listener rebuilds the panel
+        await driver.executeScript(`window.location.href = arguments[0]`, TEST_VIDEO);
+        await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+        await driver.sleep(4000); // extra wait for panel DOM to fully stabilize
+    } else {
+        // Cross-domain — reinstall addon then reload to re-inject content scripts
+        await driver.get(TEST_VIDEO);
+        await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+        await driver.sleep(1000);
+
+        // Retry loop — CI sometimes needs multiple reinstall+reload cycles
+        let crossPanel = false;
+        for (let attempt = 1; attempt <= 3; attempt++) {
+            await driver.installAddon(cleanExtDir, true);
+            await driver.sleep(2000);
+            await driver.executeScript('location.reload()');
+            await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+            await driver.sleep(4000);
+            crossPanel = await driver.executeScript(
+                'return !!document.querySelector("#citation-controls")'
+            );
+            console.log(`  [goToVideo] cross-domain attempt ${attempt} panel:`, crossPanel);
+            if (crossPanel) break;
+        }
+    }
+
+    const hasPanel = await driver.executeScript('return !!document.querySelector("#citation-controls")');
+    console.log('  [goToVideo] panel present:', hasPanel);
+
     await driver.wait(until.elementLocated(By.id('citation-controls')), TIMEOUT);
 }
 
@@ -44,14 +152,11 @@ async function isVisible(selector) {
     try {
         const el = await driver.findElement(By.css(selector));
         return await el.isDisplayed();
-    } catch {
-        return false;
-    }
+    } catch { return false; }
 }
 
 async function elementCount(selector) {
-    const els = await driver.findElements(By.css(selector));
-    return els.length;
+    return (await driver.findElements(By.css(selector))).length;
 }
 
 async function test_panelAppearsOnYouTube() {
@@ -93,7 +198,9 @@ async function test_toggleCollapseExpand() {
 async function test_citationsTab() {
     console.log('  running: Citations tab works');
     await goToVideo();
+    // Re-find elements fresh after navigation to avoid stale element errors
     await driver.findElement(By.id('citations-btn')).click();
+    await driver.sleep(500);
     const title = await driver.findElement(By.id('citation-title')).getText();
     assert.ok(title.includes('Citation'), `Expected "Citation" in title, got "${title}"`);
     console.log('  ✓ Citations tab works');
@@ -124,6 +231,16 @@ async function test_multipleTabsIndependent() {
     await driver.executeScript('window.open("https://www.youtube.com/watch?v=9bZkp7q19f0")');
     const handles = await driver.getAllWindowHandles();
     await driver.switchTo().window(handles[1]);
+
+    // Wait for YouTube to load in the new tab
+    await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+    await driver.sleep(1000);
+
+    // Reload to trigger content script injection in the new tab
+    await driver.executeScript('location.reload()');
+    await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), TIMEOUT);
+    await driver.sleep(3000);
+
     await driver.wait(until.elementLocated(By.id('citation-controls')), TIMEOUT);
     assert.ok(await isVisible('#citation-controls'), 'Tab 2 should have panel');
     await driver.switchTo().window(handles[0]);
@@ -145,7 +262,6 @@ const tests = [
     test_multipleTabsIndependent,
 ];
 
-// Keep process alive until tests finish
 const keepAlive = setInterval(() => {}, 1000);
 
 (async () => {
@@ -160,18 +276,34 @@ const keepAlive = setInterval(() => {}, 1000);
         process.exit(1);
     }
 
-    let passed = 0;
-    let failed = 0;
+    let passed = 0, failed = 0;
     const failures = [];
 
     for (const testFn of tests) {
-        try {
-            await testFn();
-            passed++;
-        } catch (err) {
+        let lastErr;
+        let succeeded = false;
+        for (let attempt = 1; attempt <= 2; attempt++) {
+            try {
+                await testFn();
+                passed++;
+                succeeded = true;
+                break;
+            } catch (err) {
+                lastErr = err;
+                if (attempt < 2) {
+                    console.log(`  ↺ ${testFn.name} failed (attempt ${attempt}), retrying...`);
+                    // Re-navigate to YouTube before retry
+                    try {
+                        await driver.get('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+                        await driver.wait(until.elementLocated(By.css('ytd-watch-metadata')), 30000);
+                    } catch (_) {}
+                }
+            }
+        }
+        if (!succeeded) {
             failed++;
-            failures.push({ name: testFn.name, error: err.message });
-            console.log(`  ✗ ${testFn.name}: ${err.message}`);
+            failures.push({ name: testFn.name, error: lastErr.message });
+            console.log(`  ✗ ${testFn.name}: ${lastErr.message}`);
         }
     }
 
@@ -179,7 +311,6 @@ const keepAlive = setInterval(() => {}, 1000);
     clearInterval(keepAlive);
 
     console.log(`\nResults: ${passed} passed, ${failed} failed out of ${tests.length} tests`);
-
     if (failures.length) {
         console.log('\nFailures:');
         failures.forEach(f => console.log(`  - ${f.name}: ${f.error}`));

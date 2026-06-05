@@ -38,7 +38,7 @@ router.get('/:videoId', async (req, res) => {
             Citation.countDocuments({ videoId: req.params.videoId }),
         ]);
 
-        res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+        res.set('Cache-Control', 'no-store');
         res.json({
             success: true,
             citations,
@@ -65,7 +65,7 @@ router.get('/:videoId/:id', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Citation not found' });
         }
 
-        res.set('Cache-Control', 'public, max-age=10, stale-while-revalidate=30');
+        res.set('Cache-Control', 'no-store');
         res.json({ success: true, citation });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });

@@ -11,9 +11,39 @@ var API_BASE_URL = (() => {
 })();
 
 // ── Cross-browser compatibility ───────────────
-const _storage = (typeof browser !== 'undefined' && browser.storage)
-    ? browser.storage
-    : chrome.storage;
+// Use browser.storage if available (Firefox), then chrome.storage,
+// then fall back to a localStorage-backed shim for CI environments.
+const _storage = (() => {
+    if (typeof browser !== 'undefined' && browser.storage) return browser.storage;
+    if (typeof chrome !== 'undefined' && chrome.storage) return chrome.storage;
+    // localStorage shim — for environments where neither API is available
+    return {
+        local: {
+            get: (keys, cb) => {
+                const result = {};
+                const ks = Array.isArray(keys) ? keys : (typeof keys === 'string' ? [keys] : Object.keys(keys));
+                ks.forEach(k => {
+                    try {
+                        const v = localStorage.getItem(k);
+                        result[k] = v ? JSON.parse(v) : undefined;
+                    } catch (_) {}
+                });
+                if (cb) cb(result);
+            },
+            set: (obj, cb) => {
+                Object.entries(obj).forEach(([k, v]) => {
+                    try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) {}
+                });
+                if (cb) cb();
+            },
+            remove: (keys, cb) => {
+                const ks = Array.isArray(keys) ? keys : [keys];
+                ks.forEach(k => { try { localStorage.removeItem(k); } catch (_) {} });
+                if (cb) cb();
+            },
+        }
+    };
+})();
 
 // ── In-memory TTL cache ───────────────────────
 const _cache = new Map();
@@ -45,13 +75,6 @@ function _cacheInvalidate(videoId) {
 /**
  * Surgically update the voteScore for a single item inside every cached
  * page that contains it, instead of blowing away the whole videoId cache.
- * This ensures polling consumers always see up-to-date scores without
- * triggering a full DB round-trip.
- *
- * @param {string} videoId
- * @param {'citation'|'request'} itemType
- * @param {string} itemId   — the normalised "id" field (not _id)
- * @param {number} newScore
  */
 function _cacheUpdateItemScore(videoId, itemType, itemId, newScore) {
     const cachePrefix = itemType === 'citation' ? 'citations' : 'requests';
@@ -63,7 +86,6 @@ function _cacheUpdateItemScore(videoId, itemType, itemId, newScore) {
         if (!Array.isArray(items)) continue;
         const item = items.find(i => i.id === itemId);
         if (item) item.voteScore = newScore;
-        // No need to update entry.timestamp — the TTL keeps its original window
     }
 }
 
@@ -184,18 +206,10 @@ async function handleGetRequests(videoId, page = 1, limit = 20) {
     }
 }
 
-/**
- * Fetch specific requests by their IDs — used for response-citation grouping.
- * Cache key includes a sorted, deduplicated ID list for reliable cache hits
- * across callers that pass IDs in different orders.
- */
 async function handleGetRequestsByIds(videoId, ids) {
     if (!Array.isArray(ids) || ids.length === 0) return { success: true, requests: [] };
 
-    // Deduplicate and cap to prevent runaway queries
     const uniqueIds = [...new Set(ids)].slice(0, 50);
-
-    // Stable cache key regardless of caller's ID order
     const cacheKey = `requests:${videoId}:ids:${[...uniqueIds].sort().join(',')}`;
     const cached = _cacheGet(cacheKey);
     if (cached) return { success: true, ...cached };
@@ -266,9 +280,6 @@ async function handleUpdateCitationVotes(videoId, citationId, voteType) {
         }
         await new Promise(resolve => _storage.local.set({ [storageKey]: userVotes }, resolve));
 
-        // ── Fix #4: update score in-place inside every cached page ───────
-        // Avoids the 10-second stale-score window that existed before this fix.
-        // Much cheaper than full cache invalidation — no extra DB round-trip.
         _cacheUpdateItemScore(videoId, 'citation', citationId, result.newScore);
 
         return { success: true, newScore: result.newScore, newVote: userVotes[citationId] || null };
@@ -294,7 +305,6 @@ async function handleUpdateRequestVotes(videoId, requestId, voteType) {
         }
         await new Promise(resolve => _storage.local.set({ [storageKey]: userVotes }, resolve));
 
-        // ── Fix #4: update score in-place inside every cached page ───────
         _cacheUpdateItemScore(videoId, 'request', requestId, result.newScore);
 
         return { success: true, newScore: result.newScore, newVote: userVotes[requestId] || null };
