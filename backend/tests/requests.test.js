@@ -127,3 +127,98 @@ describe('PATCH /api/requests/:videoId/:id/vote', () => {
         expect(res.status).toBe(404);
     });
 });
+
+// ─────────────────────────────────────────────
+// Categories
+// ─────────────────────────────────────────────
+describe('Categories', () => {
+    it('defaults to Uncategorized when not provided', async () => {
+        const id = await createRequest();
+        const res = await request(app).get(BASE);
+        const created = res.body.requests.find(r => r._id === id);
+        expect(created.category).toBe('Uncategorized');
+        expect(created.categoryVerified).toBe(false);
+    });
+
+    it('accepts a valid category on creation', async () => {
+        const id = await createRequest({ category: 'Quote / Misattribution' });
+        const res = await request(app).get(BASE);
+        const created = res.body.requests.find(r => r._id === id);
+        expect(created.category).toBe('Quote / Misattribution');
+    });
+
+    it('rejects an invalid category on creation', async () => {
+        const res = await request(app).post(BASE).send({
+            title: 'Bad category',
+            username: 'alice',
+            category: 'Not A Real Category',
+        });
+        expect(res.status).toBe(400);
+    });
+
+    it('filters list by ?category=', async () => {
+        await createRequest({ title: 'A', category: 'Historical Claim' });
+        await createRequest({ title: 'B', category: 'Scientific Claim' });
+
+        const res = await request(app).get(`${BASE}?category=Historical%20Claim`);
+        expect(res.body.requests).toHaveLength(1);
+        expect(res.body.requests[0].title).toBe('A');
+    });
+
+    it('rejects invalid ?category= filter', async () => {
+        const res = await request(app).get(`${BASE}?category=Nonsense`);
+        expect(res.status).toBe(400);
+    });
+
+    describe('PATCH /api/requests/:videoId/:id/category', () => {
+        it('allows a non-expert to set the category on an unverified item (stays unverified)', async () => {
+            const id = await createRequest();
+            const res = await request(app)
+                .patch(`${BASE}/${id}/category`)
+                .send({ category: 'Statistics & Data', username: 'alice' });
+
+            expect(res.status).toBe(200);
+            expect(res.body.category).toBe('Statistics & Data');
+            expect(res.body.categoryVerified).toBe(false);
+        });
+
+        it('marks the category verified when set by an expert', async () => {
+            const id = await createRequest();
+            const res = await request(app)
+                .patch(`${BASE}/${id}/category`)
+                .send({ category: 'Statistics & Data', username: 'expert_bob' });
+
+            expect(res.status).toBe(200);
+            expect(res.body.categoryVerified).toBe(true);
+            expect(res.body.verifiedBy).toBe('expert_bob');
+        });
+
+        it('rejects a non-expert changing an already-verified category', async () => {
+            const id = await createRequest();
+            await request(app)
+                .patch(`${BASE}/${id}/category`)
+                .send({ category: 'Statistics & Data', username: 'expert_bob' });
+
+            const res = await request(app)
+                .patch(`${BASE}/${id}/category`)
+                .send({ category: 'Other', username: 'alice' });
+
+            expect(res.status).toBe(403);
+        });
+
+        it('rejects an invalid category', async () => {
+            const id = await createRequest();
+            const res = await request(app)
+                .patch(`${BASE}/${id}/category`)
+                .send({ category: 'Nonsense', username: 'alice' });
+            expect(res.status).toBe(400);
+        });
+
+        it('returns 404 for non-existent request', async () => {
+            const res = await request(app)
+                .patch(`${BASE}/000000000000000000000000/category`)
+                .send({ category: 'Other', username: 'alice' });
+            expect(res.status).toBe(404);
+        });
+    });
+});

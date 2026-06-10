@@ -1,0 +1,136 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Roboto", "Arial", sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #eef3f8;
+    color: #0f0f0f;
+}
+
+.dashboard-container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+}
+
+.dashboard-header h1 {
+    margin: 0 0 4px;
+    font-size: 24px;
+    font-weight: 500;
+}
+
+.dashboard-subtitle {
+    margin: 0 0 16px;
+    color: #606060;
+    font-size: 14px;
+}
+
+.dashboard-scope {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.dashboard-scope label {
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.dashboard-scope select {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 6px 12px;
+    border: 1px solid #dadce0;
+    border-radius: 18px;
+    background-color: white;
+    cursor: pointer;
+}
+
+.dashboard-section {
+    background-color: #f7f9fc;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+}
+
+.dashboard-section h2 {
+    margin: 0 0 16px;
+    font-size: 16px;
+    font-weight: 500;
+}
+
+.verification-group {
+    margin-bottom: 16px;
+}
+
+.verification-group:last-child {
+    margin-bottom: 0;
+}
+
+.verification-group h3 {
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 500;
+    color: #606060;
+}
+
+.bar-row {
+    display: grid;
+    grid-template-columns: 160px 1fr 60px;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+    font-size: 13px;
+}
+
+.bar-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bar-track {
+    position: relative;
+    display: flex;
+    height: 14px;
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 7px;
+    overflow: hidden;
+}
+
+.bar-fill {
+    height: 100%;
+    border-radius: 7px;
+    transition: width 0.3s ease;
+}
+
+.bar-fill-verified {
+    background-color: #2ecc71;
+    border-radius: 7px 0 0 7px;
+}
+
+.bar-fill-unverified {
+    background-color: #dadce0;
+    border-radius: 0 7px 7px 0;
+}
+
+.bar-count {
+    text-align: right;
+    color: #606060;
+    font-weight: 500;
+}
+
+.empty-message,
+.error-message {
+    color: #606060;
+    font-size: 14px;
+}
+
+.error-message {
+    color: #ea4335;
+}

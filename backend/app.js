@@ -59,6 +59,8 @@ app.use('/api/citations', mutationLimiter, require('./routes/citations'));
 app.use('/api/requests',  mutationLimiter, require('./routes/requests'));
 app.use('/api/reports',   mutationLimiter, require('./routes/reports'));
 app.use('/api/events',    require('./routes/events'));
+app.use('/api/experts',   require('./routes/experts'));
+app.use('/api/dashboard', require('./routes/dashboard'));
 
 app.get('/health', (req, res) => {
     const { clientCount } = require('./lib/sseEmitter');

@@ -35,6 +35,17 @@ function insertCitationButtons() {
                     <span class="tab-counter" id="citations-counter">0</span>
                 </button>
             </div>
+            <div class="recording-indicator" id="recording-indicator" style="display:none;">
+                <span class="recording-dot"></span>
+                <span class="recording-time" id="recording-time">0:00</span>
+            </div>
+            <button id="open-dashboard-btn" class="dashboard-btn" title="Open Dashboard">
+                <span class="dashboard-icon">
+                    <svg viewBox="0 0 24 24" width="18" height="18">
+                        <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/>
+                    </svg>
+                </span>
+            </button>
         </div>
         <div id="extension-content" class="extension-content">
             <div id="citation-title-container" class="header-container">
@@ -42,6 +53,29 @@ function insertCitationButtons() {
             </div>
             <div class="header-actions">
                 <button id="add-item-btn" class="add-btn">+ Add Citation</button>
+                <div class="category-filter-container">
+                    <button class="category-filter-button">
+                        <span class="category-filter-text">All categories</span>
+                        <span class="category-filter-caret">
+                            <svg viewBox="0 0 24 24" width="24" height="24">
+                                <path d="M7 10l5 5 5-5z" fill="currentColor"/>
+                            </svg>
+                        </span>
+                    </button>
+                    <div class="category-filter-menu" style="display:none;">
+                        <button class="category-filter-item" data-value="">
+                            <span class="category-filter-item-text">All categories</span>
+                            <span class="category-filter-check">✓</span>
+                        </button>
+                        ${CATEGORIES.map(c => `
+                        <button class="category-filter-item" data-value="${_escapeHtml(c)}">
+                            <span class="category-filter-item-text">${_escapeHtml(c)}</span>
+                        </button>`).join('')}
+                        <button class="category-filter-item" data-value="${DEFAULT_CATEGORY}">
+                            <span class="category-filter-item-text">${DEFAULT_CATEGORY}</span>
+                        </button>
+                    </div>
+                </div>
                 <div class="sort-container">
                     <button class="sort-button">
                         <span class="sort-icon">
@@ -81,6 +115,9 @@ function insertCitationButtons() {
     _wireTabs();
     _wireAddButton();
     _wireSortMenu();
+    _wireCategoryFilter();
+    _wireDashboardButton();
+    _wireRecordingIndicator();
 
     // Load initial data then start polling
     document.getElementById('citations-btn').classList.add('active');
@@ -284,6 +321,113 @@ function _wireSortMenu() {
         if (!e.target.closest('.sort-container')) {
             sortMenu.style.display = 'none';
             sortBtn.classList.remove('active');
+        }
+    });
+}
+
+// ── Category filter ───────────────────────────
+
+function _wireCategoryFilter() {
+    const filterBtn  = document.querySelector('.category-filter-button');
+    const filterMenu = document.querySelector('.category-filter-menu');
+    const filterText = document.querySelector('.category-filter-text');
+
+    filterBtn.addEventListener('click', e => {
+        e.stopPropagation();
+        const visible = filterMenu.style.display === 'block';
+        filterMenu.style.display = visible ? 'none' : 'block';
+        filterBtn.classList.toggle('active', !visible);
+    });
+
+    filterMenu.addEventListener('click', e => {
+        const item = e.target.closest('.category-filter-item');
+        if (!item) return;
+
+        _currentCategoryFilter = item.dataset.value;
+        filterText.textContent = item.dataset.value || 'All categories';
+
+        filterMenu.querySelectorAll('.category-filter-item').forEach(el => {
+            const check = el.querySelector('.category-filter-check');
+            if (check) check.remove();
+            if (el.dataset.value === _currentCategoryFilter) {
+                el.querySelector('.category-filter-item-text').insertAdjacentHTML(
+                    'afterend', '<span class="category-filter-check">✓</span>'
+                );
+            }
+        });
+
+        filterMenu.style.display = 'none';
+        filterBtn.classList.remove('active');
+
+        _applyCategoryFilter();
+    });
+
+    document.addEventListener('click', e => {
+        if (!e.target.closest('.category-filter-container')) {
+            filterMenu.style.display = 'none';
+            filterBtn.classList.remove('active');
+        }
+    });
+}
+
+function _applyCategoryFilter() {
+    const filter = _currentCategoryFilter;
+
+    document.querySelectorAll('#citations-container > .citation-item, #citation-requests-container > .citation-item').forEach(item => {
+        if (item.classList.contains('request-response-group')) {
+            let anyVisible = !filter || item.dataset.category === filter;
+            item.querySelectorAll('.rg-response-entry').forEach(r => {
+                const match = !filter || r.dataset.category === filter;
+                r.style.display = match ? '' : 'none';
+                if (match) anyVisible = true;
+            });
+            item.style.display = anyVisible ? '' : 'none';
+        } else {
+            const match = !filter || item.dataset.category === filter;
+            item.style.display = match ? '' : 'none';
+        }
+    });
+}
+
+// ── Dashboard ──────────────────────────────────
+
+function _wireDashboardButton() {
+    document.getElementById('open-dashboard-btn').addEventListener('click', () => {
+        window.open(chrome.runtime.getURL('dashboard/dashboard.html'), '_blank');
+    });
+}
+
+// ── Recording indicator ───────────────────────
+
+function _wireRecordingIndicator() {
+    const indicator = document.getElementById('recording-indicator');
+    const timeEl    = document.getElementById('recording-time');
+    const panel     = document.getElementById('citation-controls');
+    let tickInterval = null;
+
+    document.addEventListener('cp-recording-state', e => {
+        const { recording, startTime } = e.detail || {};
+
+        if (tickInterval) {
+            clearInterval(tickInterval);
+            tickInterval = null;
+        }
+
+        if (recording) {
+            indicator.style.display = 'flex';
+            panel?.classList.add('recording-active');
+
+            const update = () => {
+                const elapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+                const mins = Math.floor(elapsed / 60);
+                const secs = elapsed % 60;
+                timeEl.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+            };
+            update();
+            tickInterval = setInterval(update, 1000);
+        } else {
+            indicator.style.display = 'none';
+            panel?.classList.remove('recording-active');
         }
     });
 }

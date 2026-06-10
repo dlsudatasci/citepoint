@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Citepoint Dashboard</title>
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>Citepoint Dashboard</h1>
+            <p class="dashboard-subtitle">Trending categories and expert verification activity</p>
+            <div class="dashboard-scope">
+                <label for="scope-select">Scope:</label>
+                <select id="scope-select">
+                    <option value="video">This video</option>
+                    <option value="global">All videos</option>
+                </select>
+            </div>
+        </header>
+
+        <main id="dashboard-content">
+            <section class="dashboard-section">
+                <h2>Trending Requested Categories</h2>
+                <div id="requests-chart" class="bar-chart"></div>
+            </section>
+
+            <section class="dashboard-section">
+                <h2>Citations by Category</h2>
+                <div id="citations-chart" class="bar-chart"></div>
+            </section>
+
+            <section class="dashboard-section">
+                <h2>Expert Verification Activity</h2>
+                <div class="verification-group">
+                    <h3>Citations</h3>
+                    <div id="citations-verification-chart" class="stacked-chart"></div>
+                </div>
+                <div class="verification-group">
+                    <h3>Citation Requests</h3>
+                    <div id="requests-verification-chart" class="stacked-chart"></div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="../lib/browser-polyfill.js"></script>
+    <script src="../config/config.js"></script>
+    <script src="../content/api.js"></script>
+    <script src="dashboard.js"></script>
+</body>
+</html>

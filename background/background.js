@@ -153,6 +153,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         handleReportItem(request.data).then(sendResponse);
         return true;
     }
+    if (request.type === 'updateCategory') {
+        handleUpdateCategory(request.itemType, request.videoId, request.itemId, request.category, request.username).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'checkExpert') {
+        handleCheckExpert(request.username).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getDashboardStats') {
+        handleGetDashboardStats(request.videoId).then(sendResponse);
+        return true;
+    }
 });
 
 async function handleGetCitations(videoId, page = 1, limit = 20) {
@@ -320,6 +332,46 @@ async function handleGetUserVotes(videoId, itemType = 'citation') {
             _storage.local.get(storageKey, r => resolve(r[storageKey] || {}))
         );
         return { success: true, votes };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleUpdateCategory(itemType, videoId, itemId, category, username) {
+    try {
+        const path = itemType === 'citation' ? 'citations' : 'requests';
+        const result = await apiRequest(`/${path}/${videoId}/${itemId}/category`, 'PATCH', { category, username });
+        _cacheInvalidate(videoId);
+        return {
+            success: true,
+            category: result.category,
+            categoryVerified: result.categoryVerified,
+            verifiedBy: result.verifiedBy,
+        };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleCheckExpert(username) {
+    try {
+        const result = await apiRequest(`/experts/${encodeURIComponent(username)}`);
+        return { success: true, isExpert: result.isExpert };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetDashboardStats(videoId) {
+    try {
+        const query = videoId ? `?videoId=${encodeURIComponent(videoId)}` : '';
+        const result = await apiRequest(`/dashboard/trending${query}`);
+        return {
+            success: true,
+            requestsByCategory: result.requestsByCategory,
+            citationsByCategory: result.citationsByCategory,
+            verificationStats: result.verificationStats,
+        };
     } catch (error) {
         return { success: false, error: error.message };
     }

@@ -35,6 +35,7 @@
             "js": [
                 "lib/browser-polyfill.js",
                 "utils/utils.js",
+                "config/config.js",
                 "content/api.js",
                 "content/username.js",
                 "content/citations.js",
@@ -60,7 +61,10 @@
             "styles/extension.css",
             "config/config.js",
             "popup/popup.js",
-            "popup/popup.html"
+            "popup/popup.html",
+            "dashboard/dashboard.html",
+            "dashboard/dashboard.js",
+            "dashboard/dashboard.css"
         ],
         "matches": [
             "*://www.youtube.com/*",

@@ -29,6 +29,96 @@ let _votesVideoId      = null; // videoId for which votes were last loaded
 // Loaded once per video session; updated after each successful report submission.
 let _reportedItems     = {}; // itemId → true
 
+// ── Categories / expert state ─────────────────
+let _isExpertUser      = null;  // cached result of apiCheckExpert, null = not yet checked
+let _currentCategoryFilter = ''; // '' = all categories
+
+const CATEGORY_COLORS = {
+    'Statistics & Data':      { bg: 'rgba(101, 31, 255, 0.1)', color: '#651fff' },
+    'Quote / Misattribution': { bg: 'rgba(255, 109, 0, 0.1)',  color: '#e65100' },
+    'Historical Claim':       { bg: 'rgba(0, 137, 123, 0.1)',  color: '#00897b' },
+    'Scientific Claim':       { bg: 'rgba(6, 95, 212, 0.1)',   color: '#065fd4' },
+    'Context / Methodology':  { bg: 'rgba(194, 24, 91, 0.1)',  color: '#c2185b' },
+    'Other':                  { bg: 'rgba(0, 0, 0, 0.07)',     color: '#606060' },
+    'Uncategorized':          { bg: 'rgba(0, 0, 0, 0.05)',     color: '#9e9e9e' },
+};
+
+/**
+ * Check (once, cached) whether the current user is a recognized expert.
+ */
+async function _ensureExpertChecked(username) {
+    if (_isExpertUser !== null) return _isExpertUser;
+    if (!username) { _isExpertUser = false; return false; }
+    try {
+        _isExpertUser = await apiCheckExpert(username);
+    } catch (_) {
+        _isExpertUser = false;
+    }
+    return _isExpertUser;
+}
+
+/**
+ * Render a category badge, with a checkmark if expert-verified.
+ */
+function _buildCategoryBadge(category, categoryVerified) {
+    const cat = category || DEFAULT_CATEGORY;
+    const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS[DEFAULT_CATEGORY];
+    const verifiedMark = categoryVerified
+        ? ' <span class="category-verified" title="Verified by an expert">✓</span>'
+        : '';
+    return `<span class="category-badge" style="background-color:${colors.bg};color:${colors.color}">${_escapeHtml(cat)}${verifiedMark}</span>`;
+}
+
+/**
+ * Render a <select> for changing/suggesting an item's category.
+ * Experts can change any category (and verify it); non-experts can only
+ * suggest a category for items that aren't yet expert-verified.
+ */
+function _buildCategorySelect(item) {
+    const current = item.category || DEFAULT_CATEGORY;
+    const options = CATEGORIES.map(c =>
+        `<option value="${_escapeHtml(c)}" ${c === current ? 'selected' : ''}>${_escapeHtml(c)}</option>`
+    ).join('');
+    const label = _isExpertUser ? 'Set category' : 'Suggest category';
+    return `
+        <label class="category-select-label" title="${label}">
+            <select class="category-select">${options}</select>
+        </label>
+    `;
+}
+
+/**
+ * Decide whether to show a category-edit control for this item, and wire it up.
+ */
+function _wireCategoryControls(el, item, itemType) {
+    const select = el.querySelector('.category-select');
+    if (!select) return;
+
+    select.addEventListener('change', async () => {
+        const newCategory = select.value;
+        const previous    = item.category;
+        select.disabled = true;
+        try {
+            const username = _currentUsername || await getCachedUsername();
+            if (!username) throw new Error('You must be logged in to set a category.');
+
+            const result = await apiUpdateCategory(item.id, itemType, getCurrentVideoId(), newCategory, username);
+            item.category         = result.category;
+            item.categoryVerified = result.categoryVerified;
+
+            const badge = el.querySelector('.category-badge');
+            if (badge) badge.outerHTML = _buildCategoryBadge(item.category, item.categoryVerified);
+
+            showToast(item.categoryVerified ? 'Category verified.' : 'Category suggestion saved.', 'success');
+        } catch (err) {
+            select.value = previous || DEFAULT_CATEGORY;
+            showToast(err.message || 'Failed to update category.', 'error');
+        } finally {
+            select.disabled = false;
+        }
+    });
+}
+
 // ── Polling / SSE state ───────────────────────
 
 // _pollTimeout replaces the old _pollInterval setInterval ID.
@@ -125,6 +215,7 @@ async function loadCitations(page = 1, silent = false) {
         } else {
             _currentUsername = await getCachedUsername();
         }
+        await _ensureExpertChecked(_currentUsername);
 
         const sorted = sortItems(citations, currentSortOption, 'citation');
 
@@ -178,6 +269,7 @@ async function loadCitations(page = 1, silent = false) {
                 currentCitations = [...currentCitations, ...sorted];
                 await _appendCitationsPage(sorted, container, pagination);
             }
+            _applyCategoryFilter();
         }
 
         _updateCounter('citations-counter', pagination ? pagination.total : citations.length);
@@ -237,17 +329,19 @@ async function loadCitationRequests(page = 1, silent = false) {
         });
 
         _currentUsername = _currentUsername || await getCachedUsername();
+        await _ensureExpertChecked(_currentUsername);
 
         const sorted = sortItems(requests, currentSortOption, 'request');
 
         if (container.style.display !== 'none') {
             if (page === 1) {
                 currentRequests = sorted;
-                updateRequestsList(sorted, container, pagination, _currentUsername);
+                await updateRequestsList(sorted, container, pagination, _currentUsername);
             } else if (!_isSameList(sorted, currentRequests.slice(-sorted.length))) {
                 currentRequests = [...currentRequests, ...sorted];
-                _appendRequestsPage(sorted, container, pagination, _currentUsername);
+                await _appendRequestsPage(sorted, container, pagination, _currentUsername);
             }
+            _applyCategoryFilter();
         }
 
         _updateCounter('requests-counter', pagination ? pagination.total : requests.length);
@@ -364,8 +458,10 @@ async function createCitationElement(citation, userVote, currentUsername = null)
     el.className      = 'citation-item';
     el.dataset.start  = parseTimestamp(citation.timestampStart);
     el.dataset.end    = parseTimestamp(citation.timestampEnd);
+    el.dataset.category = citation.category || DEFAULT_CATEGORY;
 
     const canDelete = currentUsername && currentUsername === citation.username;
+    const showCategorySelect = _isExpertUser || !citation.categoryVerified;
 
     // Use requestId field for response detection — more reliable than description prefix
     const isResponse       = !!citation.requestId;
@@ -394,6 +490,10 @@ async function createCitationElement(citation, userVote, currentUsername = null)
         <div class="citation-meta">
             ${authorLink}
             <span class="citation-date"> · ${_formatDate(citation.dateAdded)}</span>
+        </div>
+        <div class="category-row">
+            ${_buildCategoryBadge(citation.category, citation.categoryVerified)}
+            ${showCategorySelect ? _buildCategorySelect(citation) : ''}
         </div>
         ${isResponse ? '<span class="response-badge">Response</span>' : ''}
         ${_buildDescription(displayDescription)}
@@ -431,6 +531,8 @@ async function createCitationElement(citation, userVote, currentUsername = null)
         handleVote(citation.id, 'down', 'citation')
     );
 
+    _wireCategoryControls(el, citation, 'citation');
+
     if (canDelete) {
         el.querySelector('.delete-btn').addEventListener('click', async () => {
             const confirmed = await showConfirm('Delete this citation?');
@@ -467,6 +569,9 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
     el.className     = 'citation-item request-response-group';
     el.dataset.start = parseTimestamp(request.timestampStart);
     el.dataset.end   = parseTimestamp(request.timestampEnd);
+    el.dataset.category = request.category || DEFAULT_CATEGORY;
+
+    const showRequestCategorySelect = _isExpertUser || !request.categoryVerified;
 
     el.innerHTML = `
         <div class="citation-header">
@@ -487,6 +592,10 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
             <span class="citation-author">${_escapeHtml(request.username || 'Anonymous')}</span>
             <span class="citation-date">${_formatDate(request.dateAdded)}</span>
         </div>
+        <div class="category-row">
+            ${_buildCategoryBadge(request.category, request.categoryVerified)}
+            ${showRequestCategorySelect ? _buildCategorySelect(request) : ''}
+        </div>
         <div class="rg-divider"></div>
         <div class="rg-responses">
             <span class="rg-responses-label">${responseCitations.length} Response${responseCitations.length !== 1 ? 's' : ''}</span>
@@ -496,6 +605,8 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
     el.querySelectorAll('.timestamp-btn').forEach(btn => {
         btn.addEventListener('click', () => seekToTime(parseFloat(btn.dataset.time)));
     });
+
+    _wireCategoryControls(el, request, 'request');
 
     const responsesContainer = el.querySelector('.rg-responses');
 
@@ -509,14 +620,21 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
             ? citation.description.split('\n\n').slice(1).join('\n\n').trim()
             : citation.description;
 
+        const showResponseCategorySelect = _isExpertUser || !citation.categoryVerified;
+
         const responseEl = document.createElement('div');
         responseEl.className = 'rg-response-entry';
+        responseEl.dataset.category = citation.category || DEFAULT_CATEGORY;
         responseEl.innerHTML = `
             ${_buildDescription(responseText)}
             ${_safeSourceLink(citation.source)}
             <div class="citation-meta">
                 <span class="citation-author">${_escapeHtml(citation.username || 'Anonymous')}</span>
                 <span class="citation-date">${_formatDate(citation.dateAdded)}</span>
+            </div>
+            <div class="category-row">
+                ${_buildCategoryBadge(citation.category, citation.categoryVerified)}
+                ${showResponseCategorySelect ? _buildCategorySelect(citation) : ''}
             </div>
             <div class="citation-actions">
                 <div class="vote-controls" data-citation-id="${citation.id}">
@@ -545,6 +663,8 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
         vc.querySelector('.downvote-btn').addEventListener('click', () =>
             handleVote(citation.id, 'down', 'citation')
         );
+
+        _wireCategoryControls(responseEl, citation, 'citation');
 
         if (canDelete) {
             responseEl.querySelector('.delete-btn').addEventListener('click', async () => {
@@ -585,9 +705,11 @@ function createRequestElement(request, userVote, currentUsername = null) {
     el.className = 'citation-item request-item';
     el.dataset.start = parseTimestamp(request.timestampStart);
     el.dataset.end   = parseTimestamp(request.timestampEnd);
+    el.dataset.category = request.category || DEFAULT_CATEGORY;
 
     const canDelete       = currentUsername && currentUsername === request.username;
     const alreadyReported = !!_reportedItems[request.id];
+    const showCategorySelect = _isExpertUser || !request.categoryVerified;
 
     el.innerHTML = `
         <div class="citation-header">
@@ -606,6 +728,10 @@ function createRequestElement(request, userVote, currentUsername = null) {
         <div class="citation-meta">
             ${_buildAuthorLink(request.username)}
             <span class="citation-date">${_formatDate(request.dateAdded)}</span>
+        </div>
+        <div class="category-row">
+            ${_buildCategoryBadge(request.category, request.categoryVerified)}
+            ${showCategorySelect ? _buildCategorySelect(request) : ''}
         </div>
         <div class="citation-actions">
             <div class="vote-controls" data-request-id="${request.id}">
@@ -644,6 +770,8 @@ function createRequestElement(request, userVote, currentUsername = null) {
     const vc = el.querySelector('.vote-controls');
     vc.querySelector('.upvote-btn').addEventListener('click',   () => handleVote(request.id, 'up',   'request'));
     vc.querySelector('.downvote-btn').addEventListener('click', () => handleVote(request.id, 'down', 'request'));
+
+    _wireCategoryControls(el, request, 'request');
 
     if (!canDelete) {
         el.querySelector('.respond-btn')?.addEventListener('click', e => {

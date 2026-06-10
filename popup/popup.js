@@ -8,6 +8,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    const openDashboardBtn = document.getElementById('open-dashboard');
+    if (openDashboardBtn) {
+        openDashboardBtn.addEventListener('click', function() {
+            chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
+        });
+    }
+
     // Collapse/expand sections if needed
     const featureHeadings = document.querySelectorAll('.feature h2');
     featureHeadings.forEach(heading => {

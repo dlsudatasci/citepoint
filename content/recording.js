@@ -270,6 +270,10 @@ function setupRecordButtons() {
 
         _createBars();          // spawn bars on progress bar
         _startLiveTracking();   // end bar follows playhead
+
+        document.dispatchEvent(new CustomEvent('cp-recording-state', {
+            detail: { recording: true, startTime: Date.now() }
+        }));
     });
 
     endRecordBtn.addEventListener('click', () => {
@@ -290,6 +294,10 @@ function setupRecordButtons() {
             console.warn('[recording] Invalid range');
             _removeBars();
         }
+
+        document.dispatchEvent(new CustomEvent('cp-recording-state', {
+            detail: { recording: false }
+        }));
     });
 }
 

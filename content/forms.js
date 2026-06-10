@@ -19,7 +19,7 @@ function loadPage(url, containerId, callback = null) {
 
             container.querySelectorAll('form').forEach(form => {
                 form.style.maxWidth = '100%';
-                form.querySelectorAll('input:not([type="checkbox"]), textarea').forEach(el => {
+                form.querySelectorAll('input:not([type="checkbox"]), textarea, select').forEach(el => {
                     el.classList.add('form-input');
                 });
                 form.querySelectorAll('textarea').forEach(el => el.classList.add('form-textarea'));
@@ -110,6 +110,7 @@ function _attachCitationFormListener() {
                 timestampEnd:   endTime,
                 description,
                 source:         form.source.value.trim(),
+                category:       form.elements['category']?.value || DEFAULT_CATEGORY,
                 username,
                 dateAdded:      new Date().toISOString(),
             };
@@ -168,6 +169,7 @@ function _attachRequestFormListener() {
                 timestampStart: startTime,
                 timestampEnd:   endTime,
                 reason:         form.reason.value.trim(),
+                category:       form.elements['category']?.value || DEFAULT_CATEGORY,
                 username,
                 dateAdded:      new Date().toISOString(),
             });

@@ -128,3 +128,32 @@ async function apiReportItem({ videoId, itemId, itemType, reason, additionalInfo
 function apiGetSSEUrl(videoId) {
     return `${_CP_API_BASE}/api/events?videoId=${encodeURIComponent(videoId)}`;
 }
+
+// ── Categories & Experts ──────────────────────
+
+/**
+ * @param {string} itemId
+ * @param {'citation'|'request'} itemType
+ * @param {string} videoId
+ * @param {string} category
+ * @param {string} username
+ */
+async function apiUpdateCategory(itemId, itemType, videoId, category, username) {
+    return _send({ type: 'updateCategory', itemId, itemType, videoId, category, username });
+}
+
+async function apiCheckExpert(username) {
+    const res = await _send({ type: 'checkExpert', username });
+    return !!res.isExpert;
+}
+
+// ── Dashboard ─────────────────────────────────
+
+async function apiGetDashboardStats(videoId) {
+    const res = await _send({ type: 'getDashboardStats', videoId });
+    return {
+        requestsByCategory: res.requestsByCategory || [],
+        citationsByCategory: res.citationsByCategory || [],
+        verificationStats: res.verificationStats || { citations: [], requests: [] },
+    };
+}
