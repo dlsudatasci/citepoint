@@ -1390,19 +1390,65 @@ ytd-watch-flexy[theater] div#secondary {
 .cp-toast--info     { background: #1565c0; }
 
 .cp-confirm-overlay {
-    position: fixed; inset: 0;
-    background: rgba(0,0,0,0.4);
+    position: fixed; 
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5); /* Slightly darker for better focus */
     z-index: 99998;
 }
+
 .cp-confirm-box {
     position: fixed;
-    top: 50%; left: 50%;
+    top: 50%; 
+    left: 50%;
     transform: translate(-50%, -50%);
-    background: white;
-    border-radius: 8px;
-    padding: 20px 24px;
+    background: #323232; /* Dark background similar to standard toasts */
+    color: #ffffff;      /* White text to match toasts */
+    border-radius: 6px;  /* Matches your .cp-toast border-radius */
+    padding: 16px 20px;
+    font-size: 13px;     /* Matches your .cp-toast font-size */
     z-index: 99999;
     min-width: 280px;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
-.cp-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+.cp-confirm-message {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.cp-confirm-actions { 
+    display: flex; 
+    justify-content: flex-end; 
+    gap: 8px; 
+    margin-top: 20px; 
+}
+
+.cp-confirm-actions button {
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.cp-confirm-cancel {
+    opacity: 0.75;
+}
+
+.cp-confirm-cancel:hover {
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 1;
+}
+
+.cp-confirm-ok {
+    background: #c62828 !important; 
+}
+
+.cp-confirm-ok:hover {
+    background: #b71c1c !important; 
+}
