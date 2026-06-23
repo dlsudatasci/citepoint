@@ -147,6 +147,52 @@ async function apiCheckExpert(username) {
     return !!res.isExpert;
 }
 
+async function apiApplyExpert(username, category, credentials) {
+    return _send({ type: 'applyExpert', username, category, credentials });
+}
+
+async function apiGetMyApplications(username) {
+    const res = await _send({ type: 'getMyApplications', username });
+    return res.applications || [];
+}
+
+async function apiGetPendingApplications() {
+    const res = await _send({ type: 'getPendingApplications' });
+    return res.applications || [];
+}
+
+async function apiReviewApplication(id, status, reviewedBy, reason) {
+    return _send({ type: 'reviewApplication', id, status, reviewedBy, reason });
+}
+
+// ── Profile ──────────────────────────────────
+
+async function apiGetProfile(username) {
+    return _send({ type: 'getProfile', username });
+}
+
+async function apiUpdateProfile(username, data) {
+    return _send({ type: 'updateProfile', username, data });
+}
+
+async function apiGetProfileHistory(username, page) {
+    return _send({ type: 'getProfileHistory', username, page });
+}
+
+// ── Notifications ────────────────────────────
+
+async function apiGetNotifications(username, page) {
+    return _send({ type: 'getNotifications', username, page });
+}
+
+async function apiMarkNotificationRead(id) {
+    return _send({ type: 'markNotificationRead', id });
+}
+
+async function apiMarkAllNotificationsRead(username) {
+    return _send({ type: 'markAllNotificationsRead', username });
+}
+
 // ── Dashboard ─────────────────────────────────
 
 async function apiGetDashboardStats(videoId) {

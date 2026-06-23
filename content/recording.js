@@ -458,6 +458,53 @@ function addRecordedSegment(startTime, endTime) {
 
 // ── Retry logic ───────────────────────────────
 
+// ── Video player overlay (red outline + badge) ──
+
+let _playerOverlay = null;
+let _recordingBadge = null;
+let _badgeInterval = null;
+
+function _setupPlayerOverlay() {
+    document.addEventListener('cp-recording-state', e => {
+        const { recording, startTime } = e.detail || {};
+        const player = document.getElementById('movie_player');
+        if (!player) return;
+
+        if (recording) {
+            if (!_playerOverlay) {
+                _playerOverlay = document.createElement('div');
+                _playerOverlay.className = 'cp-recording-overlay';
+                player.style.position = 'relative';
+                player.appendChild(_playerOverlay);
+            }
+
+            if (!_recordingBadge) {
+                _recordingBadge = document.createElement('div');
+                _recordingBadge.className = 'cp-recording-badge';
+                _recordingBadge.innerHTML = '<span class="cp-badge-dot"></span><span class="cp-badge-time">0:00</span>';
+                player.appendChild(_recordingBadge);
+            }
+
+            if (_badgeInterval) clearInterval(_badgeInterval);
+            const update = () => {
+                const elapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
+                const mins = Math.floor(elapsed / 60);
+                const secs = elapsed % 60;
+                const timeEl = _recordingBadge?.querySelector('.cp-badge-time');
+                if (timeEl) timeEl.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
+            };
+            update();
+            _badgeInterval = setInterval(update, 1000);
+        } else {
+            if (_badgeInterval) { clearInterval(_badgeInterval); _badgeInterval = null; }
+            _playerOverlay?.remove(); _playerOverlay = null;
+            _recordingBadge?.remove(); _recordingBadge = null;
+        }
+    });
+}
+
+_setupPlayerOverlay();
+
 function ensureRecordingFeatureWorks() {
     setupRecordButtons();
     const check = setInterval(() => {

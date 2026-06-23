@@ -18,6 +18,24 @@ let _requestsLoading   = false;
 let _requestsById      = {}; // request objects keyed by id, for grouping response citations
 let _currentUsername   = null; // cached once per load so re-renders don't need to re-fetch
 
+function _isOwner(currentUsername, itemUsername) {
+    if (!currentUsername || !itemUsername) return false;
+    const normalize = s => s.replace(/^@/, '').toLowerCase();
+    return normalize(currentUsername) === normalize(itemUsername);
+}
+
+const MAX_INLINE_RESPONSES = 3;
+
+function _rankResponses(responses) {
+    return [...responses].sort((a, b) => {
+        const aExpert = a.categoryVerified ? 1 : 0;
+        const bExpert = b.categoryVerified ? 1 : 0;
+        if (bExpert !== aExpert) return bExpert - aExpert;
+        if ((b.voteScore ?? 0) !== (a.voteScore ?? 0)) return (b.voteScore ?? 0) - (a.voteScore ?? 0);
+        return new Date(b.dateAdded) - new Date(a.dateAdded);
+    });
+}
+
 // ── Vote-load optimisation (#5) ───────────────
 // Votes are stored in chrome.storage.local and updated optimistically on every
 // vote action.  Re-reading storage on every 15-s poll is redundant — we only
@@ -396,28 +414,56 @@ async function _renderCitationsWithSections(citations, container, pagination = n
 
     const currentUsername = _currentUsername || await getCachedUsername();
 
-    const groups    = new Map();
-    const standalone = [];
+    const requestGroups  = new Map();
+    const replyGroups    = new Map();
+    const standalone     = [];
+    const parentIds      = new Set();
 
     for (const c of citations) {
         if (c.requestId && _requestsById[c.requestId]) {
-            if (!groups.has(c.requestId)) groups.set(c.requestId, []);
-            groups.get(c.requestId).push(c);
+            if (!requestGroups.has(c.requestId)) requestGroups.set(c.requestId, []);
+            requestGroups.get(c.requestId).push(c);
+        } else if (c.parentCitationId) {
+            if (!replyGroups.has(c.parentCitationId)) replyGroups.set(c.parentCitationId, []);
+            replyGroups.get(c.parentCitationId).push(c);
+            parentIds.add(c.parentCitationId);
         } else {
             standalone.push(c);
         }
     }
 
+    const parentsInList = new Map();
+    const trueStandalone = [];
+    for (const c of standalone) {
+        if (parentIds.has(c.id)) {
+            parentsInList.set(c.id, c);
+        } else if (replyGroups.has(c.id)) {
+            parentsInList.set(c.id, c);
+        } else {
+            trueStandalone.push(c);
+        }
+    }
+
     const standaloneEls = await Promise.all(
-        standalone.map(c => createCitationElement(c, userVotes[c.id] || null, currentUsername))
+        trueStandalone.map(c => createCitationElement(c, userVotes[c.id] || null, currentUsername))
     );
-    const groupEls = await Promise.all(
-        [...groups.entries()].map(([requestId, responses]) =>
+    const requestGroupEls = await Promise.all(
+        [...requestGroups.entries()].map(([requestId, responses]) =>
             createRequestResponseGroupElement(_requestsById[requestId], responses, userVotes, currentUsername)
         )
     );
+    const replyGroupEls = await Promise.all(
+        [...replyGroups.entries()].map(([parentId, replies]) => {
+            const parent = parentsInList.get(parentId);
+            if (!parent) {
+                return Promise.all(replies.map(c => createCitationElement(c, userVotes[c.id] || null, currentUsername)));
+            }
+            return createCitationReplyGroupElement(parent, replies, userVotes, currentUsername);
+        })
+    );
 
-    const allElements = [...standaloneEls, ...groupEls];
+    const flatReplyEls = replyGroupEls.flat();
+    const allElements = [...standaloneEls, ...requestGroupEls, ...flatReplyEls];
 
     const highlighted = allElements.filter(el =>
         parseFloat(el.dataset.start) <= currentTime && currentTime <= parseFloat(el.dataset.end)
@@ -460,8 +506,8 @@ async function createCitationElement(citation, userVote, currentUsername = null)
     el.dataset.end    = parseTimestamp(citation.timestampEnd);
     el.dataset.category = citation.category || DEFAULT_CATEGORY;
 
-    const canDelete = currentUsername && currentUsername === citation.username;
-    const showCategorySelect = _isExpertUser || !citation.categoryVerified;
+    const canDelete = _isOwner(currentUsername, citation.username);
+    const showCategorySelect = canDelete || _isExpertUser || !citation.categoryVerified;
 
     // Use requestId field for response detection — more reliable than description prefix
     const isResponse       = !!citation.requestId;
@@ -497,16 +543,27 @@ async function createCitationElement(citation, userVote, currentUsername = null)
         </div>
         ${isResponse ? '<span class="response-badge">Response</span>' : ''}
         ${_buildDescription(displayDescription)}
-        ${_safeSourceLink(citation.source)}
         <div class="citation-actions">
-            <div class="vote-controls" data-citation-id="${citation.id}">
-                <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}">▲</button>
-                <span class="vote-score">${citation.voteScore ?? 0}</span>
-                <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
-            </div>
-            <div class="action-buttons">
-                ${canDelete ? `<button class="action-btn delete-btn" data-id="${citation.id}">Delete</button>` : ''}
-                ${!canDelete ? `<button class="action-btn report-btn" data-id="${citation.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
+            ${_safeSourceLink(citation.source)}
+            <div class="citation-actions-right">
+                <div class="vote-controls" data-citation-id="${citation.id}">
+                    <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}">▲</button>
+                    <span class="vote-score">${citation.voteScore ?? 0}</span>
+                    <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
+                </div>
+                <div class="action-buttons">
+                    ${!canDelete ? `
+                    <button class="action-btn respond-btn reply-btn"
+                        data-start="${_escapeHtml(citation.timestampStart)}"
+                        data-end="${_escapeHtml(citation.timestampEnd)}"
+                        data-description="${_escapeHtml(citation.description || '')}"
+                        data-title="${_escapeHtml(citation.citationTitle || '')}"
+                        data-parent-citation-id="${citation.id}">
+                        Reply
+                    </button>` : ''}
+                    ${canDelete ? `<button class="action-btn delete-btn" data-id="${citation.id}">Delete</button>` : ''}
+                    ${!canDelete ? `<button class="action-btn report-btn" data-id="${citation.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
+                </div>
             </div>
         </div>
     `;
@@ -556,6 +613,18 @@ async function createCitationElement(citation, userVote, currentUsername = null)
     }
 
     if (!canDelete) {
+        el.querySelector('.reply-btn')?.addEventListener('click', e => {
+            const btn = e.currentTarget;
+            respondWithCitation(
+                btn.dataset.start,
+                btn.dataset.end,
+                `Response to request: ${btn.dataset.description}`,
+                btn.dataset.title,
+                null,
+                btn.dataset.parentCitationId
+            );
+        });
+
         el.querySelector('.report-btn')?.addEventListener('click', () =>
             showReportDialog(citation.id, 'citation')
         );
@@ -571,7 +640,8 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
     el.dataset.end   = parseTimestamp(request.timestampEnd);
     el.dataset.category = request.category || DEFAULT_CATEGORY;
 
-    const showRequestCategorySelect = _isExpertUser || !request.categoryVerified;
+    const isRequestOwner = _isOwner(currentUsername, request.username);
+    const showRequestCategorySelect = isRequestOwner || _isExpertUser || !request.categoryVerified;
 
     el.innerHTML = `
         <div class="citation-header">
@@ -610,91 +680,169 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
 
     const responsesContainer = el.querySelector('.rg-responses');
 
-    for (const citation of responseCitations) {
-        const userVote       = votes[citation.id] || null;
-        const canDelete      = currentUsername && currentUsername === citation.username;
-        const alreadyReported = !!_reportedItems[citation.id];
+    const ranked = _rankResponses(responseCitations);
+    const shown  = ranked.slice(0, MAX_INLINE_RESPONSES);
+    const hidden = ranked.length - shown.length;
 
-        // Strip the "Response to request: …\n\n" prefix that forms.js prepends
-        const responseText = citation.description?.startsWith('Response to request:')
-            ? citation.description.split('\n\n').slice(1).join('\n\n').trim()
-            : citation.description;
+    for (const citation of shown) {
+        const responseEl = await _buildResponseEntry(citation, votes, currentUsername);
+        responsesContainer.appendChild(responseEl);
+    }
 
-        const showResponseCategorySelect = _isExpertUser || !citation.categoryVerified;
+    if (hidden > 0) {
+        const seeAll = document.createElement('a');
+        seeAll.className   = 'rg-see-all-link';
+        seeAll.href        = '#';
+        seeAll.textContent = `See all ${responseCitations.length} responses`;
+        seeAll.addEventListener('click', e => {
+            e.preventDefault();
+            const url = chrome.runtime.getURL(`discussion/discussion.html?type=request&id=${request.id || request._id}`);
+            window.open(url, '_blank');
+        });
+        responsesContainer.appendChild(seeAll);
+    }
 
-        const responseEl = document.createElement('div');
-        responseEl.className = 'rg-response-entry';
-        responseEl.dataset.category = citation.category || DEFAULT_CATEGORY;
-        responseEl.innerHTML = `
-            ${_buildDescription(responseText)}
-            ${_safeSourceLink(citation.source)}
-            <div class="citation-meta">
-                <span class="citation-author">${_escapeHtml(citation.username || 'Anonymous')}</span>
-                <span class="citation-date">${_formatDate(citation.dateAdded)}</span>
-            </div>
-            <div class="category-row">
-                ${_buildCategoryBadge(citation.category, citation.categoryVerified)}
-                ${showResponseCategorySelect ? _buildCategorySelect(citation) : ''}
-            </div>
-            <div class="citation-actions">
-                <div class="vote-controls" data-citation-id="${citation.id}">
-                    <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}">▲</button>
-                    <span class="vote-score">${citation.voteScore ?? 0}</span>
-                    <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
+    return el;
+}
+
+async function createCitationReplyGroupElement(parentCitation, replies, votes, currentUsername) {
+    const el = document.createElement('div');
+    el.className     = 'citation-item citation-reply-group';
+    el.dataset.start = parseTimestamp(parentCitation.timestampStart);
+    el.dataset.end   = parseTimestamp(parentCitation.timestampEnd);
+    el.dataset.category = parentCitation.category || DEFAULT_CATEGORY;
+
+    const canDeleteParent = _isOwner(currentUsername, parentCitation.username);
+    const parentVote      = votes[parentCitation.id] || null;
+    const alreadyReportedParent = !!_reportedItems[parentCitation.id];
+    const showParentCategorySelect = canDeleteParent || _isExpertUser || !parentCitation.categoryVerified;
+
+    el.innerHTML = `
+        <div class="citation-header">
+            <span class="citation-title">${_escapeHtml(parentCitation.citationTitle || 'Untitled')}</span>
+        </div>
+        <div class="citation-timestamp">
+            <button class="timestamp-btn" data-time="${parseTimestamp(parentCitation.timestampStart)}">
+                ${_escapeHtml(parentCitation.timestampStart)}
+            </button>
+            to
+            <button class="timestamp-btn" data-time="${parseTimestamp(parentCitation.timestampEnd)}">
+                ${_escapeHtml(parentCitation.timestampEnd)}
+            </button>
+        </div>
+        <div class="citation-meta">
+            ${_buildAuthorLink(parentCitation.username)}
+            <span class="citation-date"> · ${_formatDate(parentCitation.dateAdded)}</span>
+        </div>
+        <div class="category-row">
+            ${_buildCategoryBadge(parentCitation.category, parentCitation.categoryVerified)}
+            ${showParentCategorySelect ? _buildCategorySelect(parentCitation) : ''}
+        </div>
+        ${_buildDescription(parentCitation.description)}
+        <div class="citation-actions">
+            ${_safeSourceLink(parentCitation.source)}
+            <div class="citation-actions-right">
+                <div class="vote-controls" data-citation-id="${parentCitation.id}">
+                    <button class="vote-btn upvote-btn ${parentVote === 'up' ? 'voted' : ''}" title="${parentVote === 'up' ? 'Remove upvote' : 'Upvote'}">▲</button>
+                    <span class="vote-score">${parentCitation.voteScore ?? 0}</span>
+                    <button class="vote-btn downvote-btn ${parentVote === 'down' ? 'voted' : ''}" title="${parentVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
                 </div>
                 <div class="action-buttons">
-                    ${canDelete ? `<button class="action-btn delete-btn" data-id="${citation.id}">Delete</button>` : ''}
-                    ${!canDelete ? `<button class="action-btn report-btn" data-id="${citation.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
+                    ${!canDeleteParent ? `
+                    <button class="action-btn respond-btn reply-btn"
+                        data-start="${_escapeHtml(parentCitation.timestampStart)}"
+                        data-end="${_escapeHtml(parentCitation.timestampEnd)}"
+                        data-description="${_escapeHtml(parentCitation.description || '')}"
+                        data-title="${_escapeHtml(parentCitation.citationTitle || '')}"
+                        data-parent-citation-id="${parentCitation.id}">
+                        Reply
+                    </button>` : ''}
+                    ${canDeleteParent ? `<button class="action-btn delete-btn" data-id="${parentCitation.id}">Delete</button>` : ''}
+                    ${!canDeleteParent ? `<button class="action-btn report-btn" data-id="${parentCitation.id}" ${alreadyReportedParent ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
                 </div>
             </div>
-        `;
+        </div>
+        <div class="rg-divider"></div>
+        <div class="rg-responses">
+            <span class="rg-responses-label">${replies.length} Repl${replies.length !== 1 ? 'ies' : 'y'}</span>
+        </div>
+    `;
 
-        responseEl.querySelector('.cp-desc-toggle')?.addEventListener('click', function () {
-            const p = this.closest('.citation-description');
-            p.querySelector('.cp-desc-full').style.display = 'inline';
-            p.querySelector('.cp-desc-dots').style.display = 'none';
-            this.style.display = 'none';
+    el.querySelectorAll('.timestamp-btn').forEach(btn => {
+        btn.addEventListener('click', () => seekToTime(parseFloat(btn.dataset.time)));
+    });
+
+    el.querySelector('.cp-desc-toggle')?.addEventListener('click', function () {
+        const p = this.closest('.citation-description');
+        p.querySelector('.cp-desc-full').style.display = 'inline';
+        p.querySelector('.cp-desc-dots').style.display = 'none';
+        this.style.display = 'none';
+    });
+
+    const parentVc = el.querySelector('.vote-controls');
+    parentVc.querySelector('.upvote-btn').addEventListener('click', () =>
+        handleVote(parentCitation.id, 'up', 'citation')
+    );
+    parentVc.querySelector('.downvote-btn').addEventListener('click', () =>
+        handleVote(parentCitation.id, 'down', 'citation')
+    );
+
+    _wireCategoryControls(el, parentCitation, 'citation');
+
+    if (canDeleteParent) {
+        el.querySelector('.delete-btn').addEventListener('click', async () => {
+            const confirmed = await showConfirm('Delete this citation?');
+            if (!confirmed) return;
+            el.remove();
+            currentCitations = currentCitations.filter(c => c.id !== parentCitation.id);
+            try {
+                await apiDeleteCitation(parentCitation.id, getCurrentVideoId(), currentUsername);
+            } catch (err) {
+                showToast('Failed to delete citation. Please try again.', 'error');
+                _votesLoaded = false;
+                _votesVideoId = null;
+                _citationsLoading = false;
+                loadCitations(1, false);
+            }
         });
+    }
 
-        const vc = responseEl.querySelector('.vote-controls');
-        vc.querySelector('.upvote-btn').addEventListener('click', () =>
-            handleVote(citation.id, 'up', 'citation')
-        );
-        vc.querySelector('.downvote-btn').addEventListener('click', () =>
-            handleVote(citation.id, 'down', 'citation')
-        );
-
-        _wireCategoryControls(responseEl, citation, 'citation');
-
-        if (canDelete) {
-            responseEl.querySelector('.delete-btn').addEventListener('click', async () => {
-                const confirmed = await showConfirm('Delete this citation?');
-                if (!confirmed) return;
-
-                // Optimistic: remove from DOM and memory immediately
-                responseEl.remove();
-                currentCitations = currentCitations.filter(c => c.id !== citation.id);
-                try {
-                    await apiDeleteCitation(citation.id, getCurrentVideoId(), currentUsername);
-                    // Success — DOM already updated, no reload needed
-                } catch (err) {
-                    showToast('Failed to delete citation. Please try again.', 'error');
-                    // Restore list on failure
-                    _votesLoaded = false;
-                    _votesVideoId = null;
-                    _citationsLoading = false;
-                    loadCitations(1, false);
-                }
-            });
-        }
-
-        if (!canDelete) {
-            responseEl.querySelector('.report-btn')?.addEventListener('click', () =>
-                showReportDialog(citation.id, 'citation')
+    if (!canDeleteParent) {
+        el.querySelector('.reply-btn')?.addEventListener('click', e => {
+            const btn = e.currentTarget;
+            respondWithCitation(
+                btn.dataset.start, btn.dataset.end,
+                `Response to request: ${btn.dataset.description}`,
+                btn.dataset.title, null, btn.dataset.parentCitationId
             );
-        }
+        });
+        el.querySelector('.report-btn')?.addEventListener('click', () =>
+            showReportDialog(parentCitation.id, 'citation')
+        );
+    }
 
-        responsesContainer.appendChild(responseEl);
+    const responsesContainer = el.querySelector('.rg-responses');
+
+    const rankedReplies = _rankResponses(replies);
+    const shownReplies  = rankedReplies.slice(0, MAX_INLINE_RESPONSES);
+    const hiddenReplies = rankedReplies.length - shownReplies.length;
+
+    for (const citation of shownReplies) {
+        const replyEl = await _buildResponseEntry(citation, votes, currentUsername);
+        responsesContainer.appendChild(replyEl);
+    }
+
+    if (hiddenReplies > 0) {
+        const seeAll = document.createElement('a');
+        seeAll.className   = 'rg-see-all-link';
+        seeAll.href        = '#';
+        seeAll.textContent = `See all ${replies.length} replies`;
+        seeAll.addEventListener('click', e => {
+            e.preventDefault();
+            const url = chrome.runtime.getURL(`discussion/discussion.html?type=citation&id=${parentCitation.id || parentCitation._id}`);
+            window.open(url, '_blank');
+        });
+        responsesContainer.appendChild(seeAll);
     }
 
     return el;
@@ -707,9 +855,9 @@ function createRequestElement(request, userVote, currentUsername = null) {
     el.dataset.end   = parseTimestamp(request.timestampEnd);
     el.dataset.category = request.category || DEFAULT_CATEGORY;
 
-    const canDelete       = currentUsername && currentUsername === request.username;
+    const canDelete       = _isOwner(currentUsername, request.username);
     const alreadyReported = !!_reportedItems[request.id];
-    const showCategorySelect = _isExpertUser || !request.categoryVerified;
+    const showCategorySelect = canDelete || _isExpertUser || !request.categoryVerified;
 
     el.innerHTML = `
         <div class="citation-header">
@@ -734,24 +882,26 @@ function createRequestElement(request, userVote, currentUsername = null) {
             ${showCategorySelect ? _buildCategorySelect(request) : ''}
         </div>
         <div class="citation-actions">
-            <div class="vote-controls" data-request-id="${request.id}">
-                <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}">▲</button>
-                <span class="vote-score">${request.voteScore ?? 0}</span>
-                <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
-            </div>
-            <div class="action-buttons">
-                ${!canDelete ? `
-                <button class="action-btn respond-btn"
-                    data-start="${_escapeHtml(request.timestampStart)}"
-                    data-end="${_escapeHtml(request.timestampEnd)}"
-                    data-reason="${_escapeHtml(request.reason || '')}"
-                    data-title="${_escapeHtml(request.title || '')}"
-                    data-request-id="${_escapeHtml(request.id)}">
-                    Respond
-                </button>
-                ` : ''}
-                ${canDelete ? `<button class="action-btn delete-btn" data-id="${request.id}">Delete</button>` : ''}
-                ${!canDelete ? `<button class="action-btn report-btn" data-id="${request.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
+            <div class="citation-actions-right">
+                <div class="vote-controls" data-request-id="${request.id}">
+                    <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}">▲</button>
+                    <span class="vote-score">${request.voteScore ?? 0}</span>
+                    <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
+                </div>
+                <div class="action-buttons">
+                    ${!canDelete ? `
+                    <button class="action-btn respond-btn"
+                        data-start="${_escapeHtml(request.timestampStart)}"
+                        data-end="${_escapeHtml(request.timestampEnd)}"
+                        data-reason="${_escapeHtml(request.reason || '')}"
+                        data-title="${_escapeHtml(request.title || '')}"
+                        data-request-id="${_escapeHtml(request.id)}">
+                        Respond
+                    </button>
+                    ` : ''}
+                    ${canDelete ? `<button class="action-btn delete-btn" data-id="${request.id}">Delete</button>` : ''}
+                    ${!canDelete ? `<button class="action-btn report-btn" data-id="${request.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
+                </div>
             </div>
         </div>
     `;
@@ -1098,27 +1248,53 @@ async function _appendCitationsPage(citations, container, pagination) {
 
     const currentUsername = _currentUsername || await getCachedUsername();
 
-    const groups     = new Map();
-    const standalone = [];
+    const requestGroups  = new Map();
+    const replyGroups    = new Map();
+    const standalone     = [];
+    const parentIds      = new Set();
+
     for (const c of citations) {
         if (c.requestId && _requestsById[c.requestId]) {
-            if (!groups.has(c.requestId)) groups.set(c.requestId, []);
-            groups.get(c.requestId).push(c);
+            if (!requestGroups.has(c.requestId)) requestGroups.set(c.requestId, []);
+            requestGroups.get(c.requestId).push(c);
+        } else if (c.parentCitationId) {
+            if (!replyGroups.has(c.parentCitationId)) replyGroups.set(c.parentCitationId, []);
+            replyGroups.get(c.parentCitationId).push(c);
+            parentIds.add(c.parentCitationId);
         } else {
             standalone.push(c);
         }
     }
 
+    const parentsInList = new Map();
+    const trueStandalone = [];
+    for (const c of standalone) {
+        if (parentIds.has(c.id) || replyGroups.has(c.id)) {
+            parentsInList.set(c.id, c);
+        } else {
+            trueStandalone.push(c);
+        }
+    }
+
     const standaloneEls = await Promise.all(
-        standalone.map(c => createCitationElement(c, userVotes[c.id] || null, currentUsername))
+        trueStandalone.map(c => createCitationElement(c, userVotes[c.id] || null, currentUsername))
     );
-    const groupEls = await Promise.all(
-        [...groups.entries()].map(([requestId, responses]) =>
+    const requestGroupEls = await Promise.all(
+        [...requestGroups.entries()].map(([requestId, responses]) =>
             createRequestResponseGroupElement(_requestsById[requestId], responses, userVotes, currentUsername)
         )
     );
+    const replyGroupEls = await Promise.all(
+        [...replyGroups.entries()].map(([parentId, replies]) => {
+            const parent = parentsInList.get(parentId);
+            if (!parent) {
+                return Promise.all(replies.map(c => createCitationElement(c, userVotes[c.id] || null, currentUsername)));
+            }
+            return createCitationReplyGroupElement(parent, replies, userVotes, currentUsername);
+        })
+    );
 
-    [...standaloneEls, ...groupEls].forEach(el => container.appendChild(el));
+    [...standaloneEls, ...requestGroupEls, ...replyGroupEls.flat()].forEach(el => container.appendChild(el));
 
     if (pagination && pagination.page < pagination.pages) {
         const remaining = pagination.total - pagination.page * pagination.limit;
@@ -1170,6 +1346,7 @@ function _isSameList(a, b) {
 function _updateCounter(id, count) {
     const el = document.getElementById(id);
     if (el) el.textContent = count;
+    if (typeof _updateMinimizedCounts === 'function') _updateMinimizedCounts();
 }
 
 function _formatDate(dateStr) {
@@ -1211,6 +1388,84 @@ function _safeSourceLink(url) {
  *
  * The toggle button is wired in the calling createXxxElement function.
  */
+async function _buildResponseEntry(citation, votes, currentUsername) {
+    const userVote       = votes[citation.id] || null;
+    const canDelete      = _isOwner(currentUsername, citation.username);
+    const alreadyReported = !!_reportedItems[citation.id];
+
+    const responseText = citation.description?.startsWith('Response to request:')
+        ? citation.description.split('\n\n').slice(1).join('\n\n').trim()
+        : citation.description;
+
+    const showCatSelect = canDelete || _isExpertUser || !citation.categoryVerified;
+
+    const el = document.createElement('div');
+    el.className = 'rg-response-entry';
+    el.dataset.category = citation.category || DEFAULT_CATEGORY;
+    el.innerHTML = `
+        ${_buildDescription(responseText)}
+        <div class="citation-meta">
+            <span class="citation-author">${_escapeHtml(citation.username || 'Anonymous')}</span>
+            <span class="citation-date">${_formatDate(citation.dateAdded)}</span>
+        </div>
+        <div class="category-row">
+            ${_buildCategoryBadge(citation.category, citation.categoryVerified)}
+            ${showCatSelect ? _buildCategorySelect(citation) : ''}
+        </div>
+        <div class="citation-actions">
+            ${_safeSourceLink(citation.source)}
+            <div class="citation-actions-right">
+                <div class="vote-controls" data-citation-id="${citation.id}">
+                    <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}">▲</button>
+                    <span class="vote-score">${citation.voteScore ?? 0}</span>
+                    <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
+                </div>
+                <div class="action-buttons">
+                    ${canDelete ? `<button class="action-btn delete-btn" data-id="${citation.id}">Delete</button>` : ''}
+                    ${!canDelete ? `<button class="action-btn report-btn" data-id="${citation.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+
+    el.querySelector('.cp-desc-toggle')?.addEventListener('click', function () {
+        const p = this.closest('.citation-description');
+        p.querySelector('.cp-desc-full').style.display = 'inline';
+        p.querySelector('.cp-desc-dots').style.display = 'none';
+        this.style.display = 'none';
+    });
+
+    const vc = el.querySelector('.vote-controls');
+    vc.querySelector('.upvote-btn').addEventListener('click', () => handleVote(citation.id, 'up', 'citation'));
+    vc.querySelector('.downvote-btn').addEventListener('click', () => handleVote(citation.id, 'down', 'citation'));
+
+    _wireCategoryControls(el, citation, 'citation');
+
+    if (canDelete) {
+        el.querySelector('.delete-btn').addEventListener('click', async () => {
+            const confirmed = await showConfirm('Delete this citation?');
+            if (!confirmed) return;
+            el.remove();
+            currentCitations = currentCitations.filter(c => c.id !== citation.id);
+            try {
+                await apiDeleteCitation(citation.id, getCurrentVideoId(), currentUsername);
+            } catch (err) {
+                showToast('Failed to delete citation. Please try again.', 'error');
+                _votesLoaded = false; _votesVideoId = null; _citationsLoading = false;
+                loadCitations(1, false);
+            }
+        });
+    }
+
+    if (!canDelete) {
+        el.querySelector('.report-btn')?.addEventListener('click', () =>
+            showReportDialog(citation.id, 'citation')
+        );
+    }
+
+    return el;
+}
+
 function _buildDescription(text) {
     if (!text) return '';
     const LIMIT = 250;

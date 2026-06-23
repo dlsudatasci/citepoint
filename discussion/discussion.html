@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Discussion — CitePoint</title>
+    <link rel="stylesheet" href="discussion.css">
+</head>
+<body>
+    <div class="discussion-container">
+        <header class="discussion-header">
+            <h1>CitePoint Discussion</h1>
+        </header>
+
+        <main id="discussion-content">
+            <div id="loading" class="loading">Loading discussion...</div>
+            <div id="original-item" style="display:none;"></div>
+
+            <div id="thread-controls" style="display:none;">
+                <div class="sort-row">
+                    <span id="response-count" class="response-count"></span>
+                    <select id="thread-sort">
+                        <option value="top">Top</option>
+                        <option value="new">Newest</option>
+                        <option value="old">Oldest</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="thread-list"></div>
+        </main>
+    </div>
+
+    <script src="../lib/browser-polyfill.js"></script>
+    <script src="../config/config.js"></script>
+    <script src="../content/api.js"></script>
+    <script src="discussion.js"></script>
+</body>
+</html>
