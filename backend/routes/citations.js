@@ -1,6 +1,9 @@
 const router      = require('express').Router();
 const Citation    = require('../models/Citation');
 const sseEmitter  = require('../lib/sseEmitter');
+const { CATEGORIES, ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/categories');
+const { isExpert } = require('../config/experts');
+const { notifyExpertsForCategory } = require('../lib/notifyExperts');
 
 // ── Validation helpers ────────────────────────
 
@@ -29,13 +32,21 @@ router.get('/:videoId', async (req, res) => {
         const limit = Math.min(50, parseInt(req.query.limit) || 20);
         const skip  = (page - 1) * limit;
 
+        const filter = { videoId: req.params.videoId };
+        if (req.query.category) {
+            if (!ALL_CATEGORIES.includes(req.query.category)) {
+                return res.status(400).json({ success: false, error: 'Invalid category' });
+            }
+            filter.category = req.query.category;
+        }
+
         const [citations, total] = await Promise.all([
-            Citation.find({ videoId: req.params.videoId })
+            Citation.find(filter)
                 .sort({ dateAdded: -1 })
                 .skip(skip)
                 .limit(limit)
                 .lean(),
-            Citation.countDocuments({ videoId: req.params.videoId }),
+            Citation.countDocuments(filter),
         ]);
 
         res.set('Cache-Control', 'no-store');
@@ -79,7 +90,7 @@ router.post('/:videoId', async (req, res) => {
     }
 
     try {
-        const { citationTitle, username, timestampStart, timestampEnd, description, source } = req.body;
+        const { citationTitle, username, timestampStart, timestampEnd, description, source, category } = req.body;
 
         if (!citationTitle || !username) {
             return res.status(400).json({ success: false, error: 'citationTitle and username are required' });
@@ -96,18 +107,33 @@ router.post('/:videoId', async (req, res) => {
         if (source && source.length > MAX_SOURCE_LEN) {
             return res.status(400).json({ success: false, error: `source URL must be at most ${MAX_SOURCE_LEN} characters` });
         }
+        if (category && !ALL_CATEGORIES.includes(category)) {
+            return res.status(400).json({ success: false, error: 'Invalid category' });
+        }
 
         const citation = await Citation.create({
             ...req.body,
             videoId:   req.params.videoId,
             dateAdded: new Date(),  // server-authoritative
             voteScore: 0,           // always start at zero
+            category:  category || DEFAULT_CATEGORY,
+            categoryVerified: false,
+            verifiedBy: null,
+            verifiedAt: null,
         });
 
         sseEmitter.emit(req.params.videoId, {
             type:       'citationAdded',
             videoId:    req.params.videoId,
             citationId: citation._id.toString(),
+        });
+
+        notifyExpertsForCategory(citation.category, {
+            videoId: req.params.videoId,
+            itemId: citation._id.toString(),
+            itemType: 'citation',
+            title: citation.citationTitle,
+            excludeUsername: citation.username,
         });
 
         res.status(201).json({ success: true, id: citation._id });
@@ -131,7 +157,7 @@ router.delete('/:videoId/:id', async (req, res) => {
         const result = await Citation.findOneAndDelete({
             _id:     req.params.id,
             videoId: req.params.videoId,
-            username,
+            username: { $regex: new RegExp(`^@?${username.replace(/^@/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
         });
 
         if (!result) {
@@ -177,6 +203,60 @@ router.patch('/:videoId/:id/vote', async (req, res) => {
         });
 
         res.json({ success: true, newScore: citation.voteScore });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+// PATCH /api/citations/:videoId/:id/category  — body: { category, username }
+router.patch('/:videoId/:id/category', async (req, res) => {
+    if (!isValidVideoId(req.params.videoId)) {
+        return res.status(400).json({ success: false, error: 'Invalid videoId' });
+    }
+
+    try {
+        const { category, username } = req.body;
+        if (!category || !username) {
+            return res.status(400).json({ success: false, error: 'category and username are required' });
+        }
+        if (!CATEGORIES.includes(category)) {
+            return res.status(400).json({ success: false, error: 'Invalid category' });
+        }
+
+        const citation = await Citation.findOne({ _id: req.params.id, videoId: req.params.videoId });
+        if (!citation) return res.status(404).json({ success: false, error: 'Citation not found' });
+
+        const expert = isExpert(username);
+        if (citation.categoryVerified && !expert) {
+            return res.status(403).json({ success: false, error: 'Only experts can change a verified category' });
+        }
+
+        citation.category = category;
+        if (expert) {
+            citation.categoryVerified = true;
+            citation.verifiedBy = username;
+            citation.verifiedAt = new Date();
+        } else {
+            citation.categoryVerified = false;
+            citation.verifiedBy = null;
+            citation.verifiedAt = null;
+        }
+        await citation.save();
+
+        sseEmitter.emit(req.params.videoId, {
+            type:             'citationCategoryUpdated',
+            videoId:          req.params.videoId,
+            citationId:       req.params.id,
+            category:         citation.category,
+            categoryVerified: citation.categoryVerified,
+        });
+
+        res.json({
+            success: true,
+            category: citation.category,
+            categoryVerified: citation.categoryVerified,
+            verifiedBy: citation.verifiedBy,
+        });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
     }

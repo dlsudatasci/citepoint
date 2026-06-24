@@ -51,14 +51,19 @@
             <input type="text" id="citationTitle" name="citationTitle" placeholder="Enter citation title" required>
         </div>
 
-        <div class="form-group">
-            <label for="timestampStart">Start Timestamp:</label>
-            <input type="text" id="timestampStart" name="timestampStart" placeholder="Start (e.g., 00:01:23)" required>
+        <div class="form-row timestamp-row">
+            <div class="form-group form-group-half">
+                <label for="timestampStart">Start Timestamp</label>
+                <input type="text" id="timestampStart" name="timestampStart" placeholder="00:00:00" required>
+            </div>
+            <div class="form-group form-group-half">
+                <label for="timestampEnd">End Timestamp</label>
+                <input type="text" id="timestampEnd" name="timestampEnd" placeholder="––:––" required>
+            </div>
         </div>
-
-        <div class="form-group">
-            <label for="timestampEnd">End Timestamp:</label>
-            <input type="text" id="timestampEnd" name="timestampEnd" placeholder="End (e.g., 00:02:45)" required>
+        <div class="form-row recording-row">
+            <button type="button" id="form-record-start" class="record-control-btn record-start-active">Start Recording</button>
+            <button type="button" id="form-record-stop" class="record-control-btn record-stop-disabled" disabled>Stop Recording</button>
         </div>
 
         <div class="form-group">
@@ -71,6 +76,19 @@
         <div class="form-group">
             <label for="description">Description:</label>
             <textarea id="description" name="description" placeholder="Enter citation description..." required></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="category">Category:</label>
+            <select id="category" name="category">
+                <option value="Uncategorized">Uncategorized</option>
+                <option value="Statistics & Data">Statistics &amp; Data</option>
+                <option value="Quote / Misattribution">Quote / Misattribution</option>
+                <option value="Historical Claim">Historical Claim</option>
+                <option value="Scientific Claim">Scientific Claim</option>
+                <option value="Context / Methodology">Context / Methodology</option>
+                <option value="Other">Other</option>
+            </select>
         </div>
 
         <div class="form-buttons">

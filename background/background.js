@@ -153,6 +153,66 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         handleReportItem(request.data).then(sendResponse);
         return true;
     }
+    if (request.type === 'updateCategory') {
+        handleUpdateCategory(request.itemType, request.videoId, request.itemId, request.category, request.username).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'checkExpert') {
+        handleCheckExpert(request.username).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getDashboardStats') {
+        handleGetDashboardStats(request.videoId).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'applyExpert') {
+        handleApplyExpert(request.username, request.category, request.credentials).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getMyApplications') {
+        handleGetMyApplications(request.username).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getPendingApplications') {
+        handleGetPendingApplications().then(sendResponse);
+        return true;
+    }
+    if (request.type === 'reviewApplication') {
+        handleReviewApplication(request.id, request.status, request.reviewedBy, request.reason).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getDiscussionCitation') {
+        handleGetDiscussionCitation(request.id).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getDiscussionRequest') {
+        handleGetDiscussionRequest(request.id).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getNotifications') {
+        handleGetNotifications(request.username, request.page).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'markNotificationRead') {
+        handleMarkNotificationRead(request.id).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'markAllNotificationsRead') {
+        handleMarkAllNotificationsRead(request.username).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getProfile') {
+        handleGetProfile(request.username).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'updateProfile') {
+        handleUpdateProfile(request.username, request.data).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getProfileHistory') {
+        handleGetProfileHistory(request.username, request.page).then(sendResponse);
+        return true;
+    }
 });
 
 async function handleGetCitations(videoId, page = 1, limit = 20) {
@@ -325,6 +385,46 @@ async function handleGetUserVotes(videoId, itemType = 'citation') {
     }
 }
 
+async function handleUpdateCategory(itemType, videoId, itemId, category, username) {
+    try {
+        const path = itemType === 'citation' ? 'citations' : 'requests';
+        const result = await apiRequest(`/${path}/${videoId}/${itemId}/category`, 'PATCH', { category, username });
+        _cacheInvalidate(videoId);
+        return {
+            success: true,
+            category: result.category,
+            categoryVerified: result.categoryVerified,
+            verifiedBy: result.verifiedBy,
+        };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleCheckExpert(username) {
+    try {
+        const result = await apiRequest(`/experts/${encodeURIComponent(username)}`);
+        return { success: true, isExpert: result.isExpert };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetDashboardStats(videoId) {
+    try {
+        const query = videoId ? `?videoId=${encodeURIComponent(videoId)}` : '';
+        const result = await apiRequest(`/dashboard/trending${query}`);
+        return {
+            success: true,
+            requestsByCategory: result.requestsByCategory,
+            citationsByCategory: result.citationsByCategory,
+            verificationStats: result.verificationStats,
+        };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
 async function handleReportItem(data) {
     try {
         const result = await apiRequest('/reports', 'POST', {
@@ -336,6 +436,114 @@ async function handleReportItem(data) {
             reporterUsername: data.reporterUsername,
         });
         return { success: true, reportId: result.reportId };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleApplyExpert(username, category, credentials) {
+    try {
+        const result = await apiRequest('/experts/apply', 'POST', { username, category, credentials });
+        return { success: true, id: result.id };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetMyApplications(username) {
+    try {
+        const data = await apiRequest(`/experts/applications/${encodeURIComponent(username)}`);
+        return { success: true, applications: data.applications || [] };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetPendingApplications() {
+    try {
+        const data = await apiRequest('/experts/applications/pending');
+        return { success: true, applications: data.applications || [] };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleReviewApplication(id, status, reviewedBy, reason) {
+    try {
+        const result = await apiRequest(`/experts/applications/${id}/review`, 'PATCH', { status, reviewedBy, reason });
+        return { success: true, application: result.application };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetProfile(username) {
+    try {
+        const data = await apiRequest(`/profile/${encodeURIComponent(username)}`);
+        return { success: true, ...data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleUpdateProfile(username, data) {
+    try {
+        const result = await apiRequest(`/profile/${encodeURIComponent(username)}`, 'PUT', data);
+        return { success: true, profile: result.profile };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetProfileHistory(username, page = 1) {
+    try {
+        const data = await apiRequest(`/profile/${encodeURIComponent(username)}/history?page=${page}`);
+        return { success: true, citations: data.citations || [], requests: data.requests || [] };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetNotifications(username, page = 1) {
+    try {
+        const data = await apiRequest(`/notifications/${encodeURIComponent(username)}?page=${page}`);
+        return { success: true, notifications: data.notifications || [], unreadCount: data.unreadCount || 0 };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleMarkNotificationRead(id) {
+    try {
+        await apiRequest(`/notifications/${id}/read`, 'PATCH');
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleMarkAllNotificationsRead(username) {
+    try {
+        await apiRequest(`/notifications/${encodeURIComponent(username)}/read-all`, 'PATCH');
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetDiscussionCitation(id) {
+    try {
+        const data = await apiRequest(`/discussion/citation/${id}`);
+        return { success: true, citation: data.citation, replies: data.replies || [] };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetDiscussionRequest(id) {
+    try {
+        const data = await apiRequest(`/discussion/request/${id}`);
+        return { success: true, request: data.request, responses: data.responses || [] };
     } catch (error) {
         return { success: false, error: error.message };
     }
