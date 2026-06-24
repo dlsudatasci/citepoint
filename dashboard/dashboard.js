@@ -19,6 +19,24 @@ function _categoryColor(category) {
     return CATEGORY_COLORS[category] || CATEGORY_COLORS['Uncategorized'];
 }
 
+function _initTabs() {
+    const navBtns = document.querySelectorAll('.nav-btn');
+    const tabPanes = document.querySelectorAll('.tab-pane');
+
+    navBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            // Remove active state from all buttons and panes
+            navBtns.forEach(b => b.classList.remove('active'));
+            tabPanes.forEach(p => p.classList.remove('active'));
+
+            // Apply active state to clicked button and target pane
+            btn.classList.add('active');
+            const targetId = btn.getAttribute('data-target');
+            document.getElementById(targetId).classList.add('active');
+        });
+    });
+}
+
 /**
  * Try to find the videoId of the YouTube video the user was watching.
  * Returns null if no YouTube watch tab is found (falls back to global scope).
@@ -327,18 +345,20 @@ async function _loadExpertSection() {
 }
 
 async function _loadAdminSection(adminUsername) {
-    const section = document.getElementById('admin-section');
+    const adminBtn = document.getElementById('nav-admin');
     const listEl  = document.getElementById('admin-pending-list');
 
     try {
         const apps = await apiGetPendingApplications();
+
+        // Show the Admin tab button in the top navigation
+        if (adminBtn) adminBtn.style.display = 'inline-block';
+
         if (apps.length === 0) {
-            section.style.display = 'block';
             listEl.innerHTML = '<p class="empty-message">No pending applications.</p>';
             return;
         }
 
-        section.style.display = 'block';
         listEl.innerHTML = '';
 
         apps.forEach(app => {
@@ -381,6 +401,7 @@ async function _loadAdminSection(adminUsername) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    _initTabs();
     _loadStats();
     _loadNotifications();
     _loadProfileSection();

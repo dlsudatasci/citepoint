@@ -18,31 +18,42 @@
                     <option value="global">All videos</option>
                 </select>
             </div>
+            
+            <nav class="top-nav">
+                <button class="nav-btn active" data-target="overview-section">Overview</button>
+                <button class="nav-btn" data-target="notifications-section">Notifications</button>
+                <button class="nav-btn" data-target="profile-section">Profile</button>
+                <button class="nav-btn" data-target="expert-section">Expert</button>
+                <button class="nav-btn" data-target="admin-section" id="nav-admin" style="display:none;">Admin</button>
+            </nav>
         </header>
 
         <main id="dashboard-content">
-            <section class="dashboard-section">
-                <h2>Trending Requested Categories</h2>
-                <div id="requests-chart" class="bar-chart"></div>
-            </section>
+            <div id="overview-section" class="tab-pane active">
+                <section class="dashboard-section">
+                    <h2>Trending Requested Categories</h2>
+                    <div id="requests-chart" class="bar-chart"></div>
+                </section>
 
-            <section class="dashboard-section">
-                <h2>Citations by Category</h2>
-                <div id="citations-chart" class="bar-chart"></div>
-            </section>
+                <section class="dashboard-section">
+                    <h2>Citations by Category</h2>
+                    <div id="citations-chart" class="bar-chart"></div>
+                </section>
 
-            <section class="dashboard-section">
-                <h2>Expert Verification Activity</h2>
-                <div class="verification-group">
-                    <h3>Citations</h3>
-                    <div id="citations-verification-chart" class="stacked-chart"></div>
-                </div>
-                <div class="verification-group">
-                    <h3>Citation Requests</h3>
-                    <div id="requests-verification-chart" class="stacked-chart"></div>
-                </div>
-            </section>
-            <section class="dashboard-section" id="notifications-section">
+                <section class="dashboard-section">
+                    <h2>Expert Verification Activity</h2>
+                    <div class="verification-group">
+                        <h3>Citations</h3>
+                        <div id="citations-verification-chart" class="stacked-chart"></div>
+                    </div>
+                    <div class="verification-group">
+                        <h3>Citation Requests</h3>
+                        <div id="requests-verification-chart" class="stacked-chart"></div>
+                    </div>
+                </section>
+            </div>
+
+            <section class="dashboard-section tab-pane" id="notifications-section">
                 <div class="notif-header">
                     <h2>Notifications <span id="notif-badge" class="notif-badge" style="display:none;">0</span></h2>
                     <button id="mark-all-read-btn" class="mark-all-btn" style="display:none;">Mark all read</button>
@@ -50,7 +61,7 @@
                 <div id="notifications-list"></div>
             </section>
 
-            <section class="dashboard-section" id="profile-section">
+            <section class="dashboard-section tab-pane" id="profile-section">
                 <h2>My Profile</h2>
                 <div id="profile-content">
                     <div id="profile-stats" class="profile-stats-row"></div>
@@ -69,7 +80,7 @@
                 </div>
             </section>
 
-            <section class="dashboard-section" id="expert-section">
+            <section class="dashboard-section tab-pane" id="expert-section">
                 <h2>Expert Verification</h2>
                 <div id="expert-status"></div>
                 <div id="expert-apply-form" style="display:none;">
@@ -97,7 +108,7 @@
                 <div id="expert-applications-list"></div>
             </section>
 
-            <section class="dashboard-section" id="admin-section" style="display:none;">
+            <section class="dashboard-section tab-pane" id="admin-section">
                 <h2>Admin: Pending Expert Applications</h2>
                 <div id="admin-pending-list"></div>
             </section>
