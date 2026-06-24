@@ -72,6 +72,68 @@ h3 {
     padding: 16px;
 }
 
+.form-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.form-group-half {
+    flex: 1;
+    min-width: 0;
+}
+
+.form-group-half label {
+    margin-bottom: 6px;
+}
+
+.recording-row {
+    margin-bottom: 16px;
+}
+
+.record-control-btn {
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 8px;
+    font-family: "Roboto", "Arial", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.record-start-active {
+    background-color: #cc0000;
+    color: white;
+}
+
+.record-start-active:hover {
+    background-color: #aa0000;
+}
+
+.record-stop-disabled {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: #999;
+    cursor: not-allowed;
+}
+
+.record-stop-disabled:not([disabled]) {
+    background-color: #cc0000;
+    color: white;
+    cursor: pointer;
+}
+
+.record-stop-disabled:not([disabled]):hover {
+    background-color: #aa0000;
+}
+
+.record-start-active[disabled] {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: #999;
+    cursor: not-allowed;
+}
+
 .form-group {
     margin-bottom: 16px;
 }
@@ -777,6 +839,15 @@ h3 {
     align-items: center;
     width: 100%;
     margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.citation-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
 }
 
 .action-buttons {
@@ -1249,6 +1320,53 @@ h3 {
     box-shadow: 0 0 4px rgba(255, 68, 68, 0.4);
 }
 
+/* ── Video player recording overlay ────────── */
+
+.cp-recording-overlay {
+    position: absolute;
+    inset: 0;
+    border: 3px solid #ff0000;
+    border-radius: 0;
+    pointer-events: none;
+    z-index: 60;
+    animation: cp-overlay-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes cp-overlay-pulse {
+    0%, 100% { border-color: rgba(255, 0, 0, 0.9); }
+    50%      { border-color: rgba(255, 0, 0, 0.4); }
+}
+
+.cp-recording-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.75);
+    border-radius: 6px;
+    padding: 5px 10px;
+    z-index: 61;
+    pointer-events: auto;
+    cursor: default;
+}
+
+.cp-badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff0000;
+    animation: cp-recording-dot-pulse 1.2s ease-in-out infinite;
+}
+
+.cp-badge-time {
+    font-family: "Roboto Mono", monospace;
+    font-size: 13px;
+    font-weight: 500;
+    color: white;
+}
+
 .record-start-btn.recording-active .citation-record-btn {
     animation: pulse 1.4s infinite;
 }
@@ -1388,6 +1506,47 @@ ytd-watch-flexy[theater] div#secondary {
     overflow: hidden;
 }
 
+.extension-header-minimized {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background-color: var(--cp-card-bg, #f7f9fc);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    cursor: pointer;
+    gap: 10px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.minimized-logo {
+    font-family: "Roboto", "Arial", sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: #065fd4;
+}
+
+.minimized-counters {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-left: auto;
+}
+
+.minimized-counter {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-family: "Roboto", "Arial", sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    color: #606060;
+}
+
+.minimized-counter svg {
+    color: #606060;
+}
+
 .toggle-extension-btn {
     background: none;
     border: none;
@@ -1450,11 +1609,13 @@ ytd-watch-flexy[theater] div#secondary {
 }
 
 .citation-source {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
     color: #065fd4;
     font-size: 13px;
+    font-weight: 500;
     text-decoration: none;
-    margin: 4px 0 6px;
+    margin: 0;
 }
 
 .citation-source:hover {
@@ -1507,6 +1668,20 @@ ytd-watch-flexy[theater] div#secondary {
 
 .rg-response-entry + .rg-response-entry {
     border-top: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.rg-see-all-link {
+    display: block;
+    color: #065fd4;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    padding: 8px 0 4px;
+    cursor: pointer;
+}
+
+.rg-see-all-link:hover {
+    text-decoration: underline;
 }
 
 .rg-response-entry .citation-description {

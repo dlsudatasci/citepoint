@@ -3,6 +3,7 @@ const Citation    = require('../models/Citation');
 const sseEmitter  = require('../lib/sseEmitter');
 const { CATEGORIES, ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/categories');
 const { isExpert } = require('../config/experts');
+const { notifyExpertsForCategory } = require('../lib/notifyExperts');
 
 // ── Validation helpers ────────────────────────
 
@@ -127,6 +128,14 @@ router.post('/:videoId', async (req, res) => {
             citationId: citation._id.toString(),
         });
 
+        notifyExpertsForCategory(citation.category, {
+            videoId: req.params.videoId,
+            itemId: citation._id.toString(),
+            itemType: 'citation',
+            title: citation.citationTitle,
+            excludeUsername: citation.username,
+        });
+
         res.status(201).json({ success: true, id: citation._id });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -148,7 +157,7 @@ router.delete('/:videoId/:id', async (req, res) => {
         const result = await Citation.findOneAndDelete({
             _id:     req.params.id,
             videoId: req.params.videoId,
-            username,
+            username: { $regex: new RegExp(`^@?${username.replace(/^@/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
         });
 
         if (!result) {

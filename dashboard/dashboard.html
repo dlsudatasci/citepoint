@@ -42,6 +42,65 @@
                     <div id="requests-verification-chart" class="stacked-chart"></div>
                 </div>
             </section>
+            <section class="dashboard-section" id="notifications-section">
+                <div class="notif-header">
+                    <h2>Notifications <span id="notif-badge" class="notif-badge" style="display:none;">0</span></h2>
+                    <button id="mark-all-read-btn" class="mark-all-btn" style="display:none;">Mark all read</button>
+                </div>
+                <div id="notifications-list"></div>
+            </section>
+
+            <section class="dashboard-section" id="profile-section">
+                <h2>My Profile</h2>
+                <div id="profile-content">
+                    <div id="profile-stats" class="profile-stats-row"></div>
+                    <form id="profile-form" style="display:none;">
+                        <div class="form-group">
+                            <label for="profile-display-name">Display Name:</label>
+                            <input type="text" id="profile-display-name" placeholder="Your display name">
+                        </div>
+                        <div class="form-group">
+                            <label for="profile-bio">Bio:</label>
+                            <textarea id="profile-bio" rows="3" maxlength="500" placeholder="Tell others about yourself..."></textarea>
+                        </div>
+                        <button type="submit" class="submit-btn">Save Profile</button>
+                    </form>
+                    <div id="profile-history"></div>
+                </div>
+            </section>
+
+            <section class="dashboard-section" id="expert-section">
+                <h2>Expert Verification</h2>
+                <div id="expert-status"></div>
+                <div id="expert-apply-form" style="display:none;">
+                    <h3>Apply to Become a Verified Expert</h3>
+                    <form id="expert-application-form">
+                        <div class="form-group">
+                            <label for="expert-category">Expertise Category:</label>
+                            <select id="expert-category" required>
+                                <option value="">Select a category...</option>
+                                <option value="Statistics & Data">Statistics &amp; Data</option>
+                                <option value="Quote / Misattribution">Quote / Misattribution</option>
+                                <option value="Historical Claim">Historical Claim</option>
+                                <option value="Scientific Claim">Scientific Claim</option>
+                                <option value="Context / Methodology">Context / Methodology</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="expert-credentials">Credentials (degree, license, portfolio link, etc.):</label>
+                            <textarea id="expert-credentials" rows="4" required placeholder="Describe your qualifications for this category..."></textarea>
+                        </div>
+                        <button type="submit" class="submit-btn">Submit Application</button>
+                    </form>
+                </div>
+                <div id="expert-applications-list"></div>
+            </section>
+
+            <section class="dashboard-section" id="admin-section" style="display:none;">
+                <h2>Admin: Pending Expert Applications</h2>
+                <div id="admin-pending-list"></div>
+            </section>
         </main>
     </div>
 

@@ -1,0 +1,211 @@
+* { box-sizing: border-box; }
+
+body {
+    font-family: "Roboto", "Arial", sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #eef3f8;
+    color: #0f0f0f;
+}
+
+.discussion-container {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px 16px;
+}
+
+.discussion-header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #065fd4;
+    margin: 0 0 20px;
+}
+
+.loading {
+    text-align: center;
+    color: #606060;
+    padding: 40px;
+}
+
+/* ── Original item card ──────────────────────── */
+
+.original-card {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.original-card.original-request {
+    border-left: 4px solid #606060;
+}
+
+.request-label {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.07);
+    color: #606060;
+    margin-bottom: 8px;
+}
+
+.original-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 10px;
+}
+
+.original-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 13px;
+    color: #606060;
+    margin-bottom: 10px;
+}
+
+.original-timestamp {
+    color: #cc0000;
+    font-weight: 500;
+}
+
+.original-category {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: rgba(6, 95, 212, 0.1);
+    color: #065fd4;
+    margin-bottom: 10px;
+}
+
+.original-description {
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 10px 0;
+}
+
+.original-source, .thread-source {
+    color: #065fd4;
+    font-size: 13px;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.original-source:hover, .thread-source:hover { text-decoration: underline; }
+
+.original-score {
+    font-size: 14px;
+    font-weight: 500;
+    color: #27ae60;
+    margin-top: 8px;
+}
+
+.video-link {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 13px;
+    color: #065fd4;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.video-link:hover { text-decoration: underline; }
+
+/* ── Thread controls ─────────────────────────── */
+
+#thread-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.response-count {
+    font-size: 14px;
+    font-weight: 600;
+    color: #0f0f0f;
+}
+
+#thread-sort {
+    padding: 6px 10px;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: "Roboto", "Arial", sans-serif;
+    cursor: pointer;
+}
+
+/* ── Thread items ────────────────────────────── */
+
+.thread-item {
+    background: white;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 10px;
+    padding: 16px;
+    margin-bottom: 10px;
+}
+
+.thread-item-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.thread-author {
+    font-size: 13px;
+    font-weight: 600;
+    color: #0f0f0f;
+}
+
+.expert-badge {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(46, 204, 113, 0.15);
+    color: #27ae60;
+}
+
+.thread-date {
+    font-size: 12px;
+    color: #999;
+    margin-left: auto;
+}
+
+.thread-description {
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0 0 8px;
+}
+
+.thread-category {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.06);
+    color: #606060;
+    margin-right: 8px;
+}
+
+.thread-score {
+    font-size: 13px;
+    font-weight: 500;
+    color: #27ae60;
+    margin-top: 6px;
+}
+
+.empty-message {
+    text-align: center;
+    color: #999;
+    padding: 30px;
+}

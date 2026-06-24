@@ -21,7 +21,7 @@ function insertCitationButtons() {
     panel.style.width = storedSecondaryWidth + 'px';
 
     panel.innerHTML = `
-        <div class="extension-header">
+        <div class="extension-header" id="extension-header-full">
             <button id="toggle-extension" class="toggle-extension-btn">
                 <span class="toggle-icon">▼</span>
             </button>
@@ -46,6 +46,22 @@ function insertCitationButtons() {
                     </svg>
                 </span>
             </button>
+        </div>
+        <div class="extension-header-minimized" id="extension-header-minimized" style="display:none;">
+            <button id="toggle-extension-minimized" class="toggle-extension-btn" title="Expand CitePoint">
+                <span class="toggle-icon">▶</span>
+            </button>
+            <span class="minimized-logo">CitePoint</span>
+            <div class="minimized-counters">
+                <span class="minimized-counter" title="Citations">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H7v-2h10v2z" fill="currentColor"/></svg>
+                    <span id="minimized-citations-count">0</span>
+                </span>
+                <span class="minimized-counter" title="Requests">
+                    <svg viewBox="0 0 24 24" width="14" height="14"><path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z" fill="currentColor"/></svg>
+                    <span id="minimized-requests-count">0</span>
+                </span>
+            </div>
         </div>
         <div id="extension-content" class="extension-content">
             <div id="citation-title-container" class="header-container">
@@ -218,22 +234,36 @@ function _wireResizeObserver(secondary, panel) {
 }
 
 function _wireToggle() {
-    const toggleBtn      = document.getElementById('toggle-extension');
-    const content        = document.getElementById('extension-content');
-    const icon           = toggleBtn.querySelector('.toggle-icon');
-    const tabBtns        = document.querySelectorAll('.tab-btn');
+    const fullHeader      = document.getElementById('extension-header-full');
+    const minimizedHeader = document.getElementById('extension-header-minimized');
+    const content         = document.getElementById('extension-content');
+    const toggleBtn       = document.getElementById('toggle-extension');
+    const toggleMinBtn    = document.getElementById('toggle-extension-minimized');
 
-    toggleBtn.addEventListener('click', () => {
-        const collapsed = content.style.display === 'none';
-        content.style.display = collapsed ? 'block' : 'none';
-        icon.textContent      = collapsed ? '▼' : '▶';
-        tabBtns.forEach(btn => {
-            btn.style.pointerEvents = collapsed ? 'auto' : 'none';
-            btn.classList.toggle('disabled', !collapsed);
-        });
-        if (collapsed) startPolling();
-        else stopPolling();
-    });
+    function collapse() {
+        fullHeader.style.display      = 'none';
+        content.style.display         = 'none';
+        minimizedHeader.style.display = 'flex';
+        _updateMinimizedCounts();
+        stopPolling();
+    }
+
+    function expand() {
+        minimizedHeader.style.display = 'none';
+        fullHeader.style.display      = 'flex';
+        content.style.display         = 'block';
+        startPolling();
+    }
+
+    toggleBtn.addEventListener('click', collapse);
+    toggleMinBtn.addEventListener('click', expand);
+}
+
+function _updateMinimizedCounts() {
+    const citEl = document.getElementById('minimized-citations-count');
+    const reqEl = document.getElementById('minimized-requests-count');
+    if (citEl) citEl.textContent = document.getElementById('citations-counter')?.textContent || '0';
+    if (reqEl) reqEl.textContent = document.getElementById('requests-counter')?.textContent || '0';
 }
 
 function _wireTabs() {

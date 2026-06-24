@@ -3,6 +3,7 @@ const Request    = require('../models/Request');
 const sseEmitter = require('../lib/sseEmitter');
 const { CATEGORIES, ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/categories');
 const { isExpert } = require('../config/experts');
+const { notifyExpertsForCategory } = require('../lib/notifyExperts');
 
 // ── Validation helpers ────────────────────────
 
@@ -150,6 +151,14 @@ router.post('/:videoId', async (req, res) => {
             requestId: request._id.toString(),
         });
 
+        notifyExpertsForCategory(request.category, {
+            videoId: req.params.videoId,
+            itemId: request._id.toString(),
+            itemType: 'request',
+            title: request.title,
+            excludeUsername: request.username,
+        });
+
         res.status(201).json({ success: true, id: request._id });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -171,7 +180,7 @@ router.delete('/:videoId/:id', async (req, res) => {
         const result = await Request.findOneAndDelete({
             _id:     req.params.id,
             videoId: req.params.videoId,
-            username,
+            username: { $regex: new RegExp(`^@?${username.replace(/^@/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
         });
 
         if (!result) {

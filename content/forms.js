@@ -37,18 +37,85 @@ function loadPage(url, containerId, callback = null) {
 
 function initializeCitationForm() {
     const form = document.getElementById('citation-form');
-    if (form) setupFormListeners();
+    if (form) {
+        _autoFillStartTimestamp(form);
+        _wireFormRecordingButtons(form);
+        setupFormListeners();
+    }
 }
 
 function initializeRequestForm() {
     const form = document.getElementById('request-form');
     if (!form) return;
 
-    // Hide the anonymous checkbox — not yet implemented
     const anonGroup = form.querySelector('#anonymous-group');
     if (anonGroup) anonGroup.style.display = 'none';
 
+    _autoFillStartTimestamp(form);
+    _wireFormRecordingButtons(form);
     setupFormListeners();
+}
+
+function _autoFillStartTimestamp(form) {
+    const startField = form.querySelector('#timestampStart');
+    if (!startField || startField.value) return;
+    const video = document.querySelector('video');
+    if (video && video.currentTime > 0) {
+        startField.value = formatTime(Math.floor(video.currentTime));
+    }
+}
+
+function _wireFormRecordingButtons(form) {
+    const startBtn = form.closest('#add-form-container')?.querySelector('#form-record-start') ||
+                     document.getElementById('form-record-start');
+    const stopBtn  = form.closest('#add-form-container')?.querySelector('#form-record-stop') ||
+                     document.getElementById('form-record-stop');
+    if (!startBtn || !stopBtn || startBtn.dataset.wired) return;
+    startBtn.dataset.wired = 'true';
+
+    const startField = form.querySelector('#timestampStart');
+    const endField   = form.querySelector('#timestampEnd');
+    const video      = document.querySelector('video');
+
+    startBtn.addEventListener('click', () => {
+        if (!video) return;
+        const moviePlayer = document.getElementById('movie_player');
+        if (moviePlayer && moviePlayer.classList.contains('ad-showing')) {
+            if (typeof showToast === 'function') showToast('Cannot record during an ad.');
+            return;
+        }
+        if (startField) startField.value = formatTime(Math.floor(video.currentTime));
+        startBtn.disabled = true;
+        stopBtn.disabled  = false;
+
+        if (typeof _startSecs !== 'undefined') {
+            _startSecs = video.currentTime;
+            _endSecs   = video.currentTime;
+            _createBars();
+            _startLiveTracking();
+        }
+
+        document.dispatchEvent(new CustomEvent('cp-recording-state', {
+            detail: { recording: true, startTime: Date.now() }
+        }));
+    });
+
+    stopBtn.addEventListener('click', () => {
+        if (!video) return;
+        if (endField) endField.value = formatTime(Math.floor(video.currentTime));
+        stopBtn.disabled  = true;
+        startBtn.disabled = false;
+
+        if (typeof _stopLiveTracking === 'function') {
+            _stopLiveTracking();
+            _endSecs = video.currentTime;
+            _syncBars();
+        }
+
+        document.dispatchEvent(new CustomEvent('cp-recording-state', {
+            detail: { recording: false }
+        }));
+    });
 }
 
 // ── Form submit listeners ─────────────────────
@@ -115,8 +182,13 @@ function _attachCitationFormListener() {
                 dateAdded:      new Date().toISOString(),
             };
 
-            if (form.dataset.isResponseForm === 'true' && form.dataset.respondingToRequestId) {
-                citationData.requestId = form.dataset.respondingToRequestId;
+            if (form.dataset.isResponseForm === 'true') {
+                if (form.dataset.respondingToRequestId) {
+                    citationData.requestId = form.dataset.respondingToRequestId;
+                }
+                if (form.dataset.respondingToParentCitationId) {
+                    citationData.parentCitationId = form.dataset.respondingToParentCitationId;
+                }
             }
 
             await apiAddCitation(citationData);
@@ -195,7 +267,7 @@ function _attachRequestFormListener() {
 
 // ── respondWithCitation (global) ──────────────
 
-window.respondWithCitation = function(start, end, reason, title = '', requestId = null) {
+window.respondWithCitation = function(start, end, reason, title = '', requestId = null, parentCitationId = null) {
     document.getElementById('citations-btn')?.click();
 
     const formContainer = document.getElementById('add-form-container');
@@ -211,6 +283,7 @@ window.respondWithCitation = function(start, end, reason, title = '', requestId 
 
         form.dataset.isResponseForm = 'true';
         if (requestId) form.dataset.respondingToRequestId = requestId;
+        if (parentCitationId) form.dataset.respondingToParentCitationId = parentCitationId;
 
         const titleField       = form.querySelector('#citationTitle');
         const startField       = form.querySelector('#timestampStart');
@@ -257,7 +330,9 @@ window.respondWithCitation = function(start, end, reason, title = '', requestId 
             wrapper.append(originalDiv, hiddenInput, separator, responseLabel, descriptionField);
 
             descriptionField.value       = '';
-            descriptionField.placeholder = 'Enter your response to the citation request...';
+            descriptionField.placeholder = parentCitationId
+                ? 'Enter your reply to this citation...'
+                : 'Enter your response to the citation request...';
             descriptionField.style.fontStyle = 'normal';
             descriptionField.required    = true;
             descriptionField.focus();

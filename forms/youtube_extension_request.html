@@ -14,14 +14,19 @@
             <input type="text" id="title" name="title" placeholder="Enter title for citation request..." required>
         </div>
 
-        <div class="form-group">
-            <label for="timestampStart">Start Timestamp:</label>
-            <input type="text" id="timestampStart" name="timestampStart" placeholder="Start (e.g., 00:01:23)" required>
+        <div class="form-row timestamp-row">
+            <div class="form-group form-group-half">
+                <label for="timestampStart">Start Timestamp</label>
+                <input type="text" id="timestampStart" name="timestampStart" placeholder="00:00:00" required>
+            </div>
+            <div class="form-group form-group-half">
+                <label for="timestampEnd">End Timestamp</label>
+                <input type="text" id="timestampEnd" name="timestampEnd" placeholder="––:––" required>
+            </div>
         </div>
-
-        <div class="form-group">
-            <label for="timestampEnd">End Timestamp:</label>
-            <input type="text" id="timestampEnd" name="timestampEnd" placeholder="End (e.g., 00:02:45)" required>
+        <div class="form-row recording-row">
+            <button type="button" id="form-record-start" class="record-control-btn record-start-active">Start Recording</button>
+            <button type="button" id="form-record-stop" class="record-control-btn record-stop-disabled" disabled>Stop Recording</button>
         </div>
 
         <div class="form-group">
