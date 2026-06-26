@@ -4,36 +4,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Add Citation</title>
-    <link rel="stylesheet" href="youtube_extension_style.css">
     <style>
-        .form-group {
-            margin-bottom: 15px;
-        }
-        .form-group label {
-            display: block;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-        .form-group input[type="text"],
-        .form-group input[type="url"],
-        .form-group textarea {
-            width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        .form-group input[type="url"]:invalid {
-            border-color: #ff4444;
-        }
         .form-group .help-text {
             font-size: 12px;
-            color: #666;
+            color: var(--cp-text-secondary, #606060);
             margin-top: 4px;
             display: block;
         }
         .error-text {
-            color: #ff4444;
+            color: var(--cp-error, #d32f2f);
             font-size: 12px;
             margin-top: 4px;
             display: none;

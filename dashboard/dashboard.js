@@ -6,13 +6,13 @@
 // ─────────────────────────────────────────────
 
 const CATEGORY_COLORS = {
-    'Statistics & Data':      { bg: 'rgba(101, 31, 255, 0.15)', color: '#651fff' },
-    'Quote / Misattribution': { bg: 'rgba(255, 109, 0, 0.15)',  color: '#e65100' },
-    'Historical Claim':       { bg: 'rgba(0, 137, 123, 0.15)',  color: '#00897b' },
-    'Scientific Claim':       { bg: 'rgba(6, 95, 212, 0.15)',   color: '#065fd4' },
-    'Context / Methodology':  { bg: 'rgba(194, 24, 91, 0.15)',  color: '#c2185b' },
-    'Other':                  { bg: 'rgba(0, 0, 0, 0.1)',       color: '#606060' },
-    'Uncategorized':          { bg: 'rgba(0, 0, 0, 0.07)',      color: '#9e9e9e' },
+    'Statistics & Data':      { bg: 'rgba(101, 31, 255, 0.12)', color: '#651fff' },
+    'Quote / Misattribution': { bg: 'rgba(230, 81, 0, 0.12)',   color: '#e65100' },
+    'Historical Claim':       { bg: 'rgba(0, 137, 123, 0.12)',  color: '#00897b' },
+    'Scientific Claim':       { bg: 'rgba(6, 95, 212, 0.12)',   color: '#065fd4' },
+    'Context / Methodology':  { bg: 'rgba(194, 24, 91, 0.12)',  color: '#c2185b' },
+    'Other':                  { bg: 'rgba(0, 0, 0, 0.07)',      color: '#606060' },
+    'Uncategorized':          { bg: 'rgba(0, 0, 0, 0.05)',      color: '#9e9e9e' },
 };
 
 function _categoryColor(category) {
