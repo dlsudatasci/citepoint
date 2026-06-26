@@ -5,6 +5,10 @@
 // Depends on: api.js, utils.js, username.js, voting.js
 // ─────────────────────────────────────────────
 
+function _isContextInvalidated() {
+    return !chrome.runtime?.id;
+}
+
 // ── Module state ──────────────────────────────
 
 let currentCitations   = [];
@@ -52,13 +56,13 @@ let _isExpertUser      = null;  // cached result of apiCheckExpert, null = not y
 let _currentCategoryFilter = ''; // '' = all categories
 
 const CATEGORY_COLORS = {
-    'Statistics & Data':      { bg: 'rgba(101, 31, 255, 0.1)', color: '#651fff' },
-    'Quote / Misattribution': { bg: 'rgba(255, 109, 0, 0.1)',  color: '#e65100' },
-    'Historical Claim':       { bg: 'rgba(0, 137, 123, 0.1)',  color: '#00897b' },
-    'Scientific Claim':       { bg: 'rgba(6, 95, 212, 0.1)',   color: '#065fd4' },
-    'Context / Methodology':  { bg: 'rgba(194, 24, 91, 0.1)',  color: '#c2185b' },
-    'Other':                  { bg: 'rgba(0, 0, 0, 0.07)',     color: '#606060' },
-    'Uncategorized':          { bg: 'rgba(0, 0, 0, 0.05)',     color: '#9e9e9e' },
+    'Statistics & Data':      { bg: 'rgba(101, 31, 255, 0.12)', color: '#651fff' },
+    'Quote / Misattribution': { bg: 'rgba(230, 81, 0, 0.12)',   color: '#e65100' },
+    'Historical Claim':       { bg: 'rgba(0, 137, 123, 0.12)',  color: '#00897b' },
+    'Scientific Claim':       { bg: 'rgba(6, 95, 212, 0.12)',   color: '#065fd4' },
+    'Context / Methodology':  { bg: 'rgba(194, 24, 91, 0.12)',  color: '#c2185b' },
+    'Other':                  { bg: 'rgba(0, 0, 0, 0.07)',      color: '#606060' },
+    'Uncategorized':          { bg: 'rgba(0, 0, 0, 0.05)',      color: '#9e9e9e' },
 };
 
 /**
@@ -169,6 +173,7 @@ const _SSE_MAX_DELAY = 30_000; // cap for exponential backoff
  *                          Use for post-submit refreshes and tab switches when data is already loaded.
  */
 async function loadCitations(page = 1, silent = false) {
+    if (_isContextInvalidated()) return;
     if (_citationsLoading) return;
     const container = document.getElementById('citations-container');
     if (!container) return;
@@ -183,7 +188,10 @@ async function loadCitations(page = 1, silent = false) {
         if (!silent || currentCitations.length === 0) {
             _showLoading(container);
         }
-        _updateCounter('citations-counter', '…');
+        const counterEl = document.getElementById('citations-counter');
+        if (!counterEl || counterEl.textContent === '0') {
+            _updateCounter('citations-counter', '…');
+        }
     }
 
     try {
@@ -308,6 +316,7 @@ async function loadCitations(page = 1, silent = false) {
  * @param {boolean} silent  Skip skeleton when re-fetching after a mutation or tab switch.
  */
 async function loadCitationRequests(page = 1, silent = false) {
+    if (_isContextInvalidated()) return;
     if (_requestsLoading) return;
     const container = document.getElementById('citation-requests-container');
     if (!container) return;
@@ -991,6 +1000,7 @@ async function updateCitationsList(citations, container) {
  * Falls back to polling-only after _SSE_MAX_FAIL consecutive failures.
  */
 function _connectSSE(videoId) {
+    if (_isContextInvalidated()) return;
     // Cancel any pending reconnect timer before starting fresh
     if (_sseRetryTimeout) { clearTimeout(_sseRetryTimeout); _sseRetryTimeout = null; }
 
@@ -1164,6 +1174,18 @@ function _doPoll() {
     const reqContainer = document.getElementById('citation-requests-container');
     if (citContainer?.style.display !== 'none')      loadCitations(1, true);
     else if (reqContainer?.style.display !== 'none') loadCitationRequests(1, true);
+
+
+    const citVisible = document.getElementById('citations-container')?.style.display !== 'none';
+    if (citVisible) loadRequestCount();
+    else {
+        const videoId = getCurrentVideoId();
+        if (videoId && !_isContextInvalidated()) {
+            apiGetCitations(videoId, 1, 1).then(({ pagination }) => {
+                if (pagination) _updateCounter('citations-counter', pagination.total);
+            }).catch(() => {});
+        }
+    }
 }
 
 function _getPollingInterval() {
@@ -1173,6 +1195,7 @@ function _getPollingInterval() {
 }
 
 function _schedulePoll() {
+    if (_isContextInvalidated()) return;
     // Only schedule if polling is still active (stopPolling hasn't been called)
     if (_pollTimeout === null && typeof _pollActive === 'undefined') return;
     const delay = _getPollingInterval();
@@ -1183,6 +1206,7 @@ function _schedulePoll() {
 }
 
 function startPolling() {
+    if (_isContextInvalidated()) return;
     // Detect video change — restart polling + SSE for the new videoId
     const videoId = getCurrentVideoId();
     if (_pollTimeout !== null && _sseVideoId && _sseVideoId === videoId) return; // already active
@@ -1347,6 +1371,26 @@ function _updateCounter(id, count) {
     const el = document.getElementById(id);
     if (el) el.textContent = count;
     if (typeof _updateMinimizedCounts === 'function') _updateMinimizedCounts();
+}
+
+async function loadCitationCount() {
+    if (_isContextInvalidated()) return;
+    const videoId = getCurrentVideoId();
+    if (!videoId) return;
+    try {
+        const { pagination } = await apiGetCitations(videoId, 1, 1);
+        if (pagination) _updateCounter('citations-counter', pagination.total);
+    } catch (_) { /* non-fatal */ }
+}
+
+async function loadRequestCount() {
+    if (_isContextInvalidated()) return;
+    const videoId = getCurrentVideoId();
+    if (!videoId) return;
+    try {
+        const { pagination } = await apiGetRequests(videoId, 1, 1);
+        if (pagination) _updateCounter('requests-counter', pagination.total);
+    } catch (_) { /* non-fatal */ }
 }
 
 function _formatDate(dateStr) {

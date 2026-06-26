@@ -21,59 +21,31 @@ function insertCitationButtons() {
     panel.style.width = storedSecondaryWidth + 'px';
 
     panel.innerHTML = `
-        <div class="extension-header" id="extension-header-full">
-            <button id="toggle-extension" class="toggle-extension-btn">
-                <span class="toggle-icon">▼</span>
-            </button>
-            <div class="button-container">
-                <button id="citation-requests-btn" class="tab-btn">
+        <div class="extension-header" id="extension-header">
+            <span class="minimized-logo">CitePoint</span>
+            <div class="button-container" id="tab-container">
+                <button id="citation-requests-btn" class="tab-btn disabled">
                     Citation Requests
                     <span class="tab-counter" id="requests-counter">0</span>
                 </button>
-                <button id="citations-btn" class="tab-btn">
+                <button id="citations-btn" class="tab-btn disabled">
                     Citations
                     <span class="tab-counter" id="citations-counter">0</span>
                 </button>
             </div>
-            <div class="recording-indicator" id="recording-indicator" style="display:none;">
-                <span class="recording-dot"></span>
-                <span class="recording-time" id="recording-time">0:00</span>
-            </div>
-            <button id="open-dashboard-btn" class="dashboard-btn" title="Open Dashboard">
-                <span class="dashboard-icon">
-                    <svg viewBox="0 0 24 24" width="18" height="18">
-                        <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/>
-                    </svg>
-                </span>
+            <hr class="minimized-divider">
+            <button id="toggle-extension" class="minimized-expand-btn" title="Expand CitePoint">
+                <span class="toggle-icon" id="toggle-icon">▼</span>
             </button>
         </div>
-        <div class="extension-header-minimized" id="extension-header-minimized" style="display:none;">
-            <button id="toggle-extension-minimized" class="toggle-extension-btn" title="Expand CitePoint">
-                <span class="toggle-icon">▶</span>
-            </button>
-            <span class="minimized-logo">CitePoint</span>
-            <div class="minimized-counters">
-                <span class="minimized-counter" title="Citations">
-                    <svg viewBox="0 0 24 24" width="14" height="14"><path d="M18 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H7v-2h10v2z" fill="currentColor"/></svg>
-                    <span id="minimized-citations-count">0</span>
-                </span>
-                <span class="minimized-counter" title="Requests">
-                    <svg viewBox="0 0 24 24" width="14" height="14"><path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z" fill="currentColor"/></svg>
-                    <span id="minimized-requests-count">0</span>
-                </span>
-            </div>
-        </div>
-        <div id="extension-content" class="extension-content">
-            <div id="citation-title-container" class="header-container">
-                <h3 id="citation-title" class="section-title">Citations</h3>
-            </div>
+        <div id="extension-content" class="extension-content" style="display:none;">
             <div class="header-actions">
                 <button id="add-item-btn" class="add-btn">+ Add Citation</button>
                 <div class="category-filter-container">
                     <button class="category-filter-button">
                         <span class="category-filter-text">All categories</span>
                         <span class="category-filter-caret">
-                            <svg viewBox="0 0 24 24" width="24" height="24">
+                            <svg viewBox="0 0 24 24" width="18" height="18">
                                 <path d="M7 10l5 5 5-5z" fill="currentColor"/>
                             </svg>
                         </span>
@@ -95,13 +67,13 @@ function insertCitationButtons() {
                 <div class="sort-container">
                     <button class="sort-button">
                         <span class="sort-icon">
-                            <svg viewBox="0 0 24 24" width="24" height="24">
+                            <svg viewBox="0 0 24 24" width="18" height="18">
                                 <path d="M21,6H3V5h18V6z M15,11H3v1h12V11z M9,17H3v1h6V17z" fill="currentColor"/>
                             </svg>
                         </span>
-                        <span class="sort-text">Sort by</span>
+                        <span class="sort-text">Sort</span>
                         <span class="sort-caret">
-                            <svg viewBox="0 0 24 24" width="24" height="24">
+                            <svg viewBox="0 0 24 24" width="18" height="18">
                                 <path d="M7 10l5 5 5-5z" fill="currentColor"/>
                             </svg>
                         </span>
@@ -116,6 +88,11 @@ function insertCitationButtons() {
                         </button>
                     </div>
                 </div>
+                <button id="open-dashboard-btn" class="dashboard-btn" title="Open Dashboard">
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                        <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z" fill="currentColor"/>
+                    </svg>
+                </button>
             </div>
             <div class="citations-scroll-container">
                 <div id="add-form-container" style="display:none;"></div>
@@ -133,15 +110,16 @@ function insertCitationButtons() {
     _wireSortMenu();
     _wireCategoryFilter();
     _wireDashboardButton();
-    _wireRecordingIndicator();
+
 
     // Load initial data then start polling
     document.getElementById('citations-btn').classList.add('active');
     document.getElementById('citations-container').style.display = 'block';
-    // Reset cache flags so initial load always fetches fresh data from backend
     _votesLoaded = false;
     _votesVideoId = null;
     _citationsLoading = false;
+    loadCitationCount();
+    loadRequestCount();
     loadCitations();
     startPolling();
 
@@ -234,36 +212,38 @@ function _wireResizeObserver(secondary, panel) {
 }
 
 function _wireToggle() {
-    const fullHeader      = document.getElementById('extension-header-full');
-    const minimizedHeader = document.getElementById('extension-header-minimized');
-    const content         = document.getElementById('extension-content');
-    const toggleBtn       = document.getElementById('toggle-extension');
-    const toggleMinBtn    = document.getElementById('toggle-extension-minimized');
+    const content      = document.getElementById('extension-content');
+    const toggleBtn    = document.getElementById('toggle-extension');
+    const icon         = document.getElementById('toggle-icon');
+    const header       = document.getElementById('extension-header');
+    const requestsBtn  = document.getElementById('citation-requests-btn');
+    const citationsBtn = document.getElementById('citations-btn');
+    let expanded       = false;
 
-    function collapse() {
-        fullHeader.style.display      = 'none';
-        content.style.display         = 'none';
-        minimizedHeader.style.display = 'flex';
-        _updateMinimizedCounts();
-        stopPolling();
+    function toggle() {
+        expanded = !expanded;
+        if (expanded) {
+            content.style.display = 'block';
+            icon.textContent      = '▲';
+            header.classList.add('expanded');
+            requestsBtn.classList.remove('disabled');
+            citationsBtn.classList.remove('disabled');
+            startPolling();
+        } else {
+            content.style.display = 'none';
+            icon.textContent      = '▼';
+            header.classList.remove('expanded');
+            requestsBtn.classList.add('disabled');
+            citationsBtn.classList.add('disabled');
+            stopPolling();
+        }
     }
 
-    function expand() {
-        minimizedHeader.style.display = 'none';
-        fullHeader.style.display      = 'flex';
-        content.style.display         = 'block';
-        startPolling();
-    }
-
-    toggleBtn.addEventListener('click', collapse);
-    toggleMinBtn.addEventListener('click', expand);
+    toggleBtn.addEventListener('click', toggle);
 }
 
 function _updateMinimizedCounts() {
-    const citEl = document.getElementById('minimized-citations-count');
-    const reqEl = document.getElementById('minimized-requests-count');
-    if (citEl) citEl.textContent = document.getElementById('citations-counter')?.textContent || '0';
-    if (reqEl) reqEl.textContent = document.getElementById('requests-counter')?.textContent || '0';
+    // Counts are shown directly in tab counters which are always visible — no-op
 }
 
 function _wireTabs() {
@@ -271,7 +251,6 @@ function _wireTabs() {
         if (this.classList.contains('disabled')) return;
         this.classList.add('active');
         document.getElementById('citation-requests-btn').classList.remove('active');
-        document.getElementById('citation-title').textContent = 'Citations';
         document.getElementById('citations-container').style.display = 'block';
         document.getElementById('citation-requests-container').style.display = 'none';
         document.getElementById('add-item-btn').textContent = '+ Add Citation';
@@ -286,7 +265,6 @@ function _wireTabs() {
         if (this.classList.contains('disabled')) return;
         this.classList.add('active');
         document.getElementById('citations-btn').classList.remove('active');
-        document.getElementById('citation-title').textContent = 'Citation Requests';
         document.getElementById('citations-container').style.display = 'none';
         document.getElementById('citation-requests-container').style.display = 'block';
         document.getElementById('add-item-btn').textContent = '+ Add Request';
@@ -427,37 +405,3 @@ function _wireDashboardButton() {
     });
 }
 
-// ── Recording indicator ───────────────────────
-
-function _wireRecordingIndicator() {
-    const indicator = document.getElementById('recording-indicator');
-    const timeEl    = document.getElementById('recording-time');
-    const panel     = document.getElementById('citation-controls');
-    let tickInterval = null;
-
-    document.addEventListener('cp-recording-state', e => {
-        const { recording, startTime } = e.detail || {};
-
-        if (tickInterval) {
-            clearInterval(tickInterval);
-            tickInterval = null;
-        }
-
-        if (recording) {
-            indicator.style.display = 'flex';
-            panel?.classList.add('recording-active');
-
-            const update = () => {
-                const elapsed = Math.max(0, Math.floor((Date.now() - startTime) / 1000));
-                const mins = Math.floor(elapsed / 60);
-                const secs = elapsed % 60;
-                timeEl.textContent = `${mins}:${String(secs).padStart(2, '0')}`;
-            };
-            update();
-            tickInterval = setInterval(update, 1000);
-        } else {
-            indicator.style.display = 'none';
-            panel?.classList.remove('recording-active');
-        }
-    });
-}
