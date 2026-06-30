@@ -1,7 +1,7 @@
 // ─────────────────────────────────────────────
 // dashboard.js
-// Standalone dashboard page — fetches trending
-// category stats and renders simple CSS bar charts.
+// Standalone dashboard page — rendering charts, 
+// community feeds, and expert verification.
 // Depends on: api.js, config/config.js
 // ─────────────────────────────────────────────
 
@@ -25,22 +25,44 @@ function _initTabs() {
 
     navBtns.forEach(btn => {
         btn.addEventListener('click', () => {
-            // Remove active state from all buttons and panes
             navBtns.forEach(b => b.classList.remove('active'));
             tabPanes.forEach(p => p.classList.remove('active'));
 
-            // Apply active state to clicked button and target pane
             btn.classList.add('active');
             const targetId = btn.getAttribute('data-target');
             document.getElementById(targetId).classList.add('active');
+
+            // Lazy load feeds when their tab is clicked
+            if (targetId === 'general-feed-section') _loadGeneralFeed();
+            if (targetId === 'expert-feed-section') _loadExpertFeed();
         });
     });
 }
 
-/**
- * Try to find the videoId of the YouTube video the user was watching.
- * Returns null if no YouTube watch tab is found (falls back to global scope).
- */
+function _populateTaxonomyUI() {
+    // Populate General Feed Category Filter
+    const filterSelect = document.getElementById('general-feed-filter');
+    if (typeof CATEGORIES !== 'undefined') {
+        CATEGORIES.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            filterSelect.appendChild(opt);
+        });
+    }
+
+    // Populate Expert Application Topic Checkboxes
+    const topicContainer = document.getElementById('expert-topics-container');
+    if (typeof TOPICS !== 'undefined') {
+        topicContainer.innerHTML = TOPICS.map(topic => `
+            <label class="topic-checkbox-label">
+                <input type="checkbox" name="expert-topics" value="${topic}">
+                ${topic}
+            </label>
+        `).join('');
+    }
+}
+
 async function _getActiveVideoId() {
     return new Promise(resolve => {
         try {
@@ -59,16 +81,15 @@ async function _getActiveVideoId() {
     });
 }
 
+// ── Chart Rendering ──────────────────────────
+
 function _renderBarChart(container, data) {
     container.innerHTML = '';
-
     if (!data || data.length === 0) {
         container.innerHTML = '<p class="empty-message">No data available.</p>';
         return;
     }
-
     const max = Math.max(...data.map(d => d.count), 1);
-
     data.forEach(({ category, count }) => {
         const colors = _categoryColor(category);
         const row = document.createElement('div');
@@ -86,14 +107,11 @@ function _renderBarChart(container, data) {
 
 function _renderStackedChart(container, data) {
     container.innerHTML = '';
-
     if (!data || data.length === 0) {
         container.innerHTML = '<p class="empty-message">No data available.</p>';
         return;
     }
-
     const max = Math.max(...data.map(d => d.verified + d.unverified), 1);
-
     data.forEach(({ category, verified, unverified }) => {
         const total = verified + unverified;
         const row = document.createElement('div');
@@ -116,19 +134,117 @@ async function _loadStats() {
 
     try {
         const stats = await apiGetDashboardStats(videoId);
-
         _renderBarChart(document.getElementById('requests-chart'), stats.requestsByCategory);
         _renderBarChart(document.getElementById('citations-chart'), stats.citationsByCategory);
         _renderStackedChart(document.getElementById('citations-verification-chart'), stats.verificationStats.citations);
         _renderStackedChart(document.getElementById('requests-verification-chart'), stats.verificationStats.requests);
     } catch (err) {
-        console.error('[dashboard] Error loading stats:', err);
         document.getElementById('dashboard-content').innerHTML =
             `<p class="error-message">Error loading dashboard stats: ${err.message}</p>`;
     }
 }
 
-// ── Notifications Section ────────────────────
+// ── Feeds Rendering ──────────────────────────
+
+function _parseTimeString(timeStr) {
+    if (!timeStr) return 0;
+    const parts = timeStr.split(':').reverse();
+    let seconds = 0;
+    for (let i = 0; i < parts.length; i++) {
+        seconds += parseInt(parts[i], 10) * Math.pow(60, i);
+    }
+    return seconds;
+}
+
+function _renderFeedCards(container, items) {
+    container.innerHTML = '';
+    if (!items || items.length === 0) {
+        container.innerHTML = '<p class="empty-message">No requests found.</p>';
+        return;
+    }
+
+    items.forEach(item => {
+        const catColor = _categoryColor(item.category);
+        const videoTitle = item.video?.title || 'Unknown Video';
+        const thumbUrl = item.video?.thumbnailUrl || 'https://via.placeholder.com/160x90?text=No+Video';
+        const videoId = item.video?.videoId || '';
+        const topicsHtml = (item.topics || []).map(t => `<span class="feed-topic-tag">${t}</span>`).join('');
+        const startSecs = _parseTimeString(item.timestampStart);
+        
+        const card = document.createElement('div');
+        card.className = 'feed-card';
+        card.innerHTML = `
+            <div class="feed-thumb-container">
+                <a href="https://youtube.com/watch?v=${videoId}&t=${startSecs}s" target="_blank">
+                    <img src="${thumbUrl}" alt="Video Thumbnail" class="feed-thumbnail">
+                </a>
+            </div>
+            <div class="feed-card-content">
+                <h3 class="feed-item-title">${item.title}</h3>
+                <div class="feed-video-title">${videoTitle}</div>
+                <div class="feed-meta-row">
+                    <span class="feed-category-badge" style="background:${catColor.bg};color:${catColor.color}">${item.category}</span>
+                    <span class="feed-topics-list">${topicsHtml}</span>
+                </div>
+                <div class="feed-footer">
+                    <span class="feed-score">▲ ${item.voteScore || 0}</span>
+                    <span class="feed-date">${new Date(item.dateAdded).toLocaleDateString()}</span>
+                </div>
+            </div>
+            <div class="feed-card-actions">
+                <a class="submit-btn feed-go-btn" href="https://youtube.com/watch?v=${videoId}&t=${startSecs}s" target="_blank">View Video</a>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+async function _loadGeneralFeed() {
+    const listEl = document.getElementById('general-feed-list');
+    const category = document.getElementById('general-feed-filter').value;
+    listEl.innerHTML = '<p class="empty-message">Loading...</p>';
+    
+    try {
+        const res = await apiGetGeneralFeed(category, 1, 20);
+        _renderFeedCards(listEl, res.feed);
+    } catch (err) {
+        listEl.innerHTML = `<p class="error-message">Could not load feed: ${err.message}</p>`;
+    }
+}
+
+async function _loadExpertFeed() {
+    const username = await _getUsername();
+    const listEl = document.getElementById('expert-feed-list');
+    if (!username) {
+        listEl.innerHTML = '<p class="empty-message">Log in to view your expert feed.</p>';
+        return;
+    }
+    listEl.innerHTML = '<p class="empty-message">Loading...</p>';
+
+    try {
+        const feed = await apiGetExpertFeed(username);
+        _renderFeedCards(listEl, feed);
+    } catch (err) {
+        listEl.innerHTML = `<p class="error-message">Could not load expert feed: ${err.message}</p>`;
+    }
+}
+
+document.getElementById('general-feed-filter').addEventListener('change', _loadGeneralFeed);
+
+
+// ── Notifications, Profile & Expert ──────────
+
+async function _getUsername() {
+    return new Promise(resolve => {
+        try {
+            chrome.storage.local.get(['youtubeUsername'], result => {
+                resolve(result.youtubeUsername || null);
+            });
+        } catch (_) {
+            resolve(null);
+        }
+    });
+}
 
 async function _loadNotifications() {
     const username = await _getUsername();
@@ -185,12 +301,9 @@ async function _loadNotifications() {
             listEl.appendChild(div);
         });
     } catch (err) {
-        console.error('[dashboard] Notifications error:', err);
         listEl.innerHTML = '<p class="error-message">Could not load notifications.</p>';
     }
 }
-
-// ── Profile Section ──────────────────────────
 
 async function _loadProfileSection() {
     const username = await _getUsername();
@@ -207,11 +320,14 @@ async function _loadProfileSection() {
         const res = await apiGetProfile(username);
         const { profile, stats, expert } = res;
 
+        // Render Topics if expert, fallback to categories to prevent errors on older data
+        const expertString = expert ? (expert.expertTopics?.join(', ') || expert.categories?.join(', ')) : '';
+
         statsEl.innerHTML = `
             <div class="stat-card"><span class="stat-number">${stats.citations}</span><span class="stat-label">Citations</span></div>
             <div class="stat-card"><span class="stat-number">${stats.requests}</span><span class="stat-label">Requests</span></div>
             <div class="stat-card"><span class="stat-number">${stats.upvotes}</span><span class="stat-label">Upvotes</span></div>
-            ${expert ? `<div class="stat-card stat-expert"><span class="stat-number">✓</span><span class="stat-label">Expert: ${expert.categories.join(', ')}</span></div>` : ''}
+            ${expert ? `<div class="stat-card stat-expert"><span class="stat-number">✓</span><span class="stat-label">Expert: ${expertString}</span></div>` : ''}
         `;
 
         formEl.style.display = 'block';
@@ -254,23 +370,8 @@ async function _loadProfileSection() {
             });
         }
     } catch (err) {
-        console.error('[dashboard] Profile error:', err);
         statsEl.innerHTML = '<p class="error-message">Could not load profile.</p>';
     }
-}
-
-// ── Expert Application Section ───────────────
-
-async function _getUsername() {
-    return new Promise(resolve => {
-        try {
-            chrome.storage.local.get(['youtubeUsername'], result => {
-                resolve(result.youtubeUsername || null);
-            });
-        } catch (_) {
-            resolve(null);
-        }
-    });
 }
 
 async function _loadExpertSection() {
@@ -285,12 +386,16 @@ async function _loadExpertSection() {
     }
 
     try {
-        const res = await _send({ type: 'checkExpert', username });
+        const res = await apiCheckExpert(username); // Using the updated function from api.js
         if (res.isExpert) {
-            const cats = res.categories && res.categories.length > 0
-                ? res.categories.join(', ')
-                : 'All categories';
-            statusEl.innerHTML = `<div class="expert-badge-banner"><span class="expert-check">✓</span> Verified Expert — ${cats}</div>`;
+            const topicsStr = res.expertTopics && res.expertTopics.length > 0
+                ? res.expertTopics.join(', ')
+                : 'No topics assigned';
+            statusEl.innerHTML = `<div class="expert-badge-banner"><span class="expert-check">✓</span> Verified Expert — ${topicsStr}</div>`;
+            
+            // Show the Expert Feed nav button
+            document.getElementById('nav-expert-feed').style.display = 'block';
+            _loadAdminSection(username);
         } else {
             statusEl.innerHTML = '<p>You are not yet a verified expert.</p>';
             formEl.style.display = 'block';
@@ -301,11 +406,14 @@ async function _loadExpertSection() {
             listEl.innerHTML = '<h3>Your Applications</h3>';
             apps.forEach(app => {
                 const statusClass = app.status === 'approved' ? 'status-approved' : app.status === 'rejected' ? 'status-rejected' : 'status-pending';
+                // Support both legacy category or new topics arrays
+                const domain = app.topics ? app.topics.join(', ') : app.category; 
+                
                 const div = document.createElement('div');
                 div.className = 'application-card';
                 div.innerHTML = `
                     <div class="app-header">
-                        <span class="app-category">${app.category}</span>
+                        <span class="app-category">${domain}</span>
                         <span class="app-status ${statusClass}">${app.status}</span>
                     </div>
                     <p class="app-credentials">${app.credentials}</p>
@@ -316,16 +424,22 @@ async function _loadExpertSection() {
             });
         }
 
-        // Wire application form
         const form = document.getElementById('expert-application-form');
         form?.addEventListener('submit', async e => {
             e.preventDefault();
-            const category    = document.getElementById('expert-category').value;
+            
+            // Gather all checked topics
+            const checkboxes = document.querySelectorAll('input[name="expert-topics"]:checked');
+            const selectedTopics = Array.from(checkboxes).map(cb => cb.value);
             const credentials = document.getElementById('expert-credentials').value.trim();
-            if (!category || !credentials) return;
+            
+            if (selectedTopics.length === 0) {
+                alert('Please select at least one topic.');
+                return;
+            }
 
             try {
-                await apiApplyExpert(username, category, credentials);
+                await apiApplyExpert(username, selectedTopics, credentials);
                 form.reset();
                 formEl.innerHTML = '<p class="success-message">Application submitted! You will be notified when reviewed.</p>';
                 _loadExpertSection();
@@ -334,12 +448,7 @@ async function _loadExpertSection() {
             }
         });
 
-        // Admin section — only show for existing experts
-        if (res.isExpert) {
-            _loadAdminSection(username);
-        }
     } catch (err) {
-        console.error('[dashboard] Expert section error:', err);
         statusEl.innerHTML = '<p class="error-message">Could not load expert status.</p>';
     }
 }
@@ -347,6 +456,7 @@ async function _loadExpertSection() {
 async function _loadAdminSection(adminUsername) {
     const section = document.getElementById('admin-section');
     const listEl  = document.getElementById('admin-pending-list');
+    document.getElementById('nav-admin').style.display = 'block';
 
     try {
         const apps = await apiGetPendingApplications();
@@ -362,10 +472,12 @@ async function _loadAdminSection(adminUsername) {
         apps.forEach(app => {
             const div = document.createElement('div');
             div.className = 'application-card admin-card';
+            const domain = app.topics ? app.topics.join(', ') : app.category;
+            
             div.innerHTML = `
                 <div class="app-header">
                     <span class="app-username">${app.username}</span>
-                    <span class="app-category">${app.category}</span>
+                    <span class="app-category">${domain}</span>
                 </div>
                 <p class="app-credentials">${app.credentials}</p>
                 <span class="app-date">Submitted ${new Date(app.submittedAt).toLocaleDateString()}</span>
@@ -400,6 +512,7 @@ async function _loadAdminSection(adminUsername) {
 
 document.addEventListener('DOMContentLoaded', () => {
     _initTabs();
+    _populateTaxonomyUI();
     _loadStats();
     _loadNotifications();
     _loadProfileSection();

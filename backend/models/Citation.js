@@ -15,6 +15,7 @@ const citationSchema = new mongoose.Schema({
     parentCitationId:  { type: String, default: null },
     category:         { type: String, enum: ALL_CATEGORIES, default: DEFAULT_CATEGORY },
     categoryVerified: { type: Boolean, default: false },
+    topics:           { type: [String], default: [] },
     verifiedBy:       { type: String, default: null },
     verifiedAt:       { type: Date, default: null },
 });
@@ -36,5 +37,8 @@ citationSchema.index({ videoId: 1, username: 1 });
 
 // Category filter/aggregation index for the panel filter and dashboard.
 citationSchema.index({ videoId: 1, category: 1 });
+
+// Filter within given topic
+citationSchema.index({ topics: 1, verifiedBy: 1 });
 
 module.exports = mongoose.model('Citation', citationSchema);

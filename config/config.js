@@ -1,6 +1,8 @@
+// config.js
+
 var API_BASE_URL = "http://localhost:3000/api";
 
-// Shared category taxonomy. Keep in sync with `backend/config/categories.js`.
+
 var CATEGORIES = [
     'Statistics & Data',
     'Quote / Misattribution',
@@ -11,3 +13,16 @@ var CATEGORIES = [
 ];
 
 var DEFAULT_CATEGORY = 'Uncategorized';
+var ALL_CATEGORIES = [...CATEGORIES, DEFAULT_CATEGORY];
+
+
+var TOPICS = [
+    'Science & Technology',
+    'History',
+    'Politics & News',
+    'Education',
+    'Health & Fitness',
+    'Economics',
+    'Philosophy',
+    'Entertainment'
+];

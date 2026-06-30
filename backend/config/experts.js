@@ -1,16 +1,38 @@
-// Hardcoded expert allowlist. Add usernames via the EXPERT_USERNAMES env var
-// (comma-separated) for local/deployment configuration without code changes.
-const DEFAULT_EXPERTS = [];
+// config/experts.js
 
-const EXPERT_USERNAMES = new Set([
-    ...DEFAULT_EXPERTS,
-    ...(process.env.EXPERT_USERNAMES
-        ? process.env.EXPERT_USERNAMES.split(',').map(s => s.trim()).filter(Boolean)
-        : []),
-]);
+// Hardcoded expert domain mapping. 
+// Instead of a simple array, we map usernames to their specialized Topics.
+const DEFAULT_EXPERTS = {
+};
 
-function isExpert(username) {
-    return typeof username === 'string' && EXPERT_USERNAMES.has(username);
+
+const expertRegistry = { ...DEFAULT_EXPERTS };
+
+if (process.env.EXPERT_CONFIG) {
+    const entries = process.env.EXPERT_CONFIG.split('|');
+    entries.forEach(entry => {
+        const [username, topicsStr] = entry.split(':');
+        if (username && topicsStr) {
+            expertRegistry[username.trim()] = topicsStr.split(',').map(t => t.trim());
+        }
+    });
 }
 
-module.exports = { EXPERT_USERNAMES, isExpert };
+
+function isExpert(username, topic = null) {
+    if (typeof username !== 'string' || !expertRegistry[username]) {
+        return false;
+    }
+    
+    if (topic) {
+        return expertRegistry[username].includes(topic);
+    }
+    
+    return true; 
+}
+
+function getExpertTopics(username) {
+    return expertRegistry[username] || [];
+}
+
+module.exports = { isExpert, getExpertTopics, expertRegistry };

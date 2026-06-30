@@ -64,6 +64,7 @@ app.use('/api/profile',   mutationLimiter, require('./routes/profile'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/discussion',    require('./routes/discussion'));
 app.use('/api/dashboard', require('./routes/dashboard'));
+app.use('/api/videos', mutationLimiter, require('./routes/videos'));
 
 app.get('/health', (req, res) => {
     const { clientCount } = require('./lib/sseEmitter');

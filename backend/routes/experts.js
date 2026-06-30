@@ -2,7 +2,7 @@ const router            = require('express').Router();
 const Expert            = require('../models/Expert');
 const ExpertApplication = require('../models/ExpertApplication');
 const { isExpert: isHardcodedExpert } = require('../config/experts');
-const { ALL_CATEGORIES } = require('../config/categories');
+const { ALL_CATEGORIES, DEFAULT_CATEGORY, TOPICS } = require('../config/constants');
 
 // GET /api/experts/:username — check if user is an expert
 router.get('/:username', async (req, res) => {

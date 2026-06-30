@@ -213,6 +213,24 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         handleGetProfileHistory(request.username, request.page).then(sendResponse);
         return true;
     }
+
+    if (request.type === 'upsertVideo') {
+        handleUpsertVideo(request.data).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getExpertFeed') {
+        handleGetExpertFeed(request.username).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getGeneralFeed') {
+        handleGetGeneralFeed(request.category, request.page, request.limit).then(sendResponse);
+        return true;
+    }
+    
+    if (request.type === 'applyExpert') {
+        handleApplyExpert(request.username, request.topics, request.credentials).then(sendResponse);
+        return true;
+    }
 });
 
 async function handleGetCitations(videoId, page = 1, limit = 20) {
@@ -404,7 +422,12 @@ async function handleUpdateCategory(itemType, videoId, itemId, category, usernam
 async function handleCheckExpert(username) {
     try {
         const result = await apiRequest(`/experts/${encodeURIComponent(username)}`);
-        return { success: true, isExpert: result.isExpert };
+        // Updated to pass expertTopics back to the frontend
+        return { 
+            success: true, 
+            isExpert: result.isExpert,
+            expertTopics: result.expertTopics || [] 
+        };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -441,9 +464,9 @@ async function handleReportItem(data) {
     }
 }
 
-async function handleApplyExpert(username, category, credentials) {
+async function handleApplyExpert(username, topics, credentials) {
     try {
-        const result = await apiRequest('/experts/apply', 'POST', { username, category, credentials });
+        const result = await apiRequest('/experts/apply', 'POST', { username, topics, credentials });
         return { success: true, id: result.id };
     } catch (error) {
         return { success: false, error: error.message };
@@ -544,6 +567,36 @@ async function handleGetDiscussionRequest(id) {
     try {
         const data = await apiRequest(`/discussion/request/${id}`);
         return { success: true, request: data.request, responses: data.responses || [] };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+// ── Feeds & Metadata Handlers ──────────────────
+
+async function handleUpsertVideo(data) {
+    try {
+        const result = await apiRequest('/videos/upsert', 'POST', data);
+        return { success: true, data: result.data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetExpertFeed(username) {
+    try {
+        const result = await apiRequest(`/feeds/expert?username=${encodeURIComponent(username)}`);
+        return { success: true, data: result.data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetGeneralFeed(category, page = 1, limit = 20) {
+    try {
+        const query = new URLSearchParams({ category, page, limit }).toString();
+        const result = await apiRequest(`/feeds/general?${query}`);
+        return { success: true, data: result.data, pagination: result.pagination };
     } catch (error) {
         return { success: false, error: error.message };
     }
