@@ -5,130 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Citepoint Dashboard</title>
     <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="dist/dashboard.bundle.css">
 </head>
 <body>
-    <div class="dashboard-container">
-        <header class="dashboard-header">
-            <h1>Citepoint Dashboard</h1>
-            <p class="dashboard-subtitle">Trending categories, expert verification, and community feeds</p>
-            <div class="dashboard-scope">
-                <label for="scope-select">Scope:</label>
-                <select id="scope-select">
-                    <option value="video">This video</option>
-                    <option value="global">All videos</option>
-                </select>
-            </div>
-            
-            <nav class="top-nav">
-                <button class="nav-btn active" data-target="overview-section">Overview</button>
-                <button class="nav-btn" data-target="general-feed-section">General Feed</button>
-                <button class="nav-btn" data-target="expert-feed-section" id="nav-expert-feed" style="display:none;">Expert Feed</button>
-                <button class="nav-btn" data-target="notifications-section">Notifications</button>
-                <button class="nav-btn" data-target="profile-section">Profile</button>
-                <button class="nav-btn" data-target="expert-section">Expert</button>
-                <button class="nav-btn" data-target="admin-section" id="nav-admin" style="display:none;">Admin</button>
-            </nav>
-        </header>
-
-        <main id="dashboard-content">
-            <div id="overview-section" class="tab-pane active">
-                <section class="dashboard-section">
-                    <h2>Trending Requested Categories</h2>
-                    <div id="requests-chart" class="bar-chart"></div>
-                </section>
-
-                <section class="dashboard-section">
-                    <h2>Citations by Category</h2>
-                    <div id="citations-chart" class="bar-chart"></div>
-                </section>
-
-                <section class="dashboard-section">
-                    <h2>Expert Verification Activity</h2>
-                    <div class="verification-group">
-                        <h3>Citations</h3>
-                        <div id="citations-verification-chart" class="stacked-chart"></div>
-                    </div>
-                    <div class="verification-group">
-                        <h3>Citation Requests</h3>
-                        <div id="requests-verification-chart" class="stacked-chart"></div>
-                    </div>
-                </section>
-            </div>
-
-            <section class="dashboard-section tab-pane" id="general-feed-section">
-                <div class="feed-header">
-                    <h2>General Citation Requests</h2>
-                    <select id="general-feed-filter" class="feed-filter-select">
-                        <option value="All">All Categories</option>
-                        </select>
-                </div>
-                <div id="general-feed-list" class="feed-list"></div>
-            </section>
-
-            <section class="dashboard-section tab-pane" id="expert-feed-section">
-                <h2>Requests in Your Domains</h2>
-                <p class="dashboard-subtitle">Open citation requests matching your assigned expert Topics.</p>
-                <div id="expert-feed-list" class="feed-list"></div>
-            </section>
-
-            <section class="dashboard-section tab-pane" id="notifications-section">
-                <div class="notif-header">
-                    <h2>Notifications <span id="notif-badge" class="notif-badge" style="display:none;">0</span></h2>
-                    <button id="mark-all-read-btn" class="mark-all-btn" style="display:none;">Mark all read</button>
-                </div>
-                <div id="notifications-list"></div>
-            </section>
-
-            <section class="dashboard-section tab-pane" id="profile-section">
-                <h2>My Profile</h2>
-                <div id="profile-content">
-                    <div id="profile-stats" class="profile-stats-row"></div>
-                    <form id="profile-form" style="display:none;">
-                        <div class="form-group">
-                            <label for="profile-display-name">Display Name:</label>
-                            <input type="text" id="profile-display-name" placeholder="Your display name">
-                        </div>
-                        <div class="form-group">
-                            <label for="profile-bio">Bio:</label>
-                            <textarea id="profile-bio" rows="3" maxlength="500" placeholder="Tell others about yourself..."></textarea>
-                        </div>
-                        <button type="submit" class="submit-btn">Save Profile</button>
-                    </form>
-                    <div id="profile-history"></div>
-                </div>
-            </section>
-
-            <section class="dashboard-section tab-pane" id="expert-section">
-                <h2>Expert Verification</h2>
-                <div id="expert-status"></div>
-                <div id="expert-apply-form" style="display:none;">
-                    <h3>Apply to Become a Verified Expert</h3>
-                    <form id="expert-application-form">
-                        <div class="form-group">
-                            <label>Expertise Topics (Select all that apply):</label>
-                            <div id="expert-topics-container" class="checkbox-grid">
-                                </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="expert-credentials">Credentials (degree, license, portfolio link, etc.):</label>
-                            <textarea id="expert-credentials" rows="4" required placeholder="Describe your qualifications for these topics..."></textarea>
-                        </div>
-                        <button type="submit" class="submit-btn">Submit Application</button>
-                    </form>
-                </div>
-                <div id="expert-applications-list"></div>
-            </section>
-
-            <section class="dashboard-section tab-pane" id="admin-section">
-                <h2>Admin: Pending Expert Applications</h2>
-                <div id="admin-pending-list"></div>
-            </section>
-        </main>
-    </div>
+    
+    <div id="react-dashboard-root"></div>
 
     <script src="../lib/browser-polyfill.js"></script>
     <script src="../config/config.js"></script>
     <script src="../content/api.js"></script>
-    <script src="dashboard.js"></script>
+    
+    <script type="module" src="dist/dashboard.bundle.js"></script>
 </body>
 </html>
