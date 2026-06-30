@@ -233,9 +233,9 @@ async function apiGetExpertFeed(username) {
  * @param {number} page 
  * @param {number} limit 
  */
-async function apiGetGeneralFeed(category = 'All', page = 1, limit = 20) {
-    const res = await _send({ type: 'getGeneralFeed', category, page, limit });
-    // Assuming backend returns { data: [...], pagination: {...} }
+
+async function apiGetGeneralFeed(topic = 'All', page = 1, limit = 20) {
+    const res = await _send({ type: 'getGeneralFeed', topic, page, limit });
     return { 
         feed: res.data || [], 
         pagination: res.pagination || null 
