@@ -66,9 +66,9 @@ describe('GET /api/citations/:videoId', () => {
         expect(res.body.pagination.limit).toBe(50);
     });
 
-    it('sets Cache-Control header', async () => {
+    it('sets Cache-Control: no-store (data is kept fresh via SSE, not HTTP caching)', async () => {
         const res = await request(app).get(BASE);
-        expect(res.headers['cache-control']).toMatch(/max-age=10/);
+        expect(res.headers['cache-control']).toBe('no-store');
     });
 });
 
