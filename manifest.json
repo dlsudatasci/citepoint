@@ -51,20 +51,25 @@
         }
     ],
     "background": {
-        "service_worker": "background/background.js",
-        "scripts": ["background/background.js"]
+        "service_worker": "background/background.js"
     },
     "web_accessible_resources": [{
         "resources": [
             "forms/youtube_extension_citation.html",
             "forms/youtube_extension_request.html",
             "styles/extension.css",
+            "styles/tokens.css",
             "config/config.js",
             "popup/popup.js",
             "popup/popup.html",
             "dashboard/dashboard.html",
             "dashboard/dashboard.js",
-            "dashboard/dashboard.css"
+            "dashboard/dashboard.css",
+            "discussion/discussion.html",
+            "discussion/discussion.js",
+            "discussion/discussion.css",
+            "content/username.js",
+            "utils/utils.js"
         ],
         "matches": [
             "*://www.youtube.com/*",

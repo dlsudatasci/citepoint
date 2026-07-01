@@ -5,6 +5,10 @@
 // Depends on: api.js, utils.js, username.js, voting.js
 // ─────────────────────────────────────────────
 
+function _isContextInvalidated() {
+    return !chrome.runtime?.id;
+}
+
 // ── Module state ──────────────────────────────
 
 let currentCitations   = [];
@@ -52,13 +56,13 @@ let _isExpertUser      = null;  // cached result of apiCheckExpert, null = not y
 let _currentCategoryFilter = ''; // '' = all categories
 
 const CATEGORY_COLORS = {
-    'Statistics & Data':      { bg: 'rgba(101, 31, 255, 0.1)', color: '#651fff' },
-    'Quote / Misattribution': { bg: 'rgba(255, 109, 0, 0.1)',  color: '#e65100' },
-    'Historical Claim':       { bg: 'rgba(0, 137, 123, 0.1)',  color: '#00897b' },
-    'Scientific Claim':       { bg: 'rgba(6, 95, 212, 0.1)',   color: '#065fd4' },
-    'Context / Methodology':  { bg: 'rgba(194, 24, 91, 0.1)',  color: '#c2185b' },
-    'Other':                  { bg: 'rgba(0, 0, 0, 0.07)',     color: '#606060' },
-    'Uncategorized':          { bg: 'rgba(0, 0, 0, 0.05)',     color: '#9e9e9e' },
+    'Statistics & Data':      { bg: 'rgba(101, 31, 255, 0.12)', color: '#651fff' },
+    'Quote / Misattribution': { bg: 'rgba(230, 81, 0, 0.12)',   color: '#e65100' },
+    'Historical Claim':       { bg: 'rgba(0, 137, 123, 0.12)',  color: '#00897b' },
+    'Scientific Claim':       { bg: 'rgba(6, 95, 212, 0.12)',   color: '#065fd4' },
+    'Context / Methodology':  { bg: 'rgba(194, 24, 91, 0.12)',  color: '#c2185b' },
+    'Other':                  { bg: 'rgba(0, 0, 0, 0.07)',      color: '#606060' },
+    'Uncategorized':          { bg: 'rgba(0, 0, 0, 0.05)',      color: '#9e9e9e' },
 };
 
 /**
@@ -169,6 +173,7 @@ const _SSE_MAX_DELAY = 30_000; // cap for exponential backoff
  *                          Use for post-submit refreshes and tab switches when data is already loaded.
  */
 async function loadCitations(page = 1, silent = false) {
+    if (_isContextInvalidated()) return;
     if (_citationsLoading) return;
     const container = document.getElementById('citations-container');
     if (!container) return;
@@ -183,7 +188,10 @@ async function loadCitations(page = 1, silent = false) {
         if (!silent || currentCitations.length === 0) {
             _showLoading(container);
         }
-        _updateCounter('citations-counter', '…');
+        const counterEl = document.getElementById('citations-counter');
+        if (!counterEl || counterEl.textContent === '0') {
+            _updateCounter('citations-counter', '…');
+        }
     }
 
     try {
@@ -308,6 +316,7 @@ async function loadCitations(page = 1, silent = false) {
  * @param {boolean} silent  Skip skeleton when re-fetching after a mutation or tab switch.
  */
 async function loadCitationRequests(page = 1, silent = false) {
+    if (_isContextInvalidated()) return;
     if (_requestsLoading) return;
     const container = document.getElementById('citation-requests-container');
     if (!container) return;
@@ -689,18 +698,18 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
         responsesContainer.appendChild(responseEl);
     }
 
-    if (hidden > 0) {
-        const seeAll = document.createElement('a');
-        seeAll.className   = 'rg-see-all-link';
-        seeAll.href        = '#';
-        seeAll.textContent = `See all ${responseCitations.length} responses`;
-        seeAll.addEventListener('click', e => {
-            e.preventDefault();
-            const url = chrome.runtime.getURL(`discussion/discussion.html?type=request&id=${request.id || request._id}`);
-            window.open(url, '_blank');
-        });
-        responsesContainer.appendChild(seeAll);
-    }
+    const discussionLink = document.createElement('a');
+    discussionLink.className   = 'rg-see-all-link';
+    discussionLink.href        = '#';
+    discussionLink.textContent = hidden > 0
+        ? `View all ${responseCitations.length} responses`
+        : `View discussion`;
+    discussionLink.addEventListener('click', e => {
+        e.preventDefault();
+        const url = chrome.runtime.getURL(`discussion/discussion.html?type=request&id=${request.id || request._id}`);
+        window.open(url, '_blank');
+    });
+    responsesContainer.appendChild(discussionLink);
 
     return el;
 }
@@ -832,18 +841,18 @@ async function createCitationReplyGroupElement(parentCitation, replies, votes, c
         responsesContainer.appendChild(replyEl);
     }
 
-    if (hiddenReplies > 0) {
-        const seeAll = document.createElement('a');
-        seeAll.className   = 'rg-see-all-link';
-        seeAll.href        = '#';
-        seeAll.textContent = `See all ${replies.length} replies`;
-        seeAll.addEventListener('click', e => {
-            e.preventDefault();
-            const url = chrome.runtime.getURL(`discussion/discussion.html?type=citation&id=${parentCitation.id || parentCitation._id}`);
-            window.open(url, '_blank');
-        });
-        responsesContainer.appendChild(seeAll);
-    }
+    const discussionLink = document.createElement('a');
+    discussionLink.className   = 'rg-see-all-link';
+    discussionLink.href        = '#';
+    discussionLink.textContent = hiddenReplies > 0
+        ? `View all ${replies.length} replies`
+        : `View discussion`;
+    discussionLink.addEventListener('click', e => {
+        e.preventDefault();
+        const url = chrome.runtime.getURL(`discussion/discussion.html?type=citation&id=${parentCitation.id || parentCitation._id}`);
+        window.open(url, '_blank');
+    });
+    responsesContainer.appendChild(discussionLink);
 
     return el;
 }
@@ -991,6 +1000,7 @@ async function updateCitationsList(citations, container) {
  * Falls back to polling-only after _SSE_MAX_FAIL consecutive failures.
  */
 function _connectSSE(videoId) {
+    if (_isContextInvalidated()) return;
     // Cancel any pending reconnect timer before starting fresh
     if (_sseRetryTimeout) { clearTimeout(_sseRetryTimeout); _sseRetryTimeout = null; }
 
@@ -1164,6 +1174,18 @@ function _doPoll() {
     const reqContainer = document.getElementById('citation-requests-container');
     if (citContainer?.style.display !== 'none')      loadCitations(1, true);
     else if (reqContainer?.style.display !== 'none') loadCitationRequests(1, true);
+
+
+    const citVisible = document.getElementById('citations-container')?.style.display !== 'none';
+    if (citVisible) loadRequestCount();
+    else {
+        const videoId = getCurrentVideoId();
+        if (videoId && !_isContextInvalidated()) {
+            apiGetCitations(videoId, 1, 1).then(({ pagination }) => {
+                if (pagination) _updateCounter('citations-counter', pagination.total);
+            }).catch(() => {});
+        }
+    }
 }
 
 function _getPollingInterval() {
@@ -1173,6 +1195,7 @@ function _getPollingInterval() {
 }
 
 function _schedulePoll() {
+    if (_isContextInvalidated()) return;
     // Only schedule if polling is still active (stopPolling hasn't been called)
     if (_pollTimeout === null && typeof _pollActive === 'undefined') return;
     const delay = _getPollingInterval();
@@ -1183,6 +1206,7 @@ function _schedulePoll() {
 }
 
 function startPolling() {
+    if (_isContextInvalidated()) return;
     // Detect video change — restart polling + SSE for the new videoId
     const videoId = getCurrentVideoId();
     if (_pollTimeout !== null && _sseVideoId && _sseVideoId === videoId) return; // already active
@@ -1349,6 +1373,26 @@ function _updateCounter(id, count) {
     if (typeof _updateMinimizedCounts === 'function') _updateMinimizedCounts();
 }
 
+async function loadCitationCount() {
+    if (_isContextInvalidated()) return;
+    const videoId = getCurrentVideoId();
+    if (!videoId) return;
+    try {
+        const { pagination } = await apiGetCitations(videoId, 1, 1);
+        if (pagination) _updateCounter('citations-counter', pagination.total);
+    } catch (_) { /* non-fatal */ }
+}
+
+async function loadRequestCount() {
+    if (_isContextInvalidated()) return;
+    const videoId = getCurrentVideoId();
+    if (!videoId) return;
+    try {
+        const { pagination } = await apiGetRequests(videoId, 1, 1);
+        if (pagination) _updateCounter('requests-counter', pagination.total);
+    } catch (_) { /* non-fatal */ }
+}
+
 function _formatDate(dateStr) {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -1397,8 +1441,6 @@ async function _buildResponseEntry(citation, votes, currentUsername) {
         ? citation.description.split('\n\n').slice(1).join('\n\n').trim()
         : citation.description;
 
-    const showCatSelect = canDelete || _isExpertUser || !citation.categoryVerified;
-
     const el = document.createElement('div');
     el.className = 'rg-response-entry';
     el.dataset.category = citation.category || DEFAULT_CATEGORY;
@@ -1407,10 +1449,6 @@ async function _buildResponseEntry(citation, votes, currentUsername) {
         <div class="citation-meta">
             <span class="citation-author">${_escapeHtml(citation.username || 'Anonymous')}</span>
             <span class="citation-date">${_formatDate(citation.dateAdded)}</span>
-        </div>
-        <div class="category-row">
-            ${_buildCategoryBadge(citation.category, citation.categoryVerified)}
-            ${showCatSelect ? _buildCategorySelect(citation) : ''}
         </div>
         <div class="citation-actions">
             ${_safeSourceLink(citation.source)}
@@ -1421,6 +1459,7 @@ async function _buildResponseEntry(citation, votes, currentUsername) {
                     <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
                 </div>
                 <div class="action-buttons">
+                    ${!canDelete ? `<button class="action-btn respond-btn inline-reply-btn" data-id="${citation.id}">Reply</button>` : ''}
                     ${canDelete ? `<button class="action-btn delete-btn" data-id="${citation.id}">Delete</button>` : ''}
                     ${!canDelete ? `<button class="action-btn report-btn" data-id="${citation.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
                 </div>
@@ -1438,8 +1477,6 @@ async function _buildResponseEntry(citation, votes, currentUsername) {
     const vc = el.querySelector('.vote-controls');
     vc.querySelector('.upvote-btn').addEventListener('click', () => handleVote(citation.id, 'up', 'citation'));
     vc.querySelector('.downvote-btn').addEventListener('click', () => handleVote(citation.id, 'down', 'citation'));
-
-    _wireCategoryControls(el, citation, 'citation');
 
     if (canDelete) {
         el.querySelector('.delete-btn').addEventListener('click', async () => {
@@ -1461,9 +1498,62 @@ async function _buildResponseEntry(citation, votes, currentUsername) {
         el.querySelector('.report-btn')?.addEventListener('click', () =>
             showReportDialog(citation.id, 'citation')
         );
+        el.querySelector('.inline-reply-btn')?.addEventListener('click', () => {
+            _showInlineReplyForm(el, citation.id);
+        });
     }
 
     return el;
+}
+
+async function _showInlineReplyForm(targetEl, parentCitationId) {
+    if (targetEl.querySelector('.inline-reply-form')) return;
+
+    const form = document.createElement('div');
+    form.className = 'inline-reply-form';
+    form.innerHTML = `
+        <textarea placeholder="Write a reply..." rows="2"></textarea>
+        <div class="inline-reply-actions">
+            <button class="inline-reply-submit">Reply</button>
+            <button class="inline-reply-cancel">Cancel</button>
+        </div>
+    `;
+    targetEl.appendChild(form);
+
+    const textarea = form.querySelector('textarea');
+    textarea.focus();
+
+    form.querySelector('.inline-reply-cancel').addEventListener('click', () => form.remove());
+
+    form.querySelector('.inline-reply-submit').addEventListener('click', async () => {
+        const text = textarea.value.trim();
+        if (!text) return;
+
+        const submitBtn = form.querySelector('.inline-reply-submit');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending...';
+
+        try {
+            const username = _currentUsername || await getYouTubeUsername();
+            if (!username) throw new Error('You must be logged in to reply.');
+
+            const videoId = getCurrentVideoId();
+            if (!videoId) throw new Error('Could not determine video ID.');
+
+            await apiAddQuickReply(parentCitationId, text, videoId, username);
+            if (typeof showToast === 'function') showToast('Reply added!', 'success');
+            form.remove();
+            _votesLoaded = false;
+            _votesVideoId = null;
+            _citationsLoading = false;
+            loadCitations(1, true);
+        } catch (err) {
+            console.error('[citations] Reply failed:', err);
+            if (typeof showToast === 'function') showToast(err.message || 'Failed to submit reply.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Reply';
+        }
+    });
 }
 
 function _buildDescription(text) {

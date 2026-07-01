@@ -3,123 +3,127 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Citation Extension Help</title>
+    <title>CitePoint — Help</title>
+    <link rel="stylesheet" href="../styles/tokens.css">
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: var(--cp-font);
             margin: 0;
             padding: 0;
             width: 350px;
-            color: #202124;
-            background-color: #f8f9fa;
+            color: var(--cp-text-primary);
+            background-color: var(--cp-bg-page);
         }
         .container {
-            padding: 16px;
+            padding: var(--cp-space-16);
         }
         h1 {
             margin-top: 0;
-            color: #1a73e8;
-            font-size: 18px;
-            font-weight: 500;
-            border-bottom: 1px solid #dadce0;
-            padding-bottom: 8px;
+            color: var(--cp-accent);
+            font-size: var(--cp-text-xl);
+            font-weight: var(--cp-weight-medium);
+            border-bottom: 1px solid var(--cp-border-input);
+            padding-bottom: var(--cp-space-8);
         }
         h2 {
-            font-size: 16px;
-            margin-top: 16px;
-            margin-bottom: 8px;
-            color: #202124;
+            font-size: var(--cp-text-lg);
+            margin-top: var(--cp-space-16);
+            margin-bottom: var(--cp-space-8);
+            color: var(--cp-text-primary);
             cursor: pointer;
             display: flex;
             align-items: center;
         }
         h2::after {
-            content: "▾";
+            content: "\25BE";
             margin-left: auto;
             font-size: 12px;
-            color: #5f6368;
+            color: var(--cp-text-secondary);
         }
         p {
-            margin: 8px 0;
-            font-size: 14px;
-            line-height: 1.5;
+            margin: var(--cp-space-8) 0;
+            font-size: var(--cp-text-md);
+            line-height: var(--cp-leading-normal);
         }
         ol, ul {
             padding-left: 20px;
-            margin: 8px 0;
+            margin: var(--cp-space-8) 0;
         }
         li {
-            font-size: 14px;
-            margin-bottom: 8px;
-            line-height: 1.5;
+            font-size: var(--cp-text-md);
+            margin-bottom: var(--cp-space-8);
+            line-height: var(--cp-leading-normal);
         }
         .tip {
-            background-color: #e8f0fe;
-            padding: 8px 12px;
-            border-radius: 4px;
-            border-left: 4px solid #1a73e8;
-            margin: 12px 0;
+            background-color: rgba(6, 95, 212, 0.08);
+            padding: var(--cp-space-8) var(--cp-space-12);
+            border-radius: var(--cp-radius-sm);
+            border-left: 4px solid var(--cp-accent);
+            margin: var(--cp-space-12) 0;
         }
         .feature {
-            margin-bottom: 16px;
+            margin-bottom: var(--cp-space-16);
         }
         .icon {
             margin-right: 6px;
-            color: #1a73e8;
+            color: var(--cp-accent);
         }
         .timestamp {
-            background: #e8f0fe;
-            color: #1a73e8;
+            background: rgba(6, 95, 212, 0.08);
+            color: var(--cp-accent);
             padding: 1px 4px;
             border-radius: 2px;
-            font-family: monospace;
+            font-family: var(--cp-font-mono);
         }
         .steps {
-            background-color: #f8f9fa;
-            padding: 12px;
-            border-radius: 4px;
-            margin-top: 8px;
+            background-color: var(--cp-bg-surface);
+            padding: var(--cp-space-12);
+            border-radius: var(--cp-radius-md);
+            margin-top: var(--cp-space-8);
         }
         .footer {
-            margin-top: 20px;
-            font-size: 12px;
-            color: #5f6368;
+            margin-top: var(--cp-space-20);
+            font-size: var(--cp-text-sm);
+            color: var(--cp-text-secondary);
             text-align: center;
-            border-top: 1px solid #dadce0;
-            padding-top: 12px;
+            border-top: 1px solid var(--cp-border-input);
+            padding-top: var(--cp-space-12);
         }
         #not-on-youtube {
             display: none;
-            background-color: #fce8e6;
-            border-left: 4px solid #ea4335;
-            padding: 8px 12px;
-            border-radius: 4px;
-            margin: 12px 0;
-            font-size: 14px;
+            background-color: var(--cp-error-bg, rgba(211, 47, 47, 0.1));
+            border-left: 4px solid var(--cp-error);
+            padding: var(--cp-space-8) var(--cp-space-12);
+            border-radius: var(--cp-radius-sm);
+            margin: var(--cp-space-12) 0;
+            font-size: var(--cp-text-md);
         }
         .btn {
-            background-color: #1a73e8;
+            background-color: var(--cp-accent);
             color: white;
             border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-size: 14px;
+            padding: var(--cp-space-8) var(--cp-space-16);
+            border-radius: var(--cp-radius-pill);
+            font-size: var(--cp-text-md);
+            font-weight: var(--cp-weight-medium);
+            font-family: var(--cp-font);
             cursor: pointer;
-            margin-top: 8px;
+            margin-top: var(--cp-space-8);
             display: inline-block;
+            transition: background-color var(--cp-transition);
         }
         .btn:hover {
-            background-color: #1765cc;
+            background-color: var(--cp-accent-hover);
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>YouTube Citation Extension</h1>
+        <h1>CitePoint</h1>
 
         <p>This extension helps you create, manage, and share citations for YouTube videos. It adds a citation panel to the right side of YouTube videos.</p>
 
-        <button id="open-dashboard" class="btn">📊 Open Dashboard</button>
+        <button id="open-dashboard" class="btn">Open Dashboard</button>
 
         <div id="not-on-youtube">
             <p><strong>Notice:</strong> You're not currently on a YouTube video page.</p>
@@ -175,7 +179,7 @@
 
         <div class="feature">
             <h2><span class="icon">👍</span>Voting on Citations</h2>
-            <p>You can upvote (blue) or downvote (red) citations and requests to help the most accurate and helpful ones rise to the top.</p>
+            <p>You can upvote or downvote citations and requests to help the most accurate and helpful ones rise to the top.</p>
         </div>
 
         <div class="feature">
@@ -184,10 +188,10 @@
         </div>
 
         <div class="footer">
-            YouTube Citation Extension v1.0
+            CitePoint v1.0
         </div>
     </div>
 
     <script src="popup.js"></script>
 </body>
-</html> 
+</html>

@@ -18,11 +18,12 @@ app.use(cors({
             !origin ||
             allowedOrigins.includes(origin) ||
             origin.startsWith('moz-extension://') ||
-            origin.startsWith('chrome-extension://')
+            origin.startsWith('chrome-extension://') ||
+            origin === 'https://www.youtube.com' ||
+            origin === 'https://m.youtube.com'
         ) {
             callback(null, true);
         } else {
-            // Silently reject unknown origins — no stack trace in logs
             callback(null, false);
         }
     },

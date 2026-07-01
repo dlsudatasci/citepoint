@@ -123,6 +123,16 @@ async function apiReportItem({ videoId, itemId, itemType, reason, additionalInfo
     });
 }
 
+// ── Discussion / Replies ────────────────────
+
+async function apiGetDiscussionTree(id) {
+    return _send({ type: 'getDiscussionCitationTree', id });
+}
+
+async function apiAddQuickReply(parentCitationId, description, videoId, username) {
+    return _send({ type: 'addQuickReply', parentCitationId, description, videoId, username });
+}
+
 // ── SSE ──────────────────────────────────────
 
 function apiGetSSEUrl(videoId) {
