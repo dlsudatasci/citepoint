@@ -31,6 +31,11 @@ async function handleVote(itemId, voteType, itemType = 'citation') {
         const downvoteBtn  = voteControls.querySelector('.downvote-btn');
         const scoreElement = voteControls.querySelector('.vote-score');
 
+        // Guard against double-submit (rapid double-click) firing two concurrent votes.
+        if (upvoteBtn.disabled || downvoteBtn.disabled) return;
+        upvoteBtn.disabled   = true;
+        downvoteBtn.disabled = true;
+
         const currentScore = parseInt(scoreElement.textContent || '0', 10);
         const isUpvoted    = upvoteBtn.classList.contains('voted');
         const isDownvoted  = downvoteBtn.classList.contains('voted');
@@ -86,7 +91,7 @@ async function handleVote(itemId, voteType, itemType = 'citation') {
         }
 
         // ── Persist to backend ────────────────────────────────────────
-        const result = await apiUpdateVote(itemId, voteType, itemType, videoId);
+        const result = await apiUpdateVote(itemId, voteType, itemType, videoId, username);
 
         // Confirm with the server-authoritative score (corrects any optimistic drift)
         scoreElement.textContent = result.newScore;
@@ -117,5 +122,11 @@ async function handleVote(itemId, voteType, itemType = 'citation') {
         } else {
             loadCitationRequests(1, true);
         }
+    } finally {
+        const voteControls = document.querySelector(`[data-${itemType}-id="${itemId}"]`);
+        const upvoteBtn     = voteControls?.querySelector('.upvote-btn');
+        const downvoteBtn   = voteControls?.querySelector('.downvote-btn');
+        if (upvoteBtn)   upvoteBtn.disabled   = false;
+        if (downvoteBtn) downvoteBtn.disabled = false;
     }
 }

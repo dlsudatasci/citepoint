@@ -158,9 +158,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             return true;
         }
         if (request.itemType === 'citation') {
-            handleUpdateCitationVotes(request.videoId, request.itemId, request.voteType).then(sendResponse);
+            handleUpdateCitationVotes(request.videoId, request.itemId, request.voteType, request.username).then(sendResponse);
         } else {
-            handleUpdateRequestVotes(request.videoId, request.itemId, request.voteType).then(sendResponse);
+            handleUpdateRequestVotes(request.videoId, request.itemId, request.voteType, request.username).then(sendResponse);
         }
         return true;
     }
@@ -350,7 +350,7 @@ function computeDelta(voteType, currentVote) {
     return delta;
 }
 
-async function handleUpdateCitationVotes(videoId, citationId, voteType) {
+async function handleUpdateCitationVotes(videoId, citationId, voteType, username) {
     try {
         const storageKey = getStorageKey('citation', videoId);
         const userVotes = await new Promise(resolve =>
@@ -358,7 +358,7 @@ async function handleUpdateCitationVotes(videoId, citationId, voteType) {
         );
         const currentVote = userVotes[citationId];
         const delta = computeDelta(voteType, currentVote);
-        const result = await apiRequest(`/citations/${videoId}/${citationId}/vote`, 'PATCH', { delta });
+        const result = await apiRequest(`/citations/${videoId}/${citationId}/vote`, 'PATCH', { delta, username });
 
         if (voteType === currentVote) {
             delete userVotes[citationId];
@@ -375,7 +375,7 @@ async function handleUpdateCitationVotes(videoId, citationId, voteType) {
     }
 }
 
-async function handleUpdateRequestVotes(videoId, requestId, voteType) {
+async function handleUpdateRequestVotes(videoId, requestId, voteType, username) {
     try {
         const storageKey = getStorageKey('request', videoId);
         const userVotes = await new Promise(resolve =>
@@ -383,7 +383,7 @@ async function handleUpdateRequestVotes(videoId, requestId, voteType) {
         );
         const currentVote = userVotes[requestId];
         const delta = computeDelta(voteType, currentVote);
-        const result = await apiRequest(`/requests/${videoId}/${requestId}/vote`, 'PATCH', { delta });
+        const result = await apiRequest(`/requests/${videoId}/${requestId}/vote`, 'PATCH', { delta, username });
 
         if (voteType === currentVote) {
             delete userVotes[requestId];

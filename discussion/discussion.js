@@ -87,6 +87,12 @@ async function _handleVote(itemId, voteType, itemType, vc) {
     const upBtn   = vc.querySelector('.upvote-btn');
     const downBtn = vc.querySelector('.downvote-btn');
     const scoreEl = vc.querySelector('.vote-score');
+
+    // Guard against double-submit (rapid double-click) firing two concurrent votes.
+    if (upBtn.disabled || downBtn.disabled) return;
+    upBtn.disabled   = true;
+    downBtn.disabled = true;
+
     const current = parseInt(scoreEl.textContent || '0', 10);
     const wasUp   = upBtn.classList.contains('voted');
     const wasDown = downBtn.classList.contains('voted');
@@ -102,13 +108,16 @@ async function _handleVote(itemId, voteType, itemType, vc) {
     scoreEl.textContent = newScore;
 
     try {
-        const result = await _send({ type: 'updateVotes', itemId, voteType, itemType, videoId: _videoId });
+        const result = await _send({ type: 'updateVotes', itemId, voteType, itemType, videoId: _videoId, username: _currentUser });
         if (result.newScore !== undefined) scoreEl.textContent = result.newScore;
     } catch (err) {
         console.error('[discussion] Vote failed:', err);
         scoreEl.textContent = current;
         if (wasUp) upBtn.classList.add('voted'); else upBtn.classList.remove('voted');
         if (wasDown) downBtn.classList.add('voted'); else downBtn.classList.remove('voted');
+    } finally {
+        upBtn.disabled   = false;
+        downBtn.disabled = false;
     }
 }
 
