@@ -2,6 +2,7 @@ const router            = require('express').Router();
 const Expert            = require('../models/Expert');
 const ExpertApplication = require('../models/ExpertApplication');
 const { isExpert: isHardcodedExpert } = require('../config/experts');
+const { isAdmin } = require('../config/admins');
 const { ALL_CATEGORIES } = require('../config/categories');
 
 // GET /api/experts/:username — check if user is an expert
@@ -47,8 +48,11 @@ router.post('/apply', async (req, res) => {
     }
 });
 
-// GET /api/experts/applications/pending — admin: list pending applications
+// GET /api/experts/applications/pending?adminUsername=... — admin: list pending applications
 router.get('/applications/pending', async (req, res) => {
+    if (!isAdmin(req.query.adminUsername)) {
+        return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
     try {
         const apps = await ExpertApplication.find({ status: 'pending' })
             .sort({ submittedAt: -1 })
@@ -80,6 +84,9 @@ router.patch('/applications/:id/review', async (req, res) => {
         }
         if (!reviewedBy) {
             return res.status(400).json({ success: false, error: 'reviewedBy is required' });
+        }
+        if (!isAdmin(reviewedBy)) {
+            return res.status(403).json({ success: false, error: 'Admin access required' });
         }
 
         const app = await ExpertApplication.findByIdAndUpdate(req.params.id, {
