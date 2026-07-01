@@ -5,11 +5,27 @@
 // with the response data or rejects with an Error.
 // ─────────────────────────────────────────────
 
-// Derive the API base from manifest.json host_permissions[0] so the URL is
-// defined in exactly one place.  Update manifest.json for production deployments.
+// Derive the API base from manifest.json host_permissions so the URL is defined in
+// exactly one place. Update manifest.json for production deployments.
+//
+// The API host is identified by NOT being a known YouTube pattern, rather than by
+// trusting a fixed array position — host_permissions can be freely reordered without
+// silently repointing every API call at the wrong origin.
+const _CP_YOUTUBE_HOST_PATTERNS = [/^\*:\/\/(www\.)?youtube\.com\//, /^\*:\/\/m\.youtube\.com\//];
+
+function _deriveApiBasePermission(hostPermissions) {
+    const perms = hostPermissions || [];
+    const apiCandidates = perms.filter(p => !_CP_YOUTUBE_HOST_PATTERNS.some(re => re.test(p)));
+    if (apiCandidates.length === 0) {
+        console.error('[api] No non-YouTube host_permissions entry found — cannot determine API base URL.');
+        return '';
+    }
+    return apiCandidates[0];
+}
+
 const _CP_API_BASE = (() => {
     try {
-        const perm = chrome.runtime.getManifest().host_permissions?.[0] ?? '';
+        const perm = _deriveApiBasePermission(chrome.runtime.getManifest().host_permissions);
         return perm.replace(/\/\*$/, ''); // strip trailing /*
     } catch (_) {
         return 'http://localhost:3000';   // safe fallback
@@ -105,8 +121,8 @@ async function apiDeleteRequest(requestId, videoId, username) {
 
 // ── Votes ────────────────────────────────────
 
-async function apiUpdateVote(itemId, voteType, itemType, videoId) {
-    return _send({ type: 'updateVotes', itemId, voteType, itemType, videoId });
+async function apiUpdateVote(itemId, voteType, itemType, videoId, username) {
+    return _send({ type: 'updateVotes', itemId, voteType, itemType, videoId, username });
 }
 
 async function apiGetUserVotes(videoId, itemType = 'citation') {
@@ -195,8 +211,8 @@ async function apiGetNotifications(username, page) {
     return _send({ type: 'getNotifications', username, page });
 }
 
-async function apiMarkNotificationRead(id) {
-    return _send({ type: 'markNotificationRead', id });
+async function apiMarkNotificationRead(id, username) {
+    return _send({ type: 'markNotificationRead', id, username });
 }
 
 async function apiMarkAllNotificationsRead(username) {

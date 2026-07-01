@@ -3,6 +3,17 @@ const UserProfile = require('../models/UserProfile');
 const Citation    = require('../models/Citation');
 const Request     = require('../models/Request');
 const Expert      = require('../models/Expert');
+const { ALL_CATEGORIES } = require('../config/categories');
+
+const MAX_DISPLAY_NAME_LEN = 100;
+const MAX_FOLLOWED_CATEGORIES = ALL_CATEGORIES.length;
+
+// Case-insensitive, '@'-prefix-tolerant username match — same convention used
+// for ownership checks elsewhere in the backend.
+function usernameMatches(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    return a.replace(/^@/, '').toLowerCase() === b.replace(/^@/, '').toLowerCase();
+}
 
 // GET /api/profile/:username
 router.get('/:username', async (req, res) => {
@@ -37,7 +48,21 @@ router.get('/:username', async (req, res) => {
 // PUT /api/profile/:username
 router.put('/:username', async (req, res) => {
     try {
+        if (!usernameMatches(req.params.username, req.body.requesterUsername)) {
+            return res.status(403).json({ success: false, error: 'You can only edit your own profile' });
+        }
+
         const { displayName, bio, followedCategories } = req.body;
+
+        if (displayName !== undefined && (typeof displayName !== 'string' || displayName.length > MAX_DISPLAY_NAME_LEN)) {
+            return res.status(400).json({ success: false, error: `displayName must be at most ${MAX_DISPLAY_NAME_LEN} characters` });
+        }
+        if (followedCategories !== undefined) {
+            if (!Array.isArray(followedCategories) || followedCategories.length > MAX_FOLLOWED_CATEGORIES
+                || !followedCategories.every(c => ALL_CATEGORIES.includes(c))) {
+                return res.status(400).json({ success: false, error: 'followedCategories must be an array of valid category names' });
+            }
+        }
 
         const profile = await UserProfile.findOneAndUpdate(
             { username: req.params.username },

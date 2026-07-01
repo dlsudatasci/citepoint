@@ -8,7 +8,7 @@ const expertSchema = new mongoose.Schema({
     grantedBy:  { type: String, default: null },
 });
 
-expertSchema.index({ username: 1 });
+// username's index is already created by `unique: true` above.
 expertSchema.index({ categories: 1 });
 
 module.exports = mongoose.model('Expert', expertSchema);

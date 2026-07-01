@@ -9,6 +9,6 @@ const userProfileSchema = new mongoose.Schema({
     createdAt:      { type: Date, default: Date.now },
 });
 
-userProfileSchema.index({ username: 1 });
+// username's index is already created by `unique: true` above.
 
 module.exports = mongoose.model('UserProfile', userProfileSchema);

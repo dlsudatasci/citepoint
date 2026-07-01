@@ -65,10 +65,10 @@ router.get('/request/:id', async (req, res) => {
 // POST /api/discussion/reply — lightweight reply (inherits parent metadata)
 router.post('/reply', async (req, res) => {
     try {
-        const { parentCitationId, description, username, videoId } = req.body;
+        const { parentCitationId, description, username } = req.body;
 
-        if (!parentCitationId || !description || !username || !videoId) {
-            return res.status(400).json({ success: false, error: 'parentCitationId, description, username, and videoId are required' });
+        if (!parentCitationId || !description || !username) {
+            return res.status(400).json({ success: false, error: 'parentCitationId, description, and username are required' });
         }
         if (description.length > MAX_DESC_LEN) {
             return res.status(400).json({ success: false, error: `description must be at most ${MAX_DESC_LEN} characters` });
@@ -79,8 +79,10 @@ router.post('/reply', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Parent citation not found' });
         }
 
+        // videoId is always derived from the parent citation — never trust the client's
+        // value here, or replies can be filed under an unrelated/bogus video (see audit F-4).
         const reply = await Citation.create({
-            videoId,
+            videoId: parent.videoId,
             citationTitle:    parent.citationTitle,
             timestampStart:   parent.timestampStart,
             timestampEnd:     parent.timestampEnd,

@@ -1582,24 +1582,3 @@ function _escapeHtml(str) {
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
 }
-
-/**
- * Show a brief toast notification.
- * Uses .cp-toast / .cp-toast-error / .cp-toast-success CSS classes.
- */
-function showToast(message, type = 'info') {
-    document.querySelector('.cp-toast')?.remove();
-
-    const toast = document.createElement('div');
-    toast.className = `cp-toast cp-toast-${type}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-
-    requestAnimationFrame(() => {
-        toast.classList.add('visible');
-        setTimeout(() => {
-            toast.classList.remove('visible');
-            setTimeout(() => toast.remove(), 200);
-        }, 3000);
-    });
-}

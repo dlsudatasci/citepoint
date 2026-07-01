@@ -4,6 +4,7 @@ const sseEmitter  = require('../lib/sseEmitter');
 const { CATEGORIES, ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/categories');
 const { isExpert } = require('../config/experts');
 const { notifyExpertsForCategory } = require('../lib/notifyExperts');
+const { applyVote } = require('../lib/voting');
 
 // ── Validation helpers ────────────────────────
 
@@ -187,13 +188,24 @@ router.patch('/:videoId/:id/vote', async (req, res) => {
         if (![-2, -1, 1, 2].includes(delta)) {
             return res.status(400).json({ success: false, error: 'delta must be -2, -1, 1, or 2' });
         }
+        const { username } = req.body;
+        if (!username) {
+            return res.status(400).json({ success: false, error: 'username is required' });
+        }
+
+        const exists = await Citation.exists({ _id: req.params.id, videoId: req.params.videoId });
+        if (!exists) return res.status(404).json({ success: false, error: 'Citation not found' });
+
+        // Verifies the delta is a legal transition from this user's recorded vote state
+        // (server-side, not client-trusted) before applying it — closes repeated-call
+        // vote inflation, since a second identical vote is no longer a legal transition.
+        await applyVote(req.params.id, 'citation', username, delta);
 
         const citation = await Citation.findOneAndUpdate(
             { _id: req.params.id, videoId: req.params.videoId },
             { $inc: { voteScore: delta } },
             { new: true }
         );
-        if (!citation) return res.status(404).json({ success: false, error: 'Citation not found' });
 
         sseEmitter.emit(req.params.videoId, {
             type:       'citationVoteUpdated',
@@ -204,7 +216,7 @@ router.patch('/:videoId/:id/vote', async (req, res) => {
 
         res.json({ success: true, newScore: citation.voteScore });
     } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+        res.status(err.status || 500).json({ success: false, error: err.message });
     }
 });
 
