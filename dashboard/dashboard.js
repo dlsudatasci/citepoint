@@ -19,6 +19,12 @@ function _categoryColor(category) {
     return CATEGORY_COLORS[category] || CATEGORY_COLORS['Uncategorized'];
 }
 
+function _escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+}
+
 /**
  * Try to find the videoId of the YouTube video the user was watching.
  * Returns null if no YouTube watch tab is found (falls back to global scope).
@@ -56,7 +62,7 @@ function _renderBarChart(container, data) {
         const row = document.createElement('div');
         row.className = 'bar-row';
         row.innerHTML = `
-            <span class="bar-label">${category}</span>
+            <span class="bar-label">${_escapeHtml(category)}</span>
             <div class="bar-track">
                 <div class="bar-fill" style="width:${(count / max) * 100}%;background-color:${colors.color}"></div>
             </div>
@@ -81,7 +87,7 @@ function _renderStackedChart(container, data) {
         const row = document.createElement('div');
         row.className = 'bar-row';
         row.innerHTML = `
-            <span class="bar-label">${category}</span>
+            <span class="bar-label">${_escapeHtml(category)}</span>
             <div class="bar-track">
                 <div class="bar-fill bar-fill-verified" style="width:${(verified / max) * 100}%"></div>
                 <div class="bar-fill bar-fill-unverified" style="width:${(unverified / max) * 100}%"></div>
@@ -105,8 +111,12 @@ async function _loadStats() {
         _renderStackedChart(document.getElementById('requests-verification-chart'), stats.verificationStats.requests);
     } catch (err) {
         console.error('[dashboard] Error loading stats:', err);
-        document.getElementById('dashboard-content').innerHTML =
-            `<p class="error-message">Error loading dashboard stats: ${err.message}</p>`;
+        const content = document.getElementById('dashboard-content');
+        content.innerHTML = '';
+        const p = document.createElement('p');
+        p.className = 'error-message';
+        p.textContent = `Error loading dashboard stats: ${err.message}`;
+        content.appendChild(p);
     }
 }
 
@@ -153,8 +163,8 @@ async function _loadNotifications() {
             div.innerHTML = `
                 <span class="notif-icon">${icon}</span>
                 <div class="notif-body">
-                    <span class="notif-title">${n.title}</span>
-                    ${n.category ? `<span class="notif-category">${n.category}</span>` : ''}
+                    <span class="notif-title">${_escapeHtml(n.title)}</span>
+                    ${n.category ? `<span class="notif-category">${_escapeHtml(n.category)}</span>` : ''}
                     <span class="notif-time">${new Date(n.createdAt).toLocaleDateString()}</span>
                 </div>
             `;
@@ -193,7 +203,7 @@ async function _loadProfileSection() {
             <div class="stat-card"><span class="stat-number">${stats.citations}</span><span class="stat-label">Citations</span></div>
             <div class="stat-card"><span class="stat-number">${stats.requests}</span><span class="stat-label">Requests</span></div>
             <div class="stat-card"><span class="stat-number">${stats.upvotes}</span><span class="stat-label">Upvotes</span></div>
-            ${expert ? `<div class="stat-card stat-expert"><span class="stat-number">✓</span><span class="stat-label">Expert: ${expert.categories.join(', ')}</span></div>` : ''}
+            ${expert ? `<div class="stat-card stat-expert"><span class="stat-number">✓</span><span class="stat-label">Expert: ${_escapeHtml(expert.categories.join(', '))}</span></div>` : ''}
         `;
 
         formEl.style.display = 'block';
@@ -228,7 +238,7 @@ async function _loadProfileSection() {
                 div.className = 'history-item';
                 div.innerHTML = `
                     <span class="history-type ${item.type === 'Citation' ? 'type-citation' : 'type-request'}">${item.type}</span>
-                    <span class="history-title">${item.title || 'Untitled'}</span>
+                    <span class="history-title">${_escapeHtml(item.title || 'Untitled')}</span>
                     <span class="history-score">▲ ${item.score ?? 0}</span>
                     <span class="history-date">${new Date(item.date).toLocaleDateString()}</span>
                 `;
@@ -287,11 +297,11 @@ async function _loadExpertSection() {
                 div.className = 'application-card';
                 div.innerHTML = `
                     <div class="app-header">
-                        <span class="app-category">${app.category}</span>
-                        <span class="app-status ${statusClass}">${app.status}</span>
+                        <span class="app-category">${_escapeHtml(app.category)}</span>
+                        <span class="app-status ${statusClass}">${_escapeHtml(app.status)}</span>
                     </div>
-                    <p class="app-credentials">${app.credentials}</p>
-                    ${app.reason ? `<p class="app-reason">Reason: ${app.reason}</p>` : ''}
+                    <p class="app-credentials">${_escapeHtml(app.credentials)}</p>
+                    ${app.reason ? `<p class="app-reason">Reason: ${_escapeHtml(app.reason)}</p>` : ''}
                     <span class="app-date">Submitted ${new Date(app.submittedAt).toLocaleDateString()}</span>
                 `;
                 listEl.appendChild(div);
@@ -346,10 +356,10 @@ async function _loadAdminSection(adminUsername) {
             div.className = 'application-card admin-card';
             div.innerHTML = `
                 <div class="app-header">
-                    <span class="app-username">${app.username}</span>
-                    <span class="app-category">${app.category}</span>
+                    <span class="app-username">${_escapeHtml(app.username)}</span>
+                    <span class="app-category">${_escapeHtml(app.category)}</span>
                 </div>
-                <p class="app-credentials">${app.credentials}</p>
+                <p class="app-credentials">${_escapeHtml(app.credentials)}</p>
                 <span class="app-date">Submitted ${new Date(app.submittedAt).toLocaleDateString()}</span>
                 <div class="admin-actions">
                     <button class="approve-btn" data-id="${app._id}">Approve</button>
