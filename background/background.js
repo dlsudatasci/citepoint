@@ -515,7 +515,10 @@ async function handleGetProfile(username) {
 
 async function handleUpdateProfile(username, data) {
     try {
-        const result = await apiRequest(`/profile/${encodeURIComponent(username)}`, 'PUT', data);
+        const result = await apiRequest(`/profile/${encodeURIComponent(username)}`, 'PUT', {
+            ...data,
+            requesterUsername: username,
+        });
         return { success: true, profile: result.profile };
     } catch (error) {
         return { success: false, error: error.message };
