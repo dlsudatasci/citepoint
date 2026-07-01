@@ -13,22 +13,27 @@
  */
 async function getYouTubeUsername() {
     try {
-        // 1. Check cache first — covers returning users across page navigations.
+        // 1. Check cache first — works on any page (extension pages, YouTube, etc.)
         const cached = await getCachedUsername();
         if (cached) {
-            console.log('[username] Using cached handle:', cached);
             return cached;
         }
 
-        // 2. Quick DOM check — may already be available
+        // 2. If not on YouTube, cache is the only option — don't try DOM detection.
+        const onYouTube = location.hostname?.includes('youtube.com');
+        if (!onYouTube) {
+            console.log('[username] Not on YouTube and no cached handle — user must visit YouTube first');
+            return null;
+        }
+
+        // 3. Quick DOM check — may already be available
         const quick = _tryGetHandleFromDOM();
         if (quick) {
             _cacheUsername(quick);
             return quick;
         }
 
-        // 3. Passive wait — observe the DOM until YouTube hydrates the handle.
-        //    No clicks, no side effects. Gives up after 10s.
+        // 4. Passive wait — observe the DOM until YouTube hydrates the handle.
         const observed = await _waitForHandleInDOM(10000);
         if (observed) {
             _cacheUsername(observed);

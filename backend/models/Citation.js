@@ -37,4 +37,7 @@ citationSchema.index({ videoId: 1, username: 1 });
 // Category filter/aggregation index for the panel filter and dashboard.
 citationSchema.index({ videoId: 1, category: 1 });
 
+// Thread index: speeds up nested reply queries.
+citationSchema.index({ parentCitationId: 1, dateAdded: 1 });
+
 module.exports = mongoose.model('Citation', citationSchema);

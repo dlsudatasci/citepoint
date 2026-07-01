@@ -1344,6 +1344,80 @@ h3 {
     line-height: 1.5;
 }
 
+/* ── Inline Reply Form (extension panel) ────────────── */
+
+.inline-reply-form {
+    margin: 8px 0 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--cp-divider, rgba(0,0,0,0.08));
+}
+
+.inline-reply-form textarea {
+    width: 100%;
+    min-height: 48px;
+    resize: vertical;
+    border: 1px solid var(--cp-border-input, #dadce0);
+    border-radius: var(--cp-radius-md, 8px);
+    padding: 8px 10px;
+    font-family: var(--cp-font, "Roboto", "Arial", sans-serif);
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--cp-text-primary, #0f0f0f);
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+
+.inline-reply-form textarea:focus {
+    outline: none;
+    border-color: var(--cp-accent, #065fd4);
+    box-shadow: 0 0 0 2px rgba(6, 95, 212, 0.1);
+}
+
+.inline-reply-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.inline-reply-submit {
+    background: var(--cp-accent, #065fd4);
+    color: white;
+    border: none;
+    border-radius: 18px;
+    padding: 5px 14px;
+    font-family: var(--cp-font, "Roboto", "Arial", sans-serif);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.inline-reply-submit:hover {
+    background: var(--cp-accent-hover, #0356c6);
+}
+
+.inline-reply-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.inline-reply-cancel {
+    background: none;
+    border: 1px solid var(--cp-border-input, #dadce0);
+    border-radius: 18px;
+    padding: 5px 14px;
+    font-family: var(--cp-font, "Roboto", "Arial", sans-serif);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--cp-text-secondary, #606060);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.inline-reply-cancel:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
 /* ── Containers ─────────────────────────────────────── */
 
 #citation-requests-container,

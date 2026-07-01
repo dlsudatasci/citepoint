@@ -185,8 +185,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         handleGetDiscussionCitation(request.id).then(sendResponse);
         return true;
     }
+    if (request.type === 'getDiscussionCitationTree') {
+        handleGetDiscussionCitationTree(request.id).then(sendResponse);
+        return true;
+    }
     if (request.type === 'getDiscussionRequest') {
         handleGetDiscussionRequest(request.id).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'addQuickReply') {
+        handleAddQuickReply(request).then(sendResponse);
         return true;
     }
     if (request.type === 'getNotifications') {
@@ -540,10 +548,30 @@ async function handleGetDiscussionCitation(id) {
     }
 }
 
+async function handleGetDiscussionCitationTree(id) {
+    try {
+        const data = await apiRequest(`/discussion/citation/${id}?tree=true`);
+        return { success: true, citation: data.citation, replies: data.replies || [] };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
 async function handleGetDiscussionRequest(id) {
     try {
         const data = await apiRequest(`/discussion/request/${id}`);
         return { success: true, request: data.request, responses: data.responses || [] };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleAddQuickReply({ parentCitationId, description, videoId, username }) {
+    try {
+        const data = await apiRequest('/discussion/reply', 'POST', {
+            parentCitationId, description, videoId, username,
+        });
+        return { success: true, id: data.id };
     } catch (error) {
         return { success: false, error: error.message };
     }
