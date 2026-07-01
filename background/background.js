@@ -221,7 +221,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
     if (request.type === 'markNotificationRead') {
-        handleMarkNotificationRead(request.id).then(sendResponse);
+        handleMarkNotificationRead(request.id, request.username).then(sendResponse);
         return true;
     }
     if (request.type === 'markAllNotificationsRead') {
@@ -543,9 +543,9 @@ async function handleGetNotifications(username, page = 1) {
     }
 }
 
-async function handleMarkNotificationRead(id) {
+async function handleMarkNotificationRead(id, username) {
     try {
-        await apiRequest(`/notifications/${id}/read`, 'PATCH');
+        await apiRequest(`/notifications/${id}/read`, 'PATCH', { username });
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
@@ -554,7 +554,7 @@ async function handleMarkNotificationRead(id) {
 
 async function handleMarkAllNotificationsRead(username) {
     try {
-        await apiRequest(`/notifications/${encodeURIComponent(username)}/read-all`, 'PATCH');
+        await apiRequest(`/notifications/${encodeURIComponent(username)}/read-all`, 'PATCH', { username });
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };

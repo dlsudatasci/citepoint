@@ -170,7 +170,7 @@ async function _loadNotifications() {
             `;
             if (!n.read) {
                 div.addEventListener('click', async () => {
-                    await apiMarkNotificationRead(n._id);
+                    await apiMarkNotificationRead(n._id, username);
                     div.classList.remove('unread');
                 });
             }

@@ -1,6 +1,13 @@
 const router       = require('express').Router();
 const Notification = require('../models/Notification');
 
+// Case-insensitive, '@'-prefix-tolerant username match — same convention used
+// for ownership checks in citations.js/requests.js.
+function usernameMatches(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    return a.replace(/^@/, '').toLowerCase() === b.replace(/^@/, '').toLowerCase();
+}
+
 // GET /api/notifications/:username
 router.get('/:username', async (req, res) => {
     try {
@@ -27,6 +34,19 @@ router.get('/:username', async (req, res) => {
 // PATCH /api/notifications/:id/read
 router.patch('/:id/read', async (req, res) => {
     try {
+        const { username } = req.body;
+        if (!username) {
+            return res.status(400).json({ success: false, error: 'username is required' });
+        }
+
+        const notification = await Notification.findById(req.params.id).lean();
+        if (!notification) {
+            return res.status(404).json({ success: false, error: 'Notification not found' });
+        }
+        if (!usernameMatches(notification.username, username)) {
+            return res.status(403).json({ success: false, error: 'You do not own this notification' });
+        }
+
         await Notification.findByIdAndUpdate(req.params.id, { read: true });
         res.json({ success: true });
     } catch (err) {
@@ -37,6 +57,10 @@ router.patch('/:id/read', async (req, res) => {
 // PATCH /api/notifications/:username/read-all
 router.patch('/:username/read-all', async (req, res) => {
     try {
+        if (!usernameMatches(req.params.username, req.body.username)) {
+            return res.status(403).json({ success: false, error: 'You can only mark your own notifications as read' });
+        }
+
         await Notification.updateMany({ username: req.params.username, read: false }, { read: true });
         res.json({ success: true });
     } catch (err) {
