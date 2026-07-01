@@ -1,8 +1,27 @@
 // Derive API base from manifest host_permissions — single source of truth.
 // Update host_permissions in manifest.json for production; this picks it up automatically.
+//
+// The API host is identified by NOT being a known YouTube pattern, rather than by
+// trusting a fixed array position — host_permissions can be freely reordered (e.g. to
+// add a new host) without silently repointing every API call at the wrong origin.
+const _YOUTUBE_HOST_PATTERNS = [/^\*:\/\/(www\.)?youtube\.com\//, /^\*:\/\/m\.youtube\.com\//];
+
+function _deriveApiBasePermission(hostPermissions) {
+    const perms = hostPermissions || [];
+    const apiCandidates = perms.filter(p => !_YOUTUBE_HOST_PATTERNS.some(re => re.test(p)));
+    if (apiCandidates.length === 0) {
+        console.error('[background] No non-YouTube host_permissions entry found — cannot determine API base URL.');
+        return '';
+    }
+    if (apiCandidates.length > 1) {
+        console.warn('[background] Multiple candidate API host_permissions found; using the first one:', apiCandidates);
+    }
+    return apiCandidates[0];
+}
+
 var API_BASE_URL = (() => {
     try {
-        const perm = chrome.runtime.getManifest().host_permissions?.[0] ?? '';
+        const perm = _deriveApiBasePermission(chrome.runtime.getManifest().host_permissions);
         const base = perm.replace(/\/\*$/, ''); // strip trailing /*
         return base ? base + '/api' : 'http://localhost:3000/api';
     } catch (_) {
