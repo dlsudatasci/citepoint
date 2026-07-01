@@ -1,8 +1,27 @@
 // Derive API base from manifest host_permissions — single source of truth.
 // Update host_permissions in manifest.json for production; this picks it up automatically.
+//
+// The API host is identified by NOT being a known YouTube pattern, rather than by
+// trusting a fixed array position — host_permissions can be freely reordered (e.g. to
+// add a new host) without silently repointing every API call at the wrong origin.
+const _YOUTUBE_HOST_PATTERNS = [/^\*:\/\/(www\.)?youtube\.com\//, /^\*:\/\/m\.youtube\.com\//];
+
+function _deriveApiBasePermission(hostPermissions) {
+    const perms = hostPermissions || [];
+    const apiCandidates = perms.filter(p => !_YOUTUBE_HOST_PATTERNS.some(re => re.test(p)));
+    if (apiCandidates.length === 0) {
+        console.error('[background] No non-YouTube host_permissions entry found — cannot determine API base URL.');
+        return '';
+    }
+    if (apiCandidates.length > 1) {
+        console.warn('[background] Multiple candidate API host_permissions found; using the first one:', apiCandidates);
+    }
+    return apiCandidates[0];
+}
+
 var API_BASE_URL = (() => {
     try {
-        const perm = chrome.runtime.getManifest().host_permissions?.[0] ?? '';
+        const perm = _deriveApiBasePermission(chrome.runtime.getManifest().host_permissions);
         const base = perm.replace(/\/\*$/, ''); // strip trailing /*
         return base ? base + '/api' : 'http://localhost:3000/api';
     } catch (_) {
@@ -139,9 +158,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             return true;
         }
         if (request.itemType === 'citation') {
-            handleUpdateCitationVotes(request.videoId, request.itemId, request.voteType).then(sendResponse);
+            handleUpdateCitationVotes(request.videoId, request.itemId, request.voteType, request.username).then(sendResponse);
         } else {
-            handleUpdateRequestVotes(request.videoId, request.itemId, request.voteType).then(sendResponse);
+            handleUpdateRequestVotes(request.videoId, request.itemId, request.voteType, request.username).then(sendResponse);
         }
         return true;
     }
@@ -166,7 +185,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
     if (request.type === 'applyExpert') {
-        handleApplyExpert(request.username, request.category, request.credentials).then(sendResponse);
+        handleApplyExpert(request.username, request.topics, request.credentials).then(sendResponse);
         return true;
     }
     if (request.type === 'getMyApplications') {
@@ -174,7 +193,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
     if (request.type === 'getPendingApplications') {
-        handleGetPendingApplications().then(sendResponse);
+        handleGetPendingApplications(request.adminUsername).then(sendResponse);
         return true;
     }
     if (request.type === 'reviewApplication') {
@@ -185,8 +204,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         handleGetDiscussionCitation(request.id).then(sendResponse);
         return true;
     }
+    if (request.type === 'getDiscussionCitationTree') {
+        handleGetDiscussionCitationTree(request.id).then(sendResponse);
+        return true;
+    }
     if (request.type === 'getDiscussionRequest') {
         handleGetDiscussionRequest(request.id).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'addQuickReply') {
+        handleAddQuickReply(request).then(sendResponse);
         return true;
     }
     if (request.type === 'getNotifications') {
@@ -194,7 +221,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
     if (request.type === 'markNotificationRead') {
-        handleMarkNotificationRead(request.id).then(sendResponse);
+        handleMarkNotificationRead(request.id, request.username).then(sendResponse);
         return true;
     }
     if (request.type === 'markAllNotificationsRead') {
@@ -213,7 +240,6 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         handleGetProfileHistory(request.username, request.page).then(sendResponse);
         return true;
     }
-
     if (request.type === 'upsertVideo') {
         handleUpsertVideo(request.data).then(sendResponse);
         return true;
@@ -223,12 +249,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
     if (request.type === 'getGeneralFeed') {
-        handleGetGeneralFeed(request.category, request.page, request.limit).then(sendResponse);
-        return true;
-    }
-    
-    if (request.type === 'applyExpert') {
-        handleApplyExpert(request.username, request.topics, request.credentials).then(sendResponse);
+        handleGetGeneralFeed(request.topic, request.page, request.limit).then(sendResponse);
         return true;
     }
 });
@@ -341,7 +362,7 @@ function computeDelta(voteType, currentVote) {
     return delta;
 }
 
-async function handleUpdateCitationVotes(videoId, citationId, voteType) {
+async function handleUpdateCitationVotes(videoId, citationId, voteType, username) {
     try {
         const storageKey = getStorageKey('citation', videoId);
         const userVotes = await new Promise(resolve =>
@@ -349,7 +370,7 @@ async function handleUpdateCitationVotes(videoId, citationId, voteType) {
         );
         const currentVote = userVotes[citationId];
         const delta = computeDelta(voteType, currentVote);
-        const result = await apiRequest(`/citations/${videoId}/${citationId}/vote`, 'PATCH', { delta });
+        const result = await apiRequest(`/citations/${videoId}/${citationId}/vote`, 'PATCH', { delta, username });
 
         if (voteType === currentVote) {
             delete userVotes[citationId];
@@ -366,7 +387,7 @@ async function handleUpdateCitationVotes(videoId, citationId, voteType) {
     }
 }
 
-async function handleUpdateRequestVotes(videoId, requestId, voteType) {
+async function handleUpdateRequestVotes(videoId, requestId, voteType, username) {
     try {
         const storageKey = getStorageKey('request', videoId);
         const userVotes = await new Promise(resolve =>
@@ -374,7 +395,7 @@ async function handleUpdateRequestVotes(videoId, requestId, voteType) {
         );
         const currentVote = userVotes[requestId];
         const delta = computeDelta(voteType, currentVote);
-        const result = await apiRequest(`/requests/${videoId}/${requestId}/vote`, 'PATCH', { delta });
+        const result = await apiRequest(`/requests/${videoId}/${requestId}/vote`, 'PATCH', { delta, username });
 
         if (voteType === currentVote) {
             delete userVotes[requestId];
@@ -422,11 +443,10 @@ async function handleUpdateCategory(itemType, videoId, itemId, category, usernam
 async function handleCheckExpert(username) {
     try {
         const result = await apiRequest(`/experts/${encodeURIComponent(username)}`);
-        // Updated to pass expertTopics back to the frontend
-        return { 
-            success: true, 
+        return {
+            success: true,
             isExpert: result.isExpert,
-            expertTopics: result.expertTopics || [] 
+            topics: result.topics || [],
         };
     } catch (error) {
         return { success: false, error: error.message };
@@ -482,9 +502,9 @@ async function handleGetMyApplications(username) {
     }
 }
 
-async function handleGetPendingApplications() {
+async function handleGetPendingApplications(adminUsername) {
     try {
-        const data = await apiRequest('/experts/applications/pending');
+        const data = await apiRequest(`/experts/applications/pending?adminUsername=${encodeURIComponent(adminUsername || '')}`);
         return { success: true, applications: data.applications || [] };
     } catch (error) {
         return { success: false, error: error.message };
@@ -511,7 +531,10 @@ async function handleGetProfile(username) {
 
 async function handleUpdateProfile(username, data) {
     try {
-        const result = await apiRequest(`/profile/${encodeURIComponent(username)}`, 'PUT', data);
+        const result = await apiRequest(`/profile/${encodeURIComponent(username)}`, 'PUT', {
+            ...data,
+            requesterUsername: username,
+        });
         return { success: true, profile: result.profile };
     } catch (error) {
         return { success: false, error: error.message };
@@ -536,9 +559,9 @@ async function handleGetNotifications(username, page = 1) {
     }
 }
 
-async function handleMarkNotificationRead(id) {
+async function handleMarkNotificationRead(id, username) {
     try {
-        await apiRequest(`/notifications/${id}/read`, 'PATCH');
+        await apiRequest(`/notifications/${id}/read`, 'PATCH', { username });
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
@@ -547,7 +570,7 @@ async function handleMarkNotificationRead(id) {
 
 async function handleMarkAllNotificationsRead(username) {
     try {
-        await apiRequest(`/notifications/${encodeURIComponent(username)}/read-all`, 'PATCH');
+        await apiRequest(`/notifications/${encodeURIComponent(username)}/read-all`, 'PATCH', { username });
         return { success: true };
     } catch (error) {
         return { success: false, error: error.message };
@@ -563,10 +586,30 @@ async function handleGetDiscussionCitation(id) {
     }
 }
 
+async function handleGetDiscussionCitationTree(id) {
+    try {
+        const data = await apiRequest(`/discussion/citation/${id}?tree=true`);
+        return { success: true, citation: data.citation, replies: data.replies || [] };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
 async function handleGetDiscussionRequest(id) {
     try {
         const data = await apiRequest(`/discussion/request/${id}`);
         return { success: true, request: data.request, responses: data.responses || [] };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleAddQuickReply({ parentCitationId, description, videoId, username }) {
+    try {
+        const data = await apiRequest('/discussion/reply', 'POST', {
+            parentCitationId, description, videoId, username,
+        });
+        return { success: true, id: data.id };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -592,9 +635,9 @@ async function handleGetExpertFeed(username) {
     }
 }
 
-async function handleGetGeneralFeed(category, page = 1, limit = 20) {
+async function handleGetGeneralFeed(topic, page = 1, limit = 20) {
     try {
-        const query = new URLSearchParams({ category, page, limit }).toString();
+        const query = new URLSearchParams({ topic: topic || 'All', page, limit }).toString();
         const result = await apiRequest(`/feeds/general?${query}`);
         return { success: true, data: result.data, pagination: result.pagination };
     } catch (error) {

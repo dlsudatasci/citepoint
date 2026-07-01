@@ -5,16 +5,124 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Citepoint Dashboard</title>
     <link rel="stylesheet" href="dashboard.css">
-    <link rel="stylesheet" href="dist/dashboard.bundle.css">
 </head>
 <body>
-    
-    <div id="react-dashboard-root"></div>
+    <div class="dashboard-container">
+        <header class="dashboard-header">
+            <h1>Citepoint Dashboard</h1>
+            <p class="dashboard-subtitle">Trending categories and expert verification activity</p>
+            <div class="dashboard-scope">
+                <label for="scope-select">Scope:</label>
+                <select id="scope-select">
+                    <option value="video">This video</option>
+                    <option value="global">All videos</option>
+                </select>
+            </div>
+        </header>
+
+        <nav class="dashboard-nav">
+            <button class="nav-btn active" data-target="dashboard-content">Dashboard</button>
+            <button class="nav-btn" data-target="general-feed-section">General Feed</button>
+            <button class="nav-btn" id="nav-expert-feed" data-target="expert-feed-section" style="display:none;">Expert Feed</button>
+            <button class="nav-btn" id="nav-admin" data-target="dashboard-content" style="display:none;">Admin</button>
+        </nav>
+
+        <main id="dashboard-content" class="tab-pane active">
+            <section class="dashboard-section">
+                <h2>Trending Requested Categories</h2>
+                <div id="requests-chart" class="bar-chart"></div>
+            </section>
+
+            <section class="dashboard-section">
+                <h2>Citations by Category</h2>
+                <div id="citations-chart" class="bar-chart"></div>
+            </section>
+
+            <section class="dashboard-section">
+                <h2>Expert Verification Activity</h2>
+                <div class="verification-group">
+                    <h3>Citations</h3>
+                    <div id="citations-verification-chart" class="stacked-chart"></div>
+                </div>
+                <div class="verification-group">
+                    <h3>Citation Requests</h3>
+                    <div id="requests-verification-chart" class="stacked-chart"></div>
+                </div>
+            </section>
+            <section class="dashboard-section" id="notifications-section">
+                <div class="notif-header">
+                    <h2>Notifications <span id="notif-badge" class="notif-badge" style="display:none;">0</span></h2>
+                    <button id="mark-all-read-btn" class="mark-all-btn" style="display:none;">Mark all read</button>
+                </div>
+                <div id="notifications-list"></div>
+            </section>
+
+            <section class="dashboard-section" id="profile-section">
+                <h2>My Profile</h2>
+                <div id="profile-content">
+                    <div id="profile-stats" class="profile-stats-row"></div>
+                    <form id="profile-form" style="display:none;">
+                        <div class="form-group">
+                            <label for="profile-display-name">Display Name:</label>
+                            <input type="text" id="profile-display-name" placeholder="Your display name">
+                        </div>
+                        <div class="form-group">
+                            <label for="profile-bio">Bio:</label>
+                            <textarea id="profile-bio" rows="3" maxlength="500" placeholder="Tell others about yourself..."></textarea>
+                        </div>
+                        <button type="submit" class="submit-btn">Save Profile</button>
+                    </form>
+                    <div id="profile-history"></div>
+                </div>
+            </section>
+
+            <section class="dashboard-section" id="expert-section">
+                <h2>Expert Verification</h2>
+                <div id="expert-status"></div>
+                <div id="expert-apply-form" style="display:none;">
+                    <h3>Apply to Become a Verified Expert</h3>
+                    <form id="expert-application-form">
+                        <div class="form-group">
+                            <label>Expertise Topics:</label>
+                            <div id="expert-topics-container" class="topic-checkbox-group"></div>
+                        </div>
+                        <div class="form-group">
+                            <label for="expert-credentials">Credentials (degree, license, portfolio link, etc.):</label>
+                            <textarea id="expert-credentials" rows="4" required placeholder="Describe your qualifications for these topics..."></textarea>
+                        </div>
+                        <button type="submit" class="submit-btn">Submit Application</button>
+                    </form>
+                </div>
+                <div id="expert-applications-list"></div>
+            </section>
+
+            <section class="dashboard-section" id="admin-section" style="display:none;">
+                <h2>Admin: Pending Expert Applications</h2>
+                <div id="admin-pending-list"></div>
+            </section>
+        </main>
+
+        <section id="general-feed-section" class="tab-pane">
+            <h2>General Feed</h2>
+            <div class="dashboard-scope">
+                <label for="general-feed-filter">Filter by topic:</label>
+                <select id="general-feed-filter">
+                    <option value="All">All Topics</option>
+                </select>
+            </div>
+            <div id="general-feed-list" class="feed-list"></div>
+        </section>
+
+        <section id="expert-feed-section" class="tab-pane">
+            <h2>Expert Feed</h2>
+            <p class="dashboard-subtitle">Requests matching the topics you're verified in.</p>
+            <div id="expert-feed-list" class="feed-list"></div>
+        </section>
+    </div>
 
     <script src="../lib/browser-polyfill.js"></script>
     <script src="../config/config.js"></script>
     <script src="../content/api.js"></script>
-    
-    <script type="module" src="dist/dashboard.bundle.js"></script>
+    <script src="dashboard.js"></script>
 </body>
 </html>

@@ -108,7 +108,7 @@ describe('PATCH /api/requests/:videoId/:id/vote', () => {
         const id  = await createRequest();
         const res = await request(app)
             .patch(`${BASE}/${id}/vote`)
-            .send({ delta: 1 });
+            .send({ delta: 1, username: 'voter1' });
         expect(res.body.newScore).toBe(1);
     });
 
@@ -116,15 +116,30 @@ describe('PATCH /api/requests/:videoId/:id/vote', () => {
         const id  = await createRequest();
         const res = await request(app)
             .patch(`${BASE}/${id}/vote`)
-            .send({ delta: 0 });
+            .send({ delta: 0, username: 'voter1' });
+        expect(res.status).toBe(400);
+    });
+
+    it('requires username', async () => {
+        const id  = await createRequest();
+        const res = await request(app).patch(`${BASE}/${id}/vote`).send({ delta: 1 });
         expect(res.status).toBe(400);
     });
 
     it('returns 404 for non-existent request', async () => {
         const res = await request(app)
             .patch(`${BASE}/000000000000000000000000/vote`)
-            .send({ delta: 1 });
+            .send({ delta: 1, username: 'voter1' });
         expect(res.status).toBe(404);
+    });
+
+    it('rejects a repeated identical upvote from the same user', async () => {
+        const id = await createRequest();
+        await request(app).patch(`${BASE}/${id}/vote`).send({ delta: 1, username: 'voter1' });
+        const res = await request(app)
+            .patch(`${BASE}/${id}/vote`)
+            .send({ delta: 1, username: 'voter1' });
+        expect(res.status).toBe(409);
     });
 });
 

@@ -306,6 +306,12 @@ window.respondWithCitation = function(start, end, reason, title = '', requestId 
             endField.classList.add('field-locked');
         }
 
+        const recordingRow = form.querySelector('.recording-row');
+        if (recordingRow) recordingRow.style.display = 'none';
+
+        const categoryGroup = form.querySelector('#category')?.closest('.form-group');
+        if (categoryGroup) categoryGroup.style.display = 'none';
+
         if (descriptionField) {
             const wrapper = document.createElement('div');
             wrapper.className = 'response-section';

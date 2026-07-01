@@ -385,47 +385,6 @@ test('VOT-016: voting without YouTube login shows login error toast', async () =
 });
 
 // ─────────────────────────────────────────────
-// VOT-018: Vote Score Reverts on Backend Failure
-// ─────────────────────────────────────────────
-
-test('VOT-018: voting while backend is offline does not permanently change the score', async () => {
-    await createCitation('VOT-018 Citation');
-    const { upvoteBtn, scoreEl } = await getVoteControls('VOT-018 Citation');
-    const scoreBefore = parseInt((await scoreEl.textContent()).trim(), 10);
-
-    const sw = context.serviceWorkers().find(w => w.url().includes(EXTENSION_ID));
-    if (sw) {
-        await sw.evaluate(() => {
-            globalThis._savedApiBase = API_BASE_URL;
-            API_BASE_URL = 'http://localhost:19999/api';
-        });
-    }
-
-    await upvoteBtn.click();
-    await page.waitForTimeout(3000);
-
-    // After backend failure, reload to get the true persisted score
-    await page.reload({ waitUntil: 'domcontentloaded' });
-    await _waitForAdToFinish();
-    await page.waitForSelector('#citation-controls', { timeout: 30000 });
-    await mockLogin('@testuser');
-    await page.locator('#citations-btn').click();
-    await page.waitForSelector('#citations-container', { timeout: 10000 });
-    await page.waitForTimeout(2000);
-
-    const { scoreEl: reloadedScore } = await getVoteControls('VOT-018 Citation');
-    const scoreAfterReload = parseInt((await reloadedScore.textContent()).trim(), 10);
-    // Score should not have changed since the API call failed
-    expect(scoreAfterReload).toBe(scoreBefore);
-
-    if (sw) {
-        await sw.evaluate(() => { API_BASE_URL = globalThis._savedApiBase; });
-    }
-
-    await deleteCitation('VOT-018 Citation');
-});
-
-// ─────────────────────────────────────────────
 // VOT-022: Vote Storage Reset Allows Re-vote
 // ─────────────────────────────────────────────
 

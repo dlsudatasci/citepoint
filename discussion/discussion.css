@@ -164,21 +164,66 @@ body {
     border-color: var(--cp-accent);
 }
 
+<<<<<<< HEAD
+=======
+/* ── Thread Nodes (nesting) ─────────────────────────── */
+
+.thread-node {
+    position: relative;
+}
+
+.thread-node--nested {
+    margin-left: 20px;
+    padding-left: 16px;
+    border-left: 2px solid var(--cp-border);
+}
+
+.thread-node--nested:hover {
+    border-left-color: var(--cp-accent);
+}
+
+.thread-children {
+    margin-top: 0;
+}
+
+.thread-collapsed {
+    display: none;
+}
+
+>>>>>>> origin/dev
 /* ── Thread Items ───────────────────────────────────── */
 
 .thread-item {
     background: var(--cp-bg-card);
     border: 1px solid var(--cp-divider);
     border-radius: var(--cp-radius-lg);
+<<<<<<< HEAD
     padding: var(--cp-space-16);
     margin-bottom: var(--cp-space-10);
+=======
+    padding: var(--cp-space-12) var(--cp-space-16);
+    margin-bottom: var(--cp-space-8);
+}
+
+.thread-node--nested .thread-item {
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: var(--cp-space-8) 0;
+    margin-bottom: 0;
+>>>>>>> origin/dev
 }
 
 .thread-item-header {
     display: flex;
     align-items: center;
+<<<<<<< HEAD
     gap: var(--cp-space-8);
     margin-bottom: var(--cp-space-8);
+=======
+    gap: var(--cp-space-6);
+    margin-bottom: var(--cp-space-4);
+>>>>>>> origin/dev
 }
 
 .thread-author {
@@ -206,7 +251,11 @@ body {
 .thread-description {
     font-size: var(--cp-text-md);
     line-height: var(--cp-leading-normal);
+<<<<<<< HEAD
     margin: 0 0 var(--cp-space-8);
+=======
+    margin: 0 0 var(--cp-space-6);
+>>>>>>> origin/dev
 }
 
 .thread-category {
@@ -220,6 +269,7 @@ body {
     margin-right: var(--cp-space-8);
 }
 
+<<<<<<< HEAD
 .thread-score {
     font-size: var(--cp-text-base);
     font-weight: var(--cp-weight-medium);
@@ -227,6 +277,211 @@ body {
     margin-top: var(--cp-space-6);
 }
 
+=======
+/* ── Vote Controls ──────────────────────────────────── */
+
+.vote-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.vote-btn {
+    background: none;
+    border: none;
+    border-radius: 18px;
+    color: var(--cp-text-secondary);
+    cursor: pointer;
+    padding: 4px 6px;
+    font-size: var(--cp-text-md);
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+}
+
+.vote-btn:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: var(--cp-text-primary);
+}
+
+.upvote-btn.voted {
+    color: var(--cp-success);
+    background: var(--cp-success-bg);
+}
+
+.upvote-btn.voted:hover {
+    background: rgba(39, 174, 96, 0.2);
+}
+
+.downvote-btn.voted {
+    color: var(--cp-error);
+    background: rgba(211, 47, 47, 0.1);
+}
+
+.downvote-btn.voted:hover {
+    background: rgba(211, 47, 47, 0.2);
+}
+
+.vote-score {
+    font-size: var(--cp-text-base);
+    font-weight: var(--cp-weight-medium);
+    color: var(--cp-text-secondary);
+    min-width: 16px;
+    text-align: center;
+}
+
+.original-card .vote-controls {
+    margin-top: var(--cp-space-8);
+}
+
+/* ── Thread Item Actions ───────────────────────────── */
+
+.thread-item-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--cp-space-12);
+    margin-top: var(--cp-space-6);
+}
+
+.thread-reply-btn,
+.thread-delete-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--cp-font);
+    font-size: var(--cp-text-sm);
+    font-weight: var(--cp-weight-semi);
+    padding: 2px 0;
+}
+
+.thread-reply-btn {
+    color: var(--cp-text-secondary);
+}
+
+.thread-reply-btn:hover {
+    color: var(--cp-accent);
+}
+
+.thread-delete-btn {
+    color: var(--cp-text-tertiary);
+}
+
+.thread-delete-btn:hover {
+    color: var(--cp-error);
+}
+
+/* ── Collapse Toggle ───────────────────────────────── */
+
+.thread-collapse-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--cp-text-tertiary);
+    font-family: monospace;
+    font-size: var(--cp-text-sm);
+    padding: 0 4px;
+    flex-shrink: 0;
+}
+
+.thread-collapse-btn:hover {
+    color: var(--cp-accent);
+}
+
+/* ── Inline Reply Form ─────────────────────────────── */
+
+.thread-reply-form {
+    margin: var(--cp-space-8) 0 var(--cp-space-12);
+    padding-left: 0;
+}
+
+.thread-node--nested .thread-reply-form {
+    margin-left: 0;
+}
+
+.thread-reply-form textarea {
+    width: 100%;
+    min-height: 60px;
+    resize: vertical;
+    border: 1px solid var(--cp-border-input);
+    border-radius: var(--cp-radius-md);
+    padding: var(--cp-space-8) var(--cp-space-12);
+    font-family: var(--cp-font);
+    font-size: var(--cp-text-md);
+    line-height: var(--cp-leading-normal);
+    color: var(--cp-text-primary);
+    background: var(--cp-bg-card);
+    box-sizing: border-box;
+    transition: border-color var(--cp-transition);
+}
+
+.thread-reply-form textarea:focus {
+    outline: none;
+    border-color: var(--cp-accent);
+    box-shadow: 0 0 0 2px rgba(6, 95, 212, 0.1);
+}
+
+.thread-reply-actions {
+    display: flex;
+    gap: var(--cp-space-8);
+    margin-top: var(--cp-space-6);
+}
+
+.reply-submit-btn {
+    background: var(--cp-accent);
+    color: white;
+    border: none;
+    border-radius: 18px;
+    padding: 6px 16px;
+    font-family: var(--cp-font);
+    font-size: var(--cp-text-base);
+    font-weight: var(--cp-weight-medium);
+    cursor: pointer;
+    transition: background var(--cp-transition);
+}
+
+.reply-submit-btn:hover {
+    background: var(--cp-accent-hover, #0356c6);
+}
+
+.reply-submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.reply-cancel-btn {
+    background: none;
+    border: 1px solid var(--cp-border-input);
+    border-radius: 18px;
+    padding: 6px 16px;
+    font-family: var(--cp-font);
+    font-size: var(--cp-text-base);
+    font-weight: var(--cp-weight-medium);
+    color: var(--cp-text-secondary);
+    cursor: pointer;
+    transition: background var(--cp-transition);
+}
+
+.reply-cancel-btn:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+/* ── Continue Thread Link ──────────────────────────── */
+
+.thread-continue-link {
+    display: block;
+    font-size: var(--cp-text-sm);
+    font-weight: var(--cp-weight-medium);
+    color: var(--cp-accent);
+    text-decoration: none;
+    padding: var(--cp-space-8) 0 var(--cp-space-4);
+    margin-left: 36px;
+}
+
+.thread-continue-link:hover {
+    text-decoration: underline;
+}
+
+>>>>>>> origin/dev
 /* ── Empty State ────────────────────────────────────── */
 
 .empty-message {
@@ -259,4 +514,16 @@ body {
         margin-left: 0;
         width: 100%;
     }
+<<<<<<< HEAD
+=======
+
+    .thread-node--nested {
+        margin-left: 12px;
+        padding-left: 10px;
+    }
+
+    .thread-continue-link {
+        margin-left: 22px;
+    }
+>>>>>>> origin/dev
 }

@@ -5,11 +5,27 @@
 // with the response data or rejects with an Error.
 // ─────────────────────────────────────────────
 
-// Derive the API base from manifest.json host_permissions[0] so the URL is
-// defined in exactly one place.  Update manifest.json for production deployments.
+// Derive the API base from manifest.json host_permissions so the URL is defined in
+// exactly one place. Update manifest.json for production deployments.
+//
+// The API host is identified by NOT being a known YouTube pattern, rather than by
+// trusting a fixed array position — host_permissions can be freely reordered without
+// silently repointing every API call at the wrong origin.
+const _CP_YOUTUBE_HOST_PATTERNS = [/^\*:\/\/(www\.)?youtube\.com\//, /^\*:\/\/m\.youtube\.com\//];
+
+function _deriveApiBasePermission(hostPermissions) {
+    const perms = hostPermissions || [];
+    const apiCandidates = perms.filter(p => !_CP_YOUTUBE_HOST_PATTERNS.some(re => re.test(p)));
+    if (apiCandidates.length === 0) {
+        console.error('[api] No non-YouTube host_permissions entry found — cannot determine API base URL.');
+        return '';
+    }
+    return apiCandidates[0];
+}
+
 const _CP_API_BASE = (() => {
     try {
-        const perm = chrome.runtime.getManifest().host_permissions?.[0] ?? '';
+        const perm = _deriveApiBasePermission(chrome.runtime.getManifest().host_permissions);
         return perm.replace(/\/\*$/, ''); // strip trailing /*
     } catch (_) {
         return 'http://localhost:3000';   // safe fallback
@@ -105,8 +121,8 @@ async function apiDeleteRequest(requestId, videoId, username) {
 
 // ── Votes ────────────────────────────────────
 
-async function apiUpdateVote(itemId, voteType, itemType, videoId) {
-    return _send({ type: 'updateVotes', itemId, voteType, itemType, videoId });
+async function apiUpdateVote(itemId, voteType, itemType, videoId, username) {
+    return _send({ type: 'updateVotes', itemId, voteType, itemType, videoId, username });
 }
 
 async function apiGetUserVotes(videoId, itemType = 'citation') {
@@ -121,6 +137,16 @@ async function apiReportItem({ videoId, itemId, itemType, reason, additionalInfo
         type: 'reportItem',
         data: { videoId, itemId, itemType, reason, additionalInfo, reporterUsername: username },
     });
+}
+
+// ── Discussion / Replies ────────────────────
+
+async function apiGetDiscussionTree(id) {
+    return _send({ type: 'getDiscussionCitationTree', id });
+}
+
+async function apiAddQuickReply(parentCitationId, description, videoId, username) {
+    return _send({ type: 'addQuickReply', parentCitationId, description, videoId, username });
 }
 
 // ── SSE ──────────────────────────────────────
@@ -146,10 +172,9 @@ async function apiCheckExpert(username) {
     const res = await _send({ type: 'checkExpert', username });
     return {
         isExpert: !!res.isExpert,
-        expertTopics: res.expertTopics || []
+        topics: res.topics || [],
     };
 }
-
 
 async function apiApplyExpert(username, topics, credentials) {
     return _send({ type: 'applyExpert', username, topics, credentials });
@@ -160,8 +185,8 @@ async function apiGetMyApplications(username) {
     return res.applications || [];
 }
 
-async function apiGetPendingApplications() {
-    const res = await _send({ type: 'getPendingApplications' });
+async function apiGetPendingApplications(adminUsername) {
+    const res = await _send({ type: 'getPendingApplications', adminUsername });
     return res.applications || [];
 }
 
@@ -189,8 +214,8 @@ async function apiGetNotifications(username, page) {
     return _send({ type: 'getNotifications', username, page });
 }
 
-async function apiMarkNotificationRead(id) {
-    return _send({ type: 'markNotificationRead', id });
+async function apiMarkNotificationRead(id, username) {
+    return _send({ type: 'markNotificationRead', id, username });
 }
 
 async function apiMarkAllNotificationsRead(username) {
@@ -220,7 +245,7 @@ async function apiUpsertVideo(metadata) {
 
 /**
  * Fetches the personalized feed for an expert based on their assigned Topics.
- * @param {string} username 
+ * @param {string} username
  */
 async function apiGetExpertFeed(username) {
     const res = await _send({ type: 'getExpertFeed', username });
@@ -228,16 +253,16 @@ async function apiGetExpertFeed(username) {
 }
 
 /**
- * Fetches the general browsable feed, optionally filtered by a specific Citation Category.
- * @param {string} category -
- * @param {number} page 
- * @param {number} limit 
+ * Fetches the general browsable feed, optionally filtered by a video Topic
+ * (backend/routes/feeds.js matches against the linked video's youtubeTopics).
+ * @param {string} topic
+ * @param {number} page
+ * @param {number} limit
  */
-
 async function apiGetGeneralFeed(topic = 'All', page = 1, limit = 20) {
     const res = await _send({ type: 'getGeneralFeed', topic, page, limit });
-    return { 
-        feed: res.data || [], 
-        pagination: res.pagination || null 
+    return {
+        feed: res.data || [],
+        pagination: res.pagination || null,
     };
 }

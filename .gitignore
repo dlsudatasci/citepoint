@@ -8,6 +8,7 @@ yarn-error.log
 .env
 .env.local
 .env.*
+!.env.example
 .venv
 
 # IDE and Editor files

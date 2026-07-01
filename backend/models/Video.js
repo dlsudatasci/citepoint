@@ -1,11 +1,10 @@
 const mongoose = require('mongoose');
 
 const videoSchema = new mongoose.Schema({
-    videoId: { 
-        type: String, 
-        required: true, 
-        unique: true,
-        index: true 
+    videoId: {
+        type: String,
+        required: true,
+        unique: true
     },
     title: { 
         type: String, 
@@ -28,6 +27,6 @@ const videoSchema = new mongoose.Schema({
     }
 });
 
-videoSchema.index({ videoId: 1 });
+// videoId's index is already created by `unique: true` above.
 
 module.exports = mongoose.model('Video', videoSchema);

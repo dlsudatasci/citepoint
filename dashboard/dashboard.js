@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────
 // dashboard.js
-// Standalone dashboard page — rendering charts, 
+// Standalone dashboard page — rendering charts,
 // community feeds, and expert verification.
 // Depends on: api.js, config/config.js
 // ─────────────────────────────────────────────
@@ -17,6 +17,20 @@ const CATEGORY_COLORS = {
 
 function _categoryColor(category) {
     return CATEGORY_COLORS[category] || CATEGORY_COLORS['Uncategorized'];
+}
+
+function _escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str ?? '';
+    return div.innerHTML;
+}
+
+function _renderError(container, message) {
+    container.innerHTML = '';
+    const p = document.createElement('p');
+    p.className = 'error-message';
+    p.textContent = message;
+    container.appendChild(p);
 }
 
 function _initTabs() {
@@ -42,11 +56,13 @@ function _initTabs() {
 function _populateTaxonomyUI() {
     // Populate General Feed Category Filter
     const filterSelect = document.getElementById('general-feed-filter');
-    if (typeof CATEGORIES !== 'undefined') {
-        CATEGORIES.forEach(cat => {
+    // Filter values must match what backend/routes/feeds.js actually filters
+    // /general on: video topics, not citation categories (different taxonomy).
+    if (typeof TOPICS !== 'undefined') {
+        TOPICS.forEach(topic => {
             const opt = document.createElement('option');
-            opt.value = cat;
-            opt.textContent = cat;
+            opt.value = topic;
+            opt.textContent = topic;
             filterSelect.appendChild(opt);
         });
     }
@@ -56,8 +72,8 @@ function _populateTaxonomyUI() {
     if (typeof TOPICS !== 'undefined') {
         topicContainer.innerHTML = TOPICS.map(topic => `
             <label class="topic-checkbox-label">
-                <input type="checkbox" name="expert-topics" value="${topic}">
-                ${topic}
+                <input type="checkbox" name="expert-topics" value="${_escapeHtml(topic)}">
+                ${_escapeHtml(topic)}
             </label>
         `).join('');
     }
@@ -95,7 +111,7 @@ function _renderBarChart(container, data) {
         const row = document.createElement('div');
         row.className = 'bar-row';
         row.innerHTML = `
-            <span class="bar-label">${category}</span>
+            <span class="bar-label">${_escapeHtml(category)}</span>
             <div class="bar-track">
                 <div class="bar-fill" style="width:${(count / max) * 100}%;background-color:${colors.color}"></div>
             </div>
@@ -117,7 +133,7 @@ function _renderStackedChart(container, data) {
         const row = document.createElement('div');
         row.className = 'bar-row';
         row.innerHTML = `
-            <span class="bar-label">${category}</span>
+            <span class="bar-label">${_escapeHtml(category)}</span>
             <div class="bar-track">
                 <div class="bar-fill bar-fill-verified" style="width:${(verified / max) * 100}%"></div>
                 <div class="bar-fill bar-fill-unverified" style="width:${(unverified / max) * 100}%"></div>
@@ -139,8 +155,7 @@ async function _loadStats() {
         _renderStackedChart(document.getElementById('citations-verification-chart'), stats.verificationStats.citations);
         _renderStackedChart(document.getElementById('requests-verification-chart'), stats.verificationStats.requests);
     } catch (err) {
-        document.getElementById('dashboard-content').innerHTML =
-            `<p class="error-message">Error loading dashboard stats: ${err.message}</p>`;
+        _renderError(document.getElementById('dashboard-content'), `Error loading dashboard stats: ${err.message}`);
     }
 }
 
@@ -156,6 +171,15 @@ function _parseTimeString(timeStr) {
     return seconds;
 }
 
+function _safeThumbUrl(url) {
+    try {
+        const parsed = new URL(url, location.href);
+        return (parsed.protocol === 'http:' || parsed.protocol === 'https:') ? parsed.href : '';
+    } catch (_) {
+        return '';
+    }
+}
+
 function _renderFeedCards(container, items) {
     container.innerHTML = '';
     if (!items || items.length === 0) {
@@ -166,24 +190,24 @@ function _renderFeedCards(container, items) {
     items.forEach(item => {
         const catColor = _categoryColor(item.category);
         const videoTitle = item.video?.title || 'Unknown Video';
-        const thumbUrl = item.video?.thumbnailUrl || 'https://via.placeholder.com/160x90?text=No+Video';
-        const videoId = item.video?.videoId || '';
-        const topicsHtml = (item.topics || []).map(t => `<span class="feed-topic-tag">${t}</span>`).join('');
+        const thumbUrl = _safeThumbUrl(item.video?.thumbnailUrl) || 'https://via.placeholder.com/160x90?text=No+Video';
+        const videoId = encodeURIComponent(item.video?.videoId || '');
+        const topicsHtml = (item.topics || []).map(t => `<span class="feed-topic-tag">${_escapeHtml(t)}</span>`).join('');
         const startSecs = _parseTimeString(item.timestampStart);
-        
+
         const card = document.createElement('div');
         card.className = 'feed-card';
         card.innerHTML = `
             <div class="feed-thumb-container">
                 <a href="https://youtube.com/watch?v=${videoId}&t=${startSecs}s" target="_blank">
-                    <img src="${thumbUrl}" alt="Video Thumbnail" class="feed-thumbnail">
+                    <img src="${_escapeHtml(thumbUrl)}" alt="Video Thumbnail" class="feed-thumbnail">
                 </a>
             </div>
             <div class="feed-card-content">
-                <h3 class="feed-item-title">${item.title}</h3>
-                <div class="feed-video-title">${videoTitle}</div>
+                <h3 class="feed-item-title">${_escapeHtml(item.title)}</h3>
+                <div class="feed-video-title">${_escapeHtml(videoTitle)}</div>
                 <div class="feed-meta-row">
-                    <span class="feed-category-badge" style="background:${catColor.bg};color:${catColor.color}">${item.category}</span>
+                    <span class="feed-category-badge" style="background:${catColor.bg};color:${catColor.color}">${_escapeHtml(item.category)}</span>
                     <span class="feed-topics-list">${topicsHtml}</span>
                 </div>
                 <div class="feed-footer">
@@ -201,14 +225,14 @@ function _renderFeedCards(container, items) {
 
 async function _loadGeneralFeed() {
     const listEl = document.getElementById('general-feed-list');
-    const category = document.getElementById('general-feed-filter').value;
+    const topic = document.getElementById('general-feed-filter').value;
     listEl.innerHTML = '<p class="empty-message">Loading...</p>';
-    
+
     try {
-        const res = await apiGetGeneralFeed(category, 1, 20);
+        const res = await apiGetGeneralFeed(topic, 1, 20);
         _renderFeedCards(listEl, res.feed);
     } catch (err) {
-        listEl.innerHTML = `<p class="error-message">Could not load feed: ${err.message}</p>`;
+        _renderError(listEl, `Could not load feed: ${err.message}`);
     }
 }
 
@@ -225,7 +249,7 @@ async function _loadExpertFeed() {
         const feed = await apiGetExpertFeed(username);
         _renderFeedCards(listEl, feed);
     } catch (err) {
-        listEl.innerHTML = `<p class="error-message">Could not load expert feed: ${err.message}</p>`;
+        _renderError(listEl, `Could not load expert feed: ${err.message}`);
     }
 }
 
@@ -287,14 +311,14 @@ async function _loadNotifications() {
             div.innerHTML = `
                 <span class="notif-icon">${icon}</span>
                 <div class="notif-body">
-                    <span class="notif-title">${n.title}</span>
-                    ${n.category ? `<span class="notif-category">${n.category}</span>` : ''}
+                    <span class="notif-title">${_escapeHtml(n.title)}</span>
+                    ${n.category ? `<span class="notif-category">${_escapeHtml(n.category)}</span>` : ''}
                     <span class="notif-time">${new Date(n.createdAt).toLocaleDateString()}</span>
                 </div>
             `;
             if (!n.read) {
                 div.addEventListener('click', async () => {
-                    await apiMarkNotificationRead(n._id);
+                    await apiMarkNotificationRead(n._id, username);
                     div.classList.remove('unread');
                 });
             }
@@ -320,14 +344,13 @@ async function _loadProfileSection() {
         const res = await apiGetProfile(username);
         const { profile, stats, expert } = res;
 
-        // Render Topics if expert, fallback to categories to prevent errors on older data
-        const expertString = expert ? (expert.expertTopics?.join(', ') || expert.categories?.join(', ')) : '';
+        const expertString = expert ? (expert.topics || []).join(', ') : '';
 
         statsEl.innerHTML = `
             <div class="stat-card"><span class="stat-number">${stats.citations}</span><span class="stat-label">Citations</span></div>
             <div class="stat-card"><span class="stat-number">${stats.requests}</span><span class="stat-label">Requests</span></div>
             <div class="stat-card"><span class="stat-number">${stats.upvotes}</span><span class="stat-label">Upvotes</span></div>
-            ${expert ? `<div class="stat-card stat-expert"><span class="stat-number">✓</span><span class="stat-label">Expert: ${expertString}</span></div>` : ''}
+            ${expert ? `<div class="stat-card stat-expert"><span class="stat-number">✓</span><span class="stat-label">Expert: ${_escapeHtml(expertString)}</span></div>` : ''}
         `;
 
         formEl.style.display = 'block';
@@ -362,7 +385,7 @@ async function _loadProfileSection() {
                 div.className = 'history-item';
                 div.innerHTML = `
                     <span class="history-type ${item.type === 'Citation' ? 'type-citation' : 'type-request'}">${item.type}</span>
-                    <span class="history-title">${item.title || 'Untitled'}</span>
+                    <span class="history-title">${_escapeHtml(item.title || 'Untitled')}</span>
                     <span class="history-score">▲ ${item.score ?? 0}</span>
                     <span class="history-date">${new Date(item.date).toLocaleDateString()}</span>
                 `;
@@ -386,13 +409,13 @@ async function _loadExpertSection() {
     }
 
     try {
-        const res = await apiCheckExpert(username); // Using the updated function from api.js
+        const res = await apiCheckExpert(username);
         if (res.isExpert) {
-            const topicsStr = res.expertTopics && res.expertTopics.length > 0
-                ? res.expertTopics.join(', ')
+            const topicsStr = res.topics && res.topics.length > 0
+                ? res.topics.join(', ')
                 : 'No topics assigned';
-            statusEl.innerHTML = `<div class="expert-badge-banner"><span class="expert-check">✓</span> Verified Expert — ${topicsStr}</div>`;
-            
+            statusEl.innerHTML = `<div class="expert-badge-banner"><span class="expert-check">✓</span> Verified Expert — ${_escapeHtml(topicsStr)}</div>`;
+
             // Show the Expert Feed nav button
             document.getElementById('nav-expert-feed').style.display = 'block';
             _loadAdminSection(username);
@@ -406,18 +429,17 @@ async function _loadExpertSection() {
             listEl.innerHTML = '<h3>Your Applications</h3>';
             apps.forEach(app => {
                 const statusClass = app.status === 'approved' ? 'status-approved' : app.status === 'rejected' ? 'status-rejected' : 'status-pending';
-                // Support both legacy category or new topics arrays
-                const domain = app.topics ? app.topics.join(', ') : app.category; 
-                
+                const domain = (app.topics || []).join(', ');
+
                 const div = document.createElement('div');
                 div.className = 'application-card';
                 div.innerHTML = `
                     <div class="app-header">
-                        <span class="app-category">${domain}</span>
-                        <span class="app-status ${statusClass}">${app.status}</span>
+                        <span class="app-category">${_escapeHtml(domain)}</span>
+                        <span class="app-status ${statusClass}">${_escapeHtml(app.status)}</span>
                     </div>
-                    <p class="app-credentials">${app.credentials}</p>
-                    ${app.reason ? `<p class="app-reason">Reason: ${app.reason}</p>` : ''}
+                    <p class="app-credentials">${_escapeHtml(app.credentials)}</p>
+                    ${app.reason ? `<p class="app-reason">Reason: ${_escapeHtml(app.reason)}</p>` : ''}
                     <span class="app-date">Submitted ${new Date(app.submittedAt).toLocaleDateString()}</span>
                 `;
                 listEl.appendChild(div);
@@ -427,12 +449,12 @@ async function _loadExpertSection() {
         const form = document.getElementById('expert-application-form');
         form?.addEventListener('submit', async e => {
             e.preventDefault();
-            
+
             // Gather all checked topics
             const checkboxes = document.querySelectorAll('input[name="expert-topics"]:checked');
             const selectedTopics = Array.from(checkboxes).map(cb => cb.value);
             const credentials = document.getElementById('expert-credentials').value.trim();
-            
+
             if (selectedTopics.length === 0) {
                 alert('Please select at least one topic.');
                 return;
@@ -459,7 +481,7 @@ async function _loadAdminSection(adminUsername) {
     document.getElementById('nav-admin').style.display = 'block';
 
     try {
-        const apps = await apiGetPendingApplications();
+        const apps = await apiGetPendingApplications(adminUsername);
         if (apps.length === 0) {
             section.style.display = 'block';
             listEl.innerHTML = '<p class="empty-message">No pending applications.</p>';
@@ -472,14 +494,14 @@ async function _loadAdminSection(adminUsername) {
         apps.forEach(app => {
             const div = document.createElement('div');
             div.className = 'application-card admin-card';
-            const domain = app.topics ? app.topics.join(', ') : app.category;
-            
+            const domain = (app.topics || []).join(', ');
+
             div.innerHTML = `
                 <div class="app-header">
-                    <span class="app-username">${app.username}</span>
-                    <span class="app-category">${domain}</span>
+                    <span class="app-username">${_escapeHtml(app.username)}</span>
+                    <span class="app-category">${_escapeHtml(domain)}</span>
                 </div>
-                <p class="app-credentials">${app.credentials}</p>
+                <p class="app-credentials">${_escapeHtml(app.credentials)}</p>
                 <span class="app-date">Submitted ${new Date(app.submittedAt).toLocaleDateString()}</span>
                 <div class="admin-actions">
                     <button class="approve-btn" data-id="${app._id}">Approve</button>

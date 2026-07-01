@@ -66,9 +66,9 @@ describe('GET /api/citations/:videoId', () => {
         expect(res.body.pagination.limit).toBe(50);
     });
 
-    it('sets Cache-Control header', async () => {
+    it('sets Cache-Control: no-store (data is kept fresh via SSE, not HTTP caching)', async () => {
         const res = await request(app).get(BASE);
-        expect(res.headers['cache-control']).toMatch(/max-age=10/);
+        expect(res.headers['cache-control']).toBe('no-store');
     });
 });
 
@@ -163,7 +163,7 @@ describe('PATCH /api/citations/:videoId/:id/vote', () => {
         const id = await createCitation();
         const res = await request(app)
             .patch(`${BASE}/${id}/vote`)
-            .send({ delta: 1 });
+            .send({ delta: 1, username: 'voter1' });
 
         expect(res.status).toBe(200);
         expect(res.body.success).toBe(true);
@@ -174,16 +174,16 @@ describe('PATCH /api/citations/:videoId/:id/vote', () => {
         const id = await createCitation();
         const res = await request(app)
             .patch(`${BASE}/${id}/vote`)
-            .send({ delta: -1 });
+            .send({ delta: -1, username: 'voter1' });
         expect(res.body.newScore).toBe(-1);
     });
 
     it('applies delta +2 (switching from downvote)', async () => {
         const id = await createCitation();
-        await request(app).patch(`${BASE}/${id}/vote`).send({ delta: -1 });
+        await request(app).patch(`${BASE}/${id}/vote`).send({ delta: -1, username: 'voter1' });
         const res = await request(app)
             .patch(`${BASE}/${id}/vote`)
-            .send({ delta: 2 });
+            .send({ delta: 2, username: 'voter1' });
         expect(res.body.newScore).toBe(1);
     });
 
@@ -192,17 +192,58 @@ describe('PATCH /api/citations/:videoId/:id/vote', () => {
         for (const bad of [0, 3, -3, 99, 'up']) {
             const res = await request(app)
                 .patch(`${BASE}/${id}/vote`)
-                .send({ delta: bad });
+                .send({ delta: bad, username: 'voter1' });
             expect(res.status).toBe(400);
         }
+    });
+
+    it('requires username', async () => {
+        const id = await createCitation();
+        const res = await request(app).patch(`${BASE}/${id}/vote`).send({ delta: 1 });
+        expect(res.status).toBe(400);
     });
 
     it('returns 404 for non-existent citation', async () => {
         const fakeId = '000000000000000000000000';
         const res = await request(app)
             .patch(`${BASE}/${fakeId}/vote`)
-            .send({ delta: 1 });
+            .send({ delta: 1, username: 'voter1' });
         expect(res.status).toBe(404);
+    });
+
+    it('rejects a repeated identical upvote from the same user as an illegal transition', async () => {
+        const id = await createCitation();
+        await request(app).patch(`${BASE}/${id}/vote`).send({ delta: 1, username: 'voter1' });
+        const res = await request(app)
+            .patch(`${BASE}/${id}/vote`)
+            .send({ delta: 1, username: 'voter1' });
+
+        expect(res.status).toBe(409);
+
+        const check = await request(app).get(`${BASE}/${id}`);
+        expect(check.body.citation.voteScore).toBe(1);
+    });
+
+    it('allows two different users to independently upvote the same citation', async () => {
+        const id = await createCitation();
+        await request(app).patch(`${BASE}/${id}/vote`).send({ delta: 1, username: 'voter1' });
+        const res = await request(app)
+            .patch(`${BASE}/${id}/vote`)
+            .send({ delta: 1, username: 'voter2' });
+
+        expect(res.status).toBe(200);
+        expect(res.body.newScore).toBe(2);
+    });
+
+    it('allows toggling an upvote off and back on again', async () => {
+        const id = await createCitation();
+        await request(app).patch(`${BASE}/${id}/vote`).send({ delta: 1, username: 'voter1' });
+        const off = await request(app).patch(`${BASE}/${id}/vote`).send({ delta: -1, username: 'voter1' });
+        expect(off.body.newScore).toBe(0);
+
+        const on = await request(app).patch(`${BASE}/${id}/vote`).send({ delta: 1, username: 'voter1' });
+        expect(on.status).toBe(200);
+        expect(on.body.newScore).toBe(1);
     });
 });
 

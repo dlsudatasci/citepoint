@@ -64,7 +64,12 @@
             "popup/popup.html",
             "dashboard/dashboard.html",
             "dashboard/dashboard.js",
-            "dashboard/dashboard.css"
+            "dashboard/dashboard.css",
+            "discussion/discussion.html",
+            "discussion/discussion.js",
+            "discussion/discussion.css",
+            "content/username.js",
+            "utils/utils.js"
         ],
         "matches": [
             "*://www.youtube.com/*",

@@ -698,18 +698,18 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
         responsesContainer.appendChild(responseEl);
     }
 
-    if (hidden > 0) {
-        const seeAll = document.createElement('a');
-        seeAll.className   = 'rg-see-all-link';
-        seeAll.href        = '#';
-        seeAll.textContent = `See all ${responseCitations.length} responses`;
-        seeAll.addEventListener('click', e => {
-            e.preventDefault();
-            const url = chrome.runtime.getURL(`discussion/discussion.html?type=request&id=${request.id || request._id}`);
-            window.open(url, '_blank');
-        });
-        responsesContainer.appendChild(seeAll);
-    }
+    const discussionLink = document.createElement('a');
+    discussionLink.className   = 'rg-see-all-link';
+    discussionLink.href        = '#';
+    discussionLink.textContent = hidden > 0
+        ? `View all ${responseCitations.length} responses`
+        : `View discussion`;
+    discussionLink.addEventListener('click', e => {
+        e.preventDefault();
+        const url = chrome.runtime.getURL(`discussion/discussion.html?type=request&id=${request.id || request._id}`);
+        window.open(url, '_blank');
+    });
+    responsesContainer.appendChild(discussionLink);
 
     return el;
 }
@@ -841,18 +841,18 @@ async function createCitationReplyGroupElement(parentCitation, replies, votes, c
         responsesContainer.appendChild(replyEl);
     }
 
-    if (hiddenReplies > 0) {
-        const seeAll = document.createElement('a');
-        seeAll.className   = 'rg-see-all-link';
-        seeAll.href        = '#';
-        seeAll.textContent = `See all ${replies.length} replies`;
-        seeAll.addEventListener('click', e => {
-            e.preventDefault();
-            const url = chrome.runtime.getURL(`discussion/discussion.html?type=citation&id=${parentCitation.id || parentCitation._id}`);
-            window.open(url, '_blank');
-        });
-        responsesContainer.appendChild(seeAll);
-    }
+    const discussionLink = document.createElement('a');
+    discussionLink.className   = 'rg-see-all-link';
+    discussionLink.href        = '#';
+    discussionLink.textContent = hiddenReplies > 0
+        ? `View all ${replies.length} replies`
+        : `View discussion`;
+    discussionLink.addEventListener('click', e => {
+        e.preventDefault();
+        const url = chrome.runtime.getURL(`discussion/discussion.html?type=citation&id=${parentCitation.id || parentCitation._id}`);
+        window.open(url, '_blank');
+    });
+    responsesContainer.appendChild(discussionLink);
 
     return el;
 }
@@ -1441,8 +1441,6 @@ async function _buildResponseEntry(citation, votes, currentUsername) {
         ? citation.description.split('\n\n').slice(1).join('\n\n').trim()
         : citation.description;
 
-    const showCatSelect = canDelete || _isExpertUser || !citation.categoryVerified;
-
     const el = document.createElement('div');
     el.className = 'rg-response-entry';
     el.dataset.category = citation.category || DEFAULT_CATEGORY;
@@ -1451,10 +1449,6 @@ async function _buildResponseEntry(citation, votes, currentUsername) {
         <div class="citation-meta">
             <span class="citation-author">${_escapeHtml(citation.username || 'Anonymous')}</span>
             <span class="citation-date">${_formatDate(citation.dateAdded)}</span>
-        </div>
-        <div class="category-row">
-            ${_buildCategoryBadge(citation.category, citation.categoryVerified)}
-            ${showCatSelect ? _buildCategorySelect(citation) : ''}
         </div>
         <div class="citation-actions">
             ${_safeSourceLink(citation.source)}
@@ -1465,6 +1459,7 @@ async function _buildResponseEntry(citation, votes, currentUsername) {
                     <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
                 </div>
                 <div class="action-buttons">
+                    ${!canDelete ? `<button class="action-btn respond-btn inline-reply-btn" data-id="${citation.id}">Reply</button>` : ''}
                     ${canDelete ? `<button class="action-btn delete-btn" data-id="${citation.id}">Delete</button>` : ''}
                     ${!canDelete ? `<button class="action-btn report-btn" data-id="${citation.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
                 </div>
@@ -1482,8 +1477,6 @@ async function _buildResponseEntry(citation, votes, currentUsername) {
     const vc = el.querySelector('.vote-controls');
     vc.querySelector('.upvote-btn').addEventListener('click', () => handleVote(citation.id, 'up', 'citation'));
     vc.querySelector('.downvote-btn').addEventListener('click', () => handleVote(citation.id, 'down', 'citation'));
-
-    _wireCategoryControls(el, citation, 'citation');
 
     if (canDelete) {
         el.querySelector('.delete-btn').addEventListener('click', async () => {
@@ -1505,9 +1498,62 @@ async function _buildResponseEntry(citation, votes, currentUsername) {
         el.querySelector('.report-btn')?.addEventListener('click', () =>
             showReportDialog(citation.id, 'citation')
         );
+        el.querySelector('.inline-reply-btn')?.addEventListener('click', () => {
+            _showInlineReplyForm(el, citation.id);
+        });
     }
 
     return el;
+}
+
+async function _showInlineReplyForm(targetEl, parentCitationId) {
+    if (targetEl.querySelector('.inline-reply-form')) return;
+
+    const form = document.createElement('div');
+    form.className = 'inline-reply-form';
+    form.innerHTML = `
+        <textarea placeholder="Write a reply..." rows="2"></textarea>
+        <div class="inline-reply-actions">
+            <button class="inline-reply-submit">Reply</button>
+            <button class="inline-reply-cancel">Cancel</button>
+        </div>
+    `;
+    targetEl.appendChild(form);
+
+    const textarea = form.querySelector('textarea');
+    textarea.focus();
+
+    form.querySelector('.inline-reply-cancel').addEventListener('click', () => form.remove());
+
+    form.querySelector('.inline-reply-submit').addEventListener('click', async () => {
+        const text = textarea.value.trim();
+        if (!text) return;
+
+        const submitBtn = form.querySelector('.inline-reply-submit');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending...';
+
+        try {
+            const username = _currentUsername || await getYouTubeUsername();
+            if (!username) throw new Error('You must be logged in to reply.');
+
+            const videoId = getCurrentVideoId();
+            if (!videoId) throw new Error('Could not determine video ID.');
+
+            await apiAddQuickReply(parentCitationId, text, videoId, username);
+            if (typeof showToast === 'function') showToast('Reply added!', 'success');
+            form.remove();
+            _votesLoaded = false;
+            _votesVideoId = null;
+            _citationsLoading = false;
+            loadCitations(1, true);
+        } catch (err) {
+            console.error('[citations] Reply failed:', err);
+            if (typeof showToast === 'function') showToast(err.message || 'Failed to submit reply.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Reply';
+        }
+    });
 }
 
 function _buildDescription(text) {
@@ -1535,25 +1581,4 @@ function _escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#39;');
-}
-
-/**
- * Show a brief toast notification.
- * Uses .cp-toast / .cp-toast-error / .cp-toast-success CSS classes.
- */
-function showToast(message, type = 'info') {
-    document.querySelector('.cp-toast')?.remove();
-
-    const toast = document.createElement('div');
-    toast.className = `cp-toast cp-toast-${type}`;
-    toast.textContent = message;
-    document.body.appendChild(toast);
-
-    requestAnimationFrame(() => {
-        toast.classList.add('visible');
-        setTimeout(() => {
-            toast.classList.remove('visible');
-            setTimeout(() => toast.remove(), 200);
-        }, 3000);
-    });
 }

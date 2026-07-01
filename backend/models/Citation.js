@@ -41,4 +41,7 @@ citationSchema.index({ videoId: 1, category: 1 });
 // Filter within given topic
 citationSchema.index({ topics: 1, verifiedBy: 1 });
 
+// Thread index: speeds up nested reply queries.
+citationSchema.index({ parentCitationId: 1, dateAdded: 1 });
+
 module.exports = mongoose.model('Citation', citationSchema);

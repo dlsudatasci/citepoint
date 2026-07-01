@@ -18,11 +18,12 @@ app.use(cors({
             !origin ||
             allowedOrigins.includes(origin) ||
             origin.startsWith('moz-extension://') ||
-            origin.startsWith('chrome-extension://')
+            origin.startsWith('chrome-extension://') ||
+            origin === 'https://www.youtube.com' ||
+            origin === 'https://m.youtube.com'
         ) {
             callback(null, true);
         } else {
-            // Silently reject unknown origins — no stack trace in logs
             callback(null, false);
         }
     },
@@ -62,7 +63,7 @@ app.use('/api/events',    require('./routes/events'));
 app.use('/api/experts',   mutationLimiter, require('./routes/experts'));
 app.use('/api/profile',   mutationLimiter, require('./routes/profile'));
 app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/discussion',    require('./routes/discussion'));
+app.use('/api/discussion',    mutationLimiter, require('./routes/discussion'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/videos', mutationLimiter, require('./routes/videos'));
 app.use('/api/feeds', require('./routes/feeds'));
