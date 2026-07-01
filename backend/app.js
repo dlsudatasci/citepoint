@@ -63,7 +63,7 @@ app.use('/api/events',    require('./routes/events'));
 app.use('/api/experts',   mutationLimiter, require('./routes/experts'));
 app.use('/api/profile',   mutationLimiter, require('./routes/profile'));
 app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/discussion',    require('./routes/discussion'));
+app.use('/api/discussion',    mutationLimiter, require('./routes/discussion'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 
 app.get('/health', (req, res) => {
