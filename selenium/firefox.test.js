@@ -146,6 +146,16 @@ async function goToVideo() {
     console.log('  [goToVideo] panel present:', hasPanel);
 
     await driver.wait(until.elementLocated(By.id('citation-controls')), TIMEOUT);
+
+    // Panel loads minimized by default (tab buttons are disabled until expanded) —
+    // click the toggle to open it before any test tries to interact with tabs/content.
+    const contentVisible = await driver.executeScript(
+        'const el = document.getElementById("extension-content"); return !!el && el.style.display !== "none";'
+    );
+    if (!contentVisible) {
+        await driver.findElement(By.id('toggle-extension')).click();
+        await driver.sleep(300);
+    }
 }
 
 async function isVisible(selector) {
@@ -201,8 +211,8 @@ async function test_citationsTab() {
     // Re-find elements fresh after navigation to avoid stale element errors
     await driver.findElement(By.id('citations-btn')).click();
     await driver.sleep(500);
-    const title = await driver.findElement(By.id('citation-title')).getText();
-    assert.ok(title.includes('Citation'), `Expected "Citation" in title, got "${title}"`);
+    assert.ok(await isVisible('#citations-container'), 'Citations container should be visible');
+    assert.ok(!(await isVisible('#citation-requests-container')), 'Requests container should be hidden');
     console.log('  ✓ Citations tab works');
 }
 
@@ -210,8 +220,9 @@ async function test_requestsTab() {
     console.log('  running: Citation Requests tab works');
     await goToVideo();
     await driver.findElement(By.id('citation-requests-btn')).click();
-    const title = await driver.findElement(By.id('citation-title')).getText();
-    assert.ok(title.includes('Request'), `Expected "Request" in title, got "${title}"`);
+    await driver.sleep(500);
+    assert.ok(await isVisible('#citation-requests-container'), 'Requests container should be visible');
+    assert.ok(!(await isVisible('#citations-container')), 'Citations container should be hidden');
     console.log('  ✓ Citation Requests tab works');
 }
 

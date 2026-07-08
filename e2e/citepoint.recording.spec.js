@@ -1,5 +1,6 @@
 const { test, expect, chromium } = require('@playwright/test');
 const path = require('path');
+const channel = require('./browserChannel');
 
 const EXTENSION_PATH = path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
@@ -13,6 +14,7 @@ let EXTENSION_ID = '';
 test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
         headless: false,
+        channel,
         args: [
             `--load-extension=${EXTENSION_PATH}`,
             `--disable-extensions-except=${EXTENSION_PATH}`,

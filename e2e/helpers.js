@@ -1,5 +1,6 @@
 const { chromium } = require('@playwright/test');
 const path = require('path');
+const channel = require('./browserChannel');
 
 const EXTENSION_PATH = path.resolve(__dirname, '..');
 
@@ -7,6 +8,7 @@ const EXTENSION_PATH = path.resolve(__dirname, '..');
 async function launchWithExtension() {
     const context = await chromium.launchPersistentContext('', {
         headless: false,
+        channel,
         args: [
             `--load-extension=${EXTENSION_PATH}`,
             `--disable-extensions-except=${EXTENSION_PATH}`,
@@ -29,6 +31,13 @@ async function goToVideo(page, videoId = 'dQw4w9WgXcQ') {
 
     // Wait for the extension panel to inject
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
+
+    // Panel loads minimized by default (tab buttons are disabled until expanded).
+    const content = page.locator('#extension-content');
+    if (!(await content.isVisible())) {
+        await page.locator('#toggle-extension').click();
+        await content.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    }
 }
 
 module.exports = { launchWithExtension, goToVideo };

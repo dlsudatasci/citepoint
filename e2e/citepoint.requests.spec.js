@@ -1,5 +1,6 @@
 const { test, expect, chromium } = require('@playwright/test');
 const path = require('path');
+const channel = require('./browserChannel');
 
 const EXTENSION_PATH  = path.resolve(__dirname, '..');
 const TEST_VIDEO      = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
@@ -14,6 +15,7 @@ let createdRequestIds = [];
 test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
         headless: false,
+        channel,
         args: [
             `--load-extension=${EXTENSION_PATH}`,
             `--disable-extensions-except=${EXTENSION_PATH}`,
@@ -60,10 +62,18 @@ test.beforeEach(async () => {
     await page.waitForSelector('ytd-watch-metadata', { timeout: 30000 });
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await _expandPanel();
     await mockLogin('@testuser');
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────
+
+// Panel loads minimized by default (tab buttons are disabled until expanded) — click
+// the toggle to open it before interacting with tabs/content.
+async function _expandPanel() {
+    await page.locator('#toggle-extension').click();
+    await page.waitForSelector('#extension-content:not([style*="display: none"])', { timeout: 5000 }).catch(() => {});
+}
 
 async function mockLogin(handle = '@testuser') {
     const sw = context.serviceWorkers().find(w => w.url().includes(EXTENSION_ID));
@@ -212,6 +222,7 @@ async function seedRequest({
     await page.reload({ waitUntil: 'domcontentloaded' });
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await _expandPanel();
     await mockLogin('@testuser');
     await openRequestsTab();
     await page.waitForTimeout(3000);
@@ -251,6 +262,7 @@ test('REQ-003: empty state message shown when video has no citation requests', a
     await page.waitForSelector('ytd-watch-metadata', { timeout: 30000 });
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await _expandPanel();
     await mockLogin('@testuser');
     await openRequestsTab();
     await page.waitForTimeout(3000);
@@ -282,6 +294,7 @@ test('REQ-005: submitting a valid request shows success toast and form closes', 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await _expandPanel();
     await mockLogin('@testuser');
     await openRequestsTab();
     await page.waitForTimeout(3000);
