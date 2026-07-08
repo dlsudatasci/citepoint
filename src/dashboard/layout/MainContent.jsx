@@ -1,19 +1,23 @@
 import React from 'react';
+import GeneralFeed from '../components/GeneralFeed';
+import ExpertFeed from '../components/ExpertFeed';
+import Analytics from '../components/Analytics';
+import Profile from '../components/Profile';
 
 export default function MainContent({ activeView }) {
-    
+
     const renderContent = () => {
         switch (activeView) {
             case 'general':
-                return <h2>General Citation Requests</h2>;
+                return <GeneralFeed />;
             case 'expert':
-                return <h2>Expert Dashboard</h2>;
+                return <ExpertFeed />;
             case 'analytics':
-                return <h2>Overview Analytics</h2>;
+                return <Analytics />;
             case 'profile':
-                return <h2>My Profile Settings</h2>;
+                return <Profile />;
             default:
-                return <h2>General Citation Requests</h2>;
+                return <GeneralFeed />;
         }
     };
 

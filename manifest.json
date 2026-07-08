@@ -66,6 +66,8 @@
             "dashboard/dashboard.html",
             "dashboard/dashboard.js",
             "dashboard/dashboard.css",
+            "dashboard/dist/dashboard.bundle.js",
+            "dashboard/dist/dashboard.bundle.css",
             "discussion/discussion.html",
             "discussion/discussion.js",
             "discussion/discussion.css",
