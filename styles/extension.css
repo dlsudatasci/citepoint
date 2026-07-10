@@ -1,7 +1,10 @@
 /* ══════════════════════════════════════════════
    CitePoint Extension Stylesheet
    Injected into YouTube pages via content_scripts.
-   Imports design tokens from tokens.css (loaded via manifest).
+   Design tokens (styles/tokens.css) are injected as a separate,
+   earlier entry in manifest.json's content_scripts.css array —
+   NOT via @import, which Chrome does not resolve for CSS files
+   injected this way (custom properties silently fail to apply).
    ══════════════════════════════════════════════ */
 
 /* ── Base Overrides (scoped to .citation-controls) ─── */
@@ -15,43 +18,6 @@ body {
 /* ── Panel Root ─────────────────────────────────────── */
 
 .citation-controls {
-    --cp-font:           "Roboto", "Arial", sans-serif;
-    --cp-font-mono:      "Roboto Mono", monospace;
-    --cp-accent:         #065fd4;
-    --cp-accent-hover:   #0356c6;
-    --cp-accent-active:  #024fb1;
-    --cp-accent-bg:      rgba(6, 95, 212, 0.08);
-    --cp-success:        #27ae60;
-    --cp-success-hover:  #219a52;
-    --cp-success-bg:     rgba(39, 174, 96, 0.1);
-    --cp-error:          #d32f2f;
-    --cp-error-hover:    #b71c1c;
-    --cp-error-bg:       rgba(211, 47, 47, 0.1);
-    --cp-warning:        #e65100;
-    --cp-record:         #ff4444;
-    --cp-record-hover:   #cc0000;
-    --cp-text-primary:   #0f0f0f;
-    --cp-text-secondary: #606060;
-    --cp-text-tertiary:  #909090;
-    --cp-bg-page:        #eef3f8;
-    --cp-bg-surface:     #f7f9fc;
-    --cp-bg-card:        #ffffff;
-    --cp-bg-input:       rgba(0, 0, 0, 0.05);
-    --cp-bg-input-hover: rgba(0, 0, 0, 0.08);
-    --cp-bg-hover:       rgba(0, 0, 0, 0.04);
-    --cp-border:         rgba(0, 0, 0, 0.10);
-    --cp-border-strong:  rgba(0, 0, 0, 0.15);
-    --cp-border-input:   #dadce0;
-    --cp-divider:        rgba(0, 0, 0, 0.08);
-    --cp-radius-sm:      4px;
-    --cp-radius-md:      8px;
-    --cp-radius-lg:      12px;
-    --cp-radius-pill:    18px;
-    --cp-shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.08);
-    --cp-shadow-md:      0 2px 8px rgba(0, 0, 0, 0.12);
-    --cp-shadow-lg:      0 4px 24px rgba(0, 0, 0, 0.16);
-    --cp-transition:     0.15s ease;
-
     background-color: var(--cp-bg-page);
     padding: var(--cp-space-10, 10px);
     margin-bottom: 10px;
@@ -1507,18 +1473,6 @@ h3 {
 /* ── Recorded Segments Panel ─────────────────────────── */
 
 .recorded-segments-panel {
-    --cp-font:           "Roboto", "Arial", sans-serif;
-    --cp-accent:         #065fd4;
-    --cp-accent-hover:   #0356c6;
-    --cp-text-primary:   #0f0f0f;
-    --cp-text-secondary: #606060;
-    --cp-bg-page:        #eef3f8;
-    --cp-bg-surface:     #f7f9fc;
-    --cp-border:         rgba(0, 0, 0, 0.10);
-    --cp-error:          #d32f2f;
-    --cp-radius-md:      8px;
-    --cp-radius-lg:      12px;
-
     position: fixed;
     top: 50%;
     left: 50%;

@@ -47,7 +47,7 @@
                 "content/player.js",
                 "content/content.js"
             ],
-            "css": ["styles/extension.css"]
+            "css": ["styles/tokens.css", "styles/extension.css"]
         }
     ],
     "background": {
