@@ -107,9 +107,9 @@ async function fillForm({
     await form.locator('#description').fill(description);
 }
 
-async function expectToast(text) {
+async function expectToast(text, timeout = 8000) {
     const toast = page.locator('.cp-toast');
-    await expect(toast).toBeVisible({ timeout: 8000 });
+    await expect(toast).toBeVisible({ timeout });
     await expect(toast).toContainText(text);
 }
 
@@ -284,7 +284,9 @@ test('ADD-015: submitting without YouTube login shows login error toast', async 
     await _waitForAdToFinish();
     await submitForm();
 
-    await expectToast('You must be logged in to submit a citation.');
+    // getYouTubeUsername()'s DOM-detection fallback can take up to 10s when
+    // genuinely logged out, so give this toast more room than the default.
+    await expectToast('You must be logged in to submit a citation.', 13000);
 });
 
 // ─────────────────────────────────────────────

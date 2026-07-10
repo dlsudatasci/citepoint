@@ -214,7 +214,7 @@ test('C-007: ending a recording creates a segment card in the floating panel', a
     const panel = page.locator('.recorded-segments-panel');
     await expect(panel).toBeVisible({ timeout: 5000 });
     await expect(panel.locator('.recorded-segment')).toHaveCount(1);
-    await expect(panel.locator('.time-range')).toBeVisible();
+    await expect(panel.locator('.segment-time-range')).toBeVisible();
 });
 
 // ─────────────────────────────────────────────
@@ -401,7 +401,7 @@ test('C-019: clicking the time range in a segment card seeks the video to start 
 
     const timeBefore = await page.evaluate(() => document.querySelector('video')?.currentTime || 0);
 
-    await page.locator('.recorded-segment .time-range').first().click();
+    await page.locator('.recorded-segment .segment-time-range').first().click();
     await page.waitForTimeout(500);
 
     const timeAfter = await page.evaluate(() => document.querySelector('video')?.currentTime || 0);
@@ -419,7 +419,7 @@ test('C-020: clicking Delete on a segment card removes it and hides panel if emp
 
     await expect(page.locator('.recorded-segment')).toHaveCount(1);
 
-    await page.locator('.recorded-segment .delete-btn').first().click();
+    await page.locator('.recorded-segment .segment-delete-btn').first().click();
     await page.waitForTimeout(500);
 
     await expect(page.locator('.recorded-segment')).toHaveCount(0);

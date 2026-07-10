@@ -100,9 +100,9 @@ async function _waitForAdToFinish(maxWaitMs = 60000) {
     }
 }
 
-async function expectToast(text) {
+async function expectToast(text, timeout = 8000) {
     const toast = page.locator('.cp-toast');
-    await expect(toast).toBeVisible({ timeout: 8000 });
+    await expect(toast).toBeVisible({ timeout });
     await expect(toast).toContainText(text);
 }
 
@@ -388,7 +388,9 @@ test('VOT-016: voting without YouTube login shows login error toast', async () =
     const scoreBefore = parseInt((await scoreEl.textContent()).trim(), 10);
 
     await upvoteBtn.click();
-    await expectToast('You must be logged in to vote');
+    // getYouTubeUsername()'s DOM-detection fallback can take up to 10s when
+    // genuinely logged out, so give this toast more room than the default.
+    await expectToast('You must be logged in to vote', 13000);
 
     const scoreAfter = parseInt((await scoreEl.textContent()).trim(), 10);
     expect(scoreAfter).toBe(scoreBefore);
