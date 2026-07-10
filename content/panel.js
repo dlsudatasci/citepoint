@@ -24,11 +24,11 @@ function insertCitationButtons() {
         <div class="extension-header" id="extension-header">
             <span class="minimized-logo">CitePoint</span>
             <div class="button-container" id="tab-container">
-                <button id="citation-requests-btn" class="tab-btn disabled">
+                <button id="citation-requests-btn" class="tab-btn cp-tab disabled">
                     Citation Requests
                     <span class="tab-counter" id="requests-counter">0</span>
                 </button>
-                <button id="citations-btn" class="tab-btn disabled">
+                <button id="citations-btn" class="tab-btn cp-tab disabled">
                     Citations
                     <span class="tab-counter" id="citations-counter">0</span>
                 </button>

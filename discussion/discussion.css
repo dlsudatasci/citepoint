@@ -2,7 +2,7 @@
    CitePoint Discussion Page
    ══════════════════════════════════════════════ */
 
-@import url('../styles/tokens.css');
+@import url('../styles/components.css');
 
 * {
     box-sizing: border-box;

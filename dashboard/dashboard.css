@@ -2,7 +2,7 @@
    CitePoint Dashboard
    ══════════════════════════════════════════════ */
 
-@import url('../styles/tokens.css');
+@import url('../styles/components.css');
 
 * {
     box-sizing: border-box;
@@ -1240,18 +1240,10 @@ body {
     font-family: "Roboto", "Arial", sans-serif;
 }
 
-#expert-apply-form .submit-btn {
-    background: #065fd4;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    padding: 10px 20px;
-    font-size: 14px;
-    font-weight: 500;
-    cursor: pointer;
-}
-
-#expert-apply-form .submit-btn:hover { background: #0356c6; }
+/* #expert-apply-form .submit-btn styling comes from the shared
+   .submit-btn rule above (was redefined here with a hardcoded square
+   border-radius that won the cascade — a real visual bug, since every
+   other .submit-btn renders pill-shaped via var(--cp-radius-pill)). */
 
 /* ── Navigation Bar ──────────────────────────── */
 .top-nav {

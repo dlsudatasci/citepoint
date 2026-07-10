@@ -20,11 +20,11 @@ function loadPage(url, containerId, callback = null) {
             container.querySelectorAll('form').forEach(form => {
                 form.style.maxWidth = '100%';
                 form.querySelectorAll('input:not([type="checkbox"]), textarea, select').forEach(el => {
-                    el.classList.add('form-input');
+                    el.classList.add('form-input', 'cp-input');
                 });
-                form.querySelectorAll('textarea').forEach(el => el.classList.add('form-textarea'));
-                form.querySelector('button[type="submit"]')?.classList.add('submit-btn');
-                form.querySelector('button.cancel-btn')?.classList.add('cancel-btn');
+                form.querySelectorAll('textarea').forEach(el => el.classList.add('form-textarea', 'cp-textarea'));
+                form.querySelector('button[type="submit"]')?.classList.add('submit-btn', 'cp-btn', 'cp-btn--primary');
+                form.querySelector('button.cancel-btn')?.classList.add('cancel-btn', 'cp-btn', 'cp-btn--secondary');
             });
 
             setupFormListeners();

@@ -499,7 +499,7 @@ async function _renderCitationsWithSections(citations, container, pagination = n
     if (pagination && pagination.page < pagination.pages) {
         const remaining = pagination.total - pagination.page * pagination.limit;
         const loadMore = document.createElement('button');
-        loadMore.className   = 'cp-load-more-btn';
+        loadMore.className   = 'cp-load-more-btn cp-btn cp-btn--secondary';
         loadMore.textContent = `Load more (${remaining} remaining)`;
         loadMore.addEventListener('click', () => loadCitations(pagination.page + 1));
         container.appendChild(loadMore);
@@ -980,7 +980,7 @@ async function updateRequestsList(requests, container, pagination = null, curren
     if (pagination && pagination.page < pagination.pages) {
         const remaining = pagination.total - pagination.page * pagination.limit;
         const loadMore = document.createElement('button');
-        loadMore.className   = 'cp-load-more-btn';
+        loadMore.className   = 'cp-load-more-btn cp-btn cp-btn--secondary';
         loadMore.textContent = `Load more (${remaining} remaining)`;
         loadMore.addEventListener('click', () => loadCitationRequests(pagination.page + 1));
         container.appendChild(loadMore);
@@ -1323,7 +1323,7 @@ async function _appendCitationsPage(citations, container, pagination) {
     if (pagination && pagination.page < pagination.pages) {
         const remaining = pagination.total - pagination.page * pagination.limit;
         const loadMore = document.createElement('button');
-        loadMore.className   = 'cp-load-more-btn';
+        loadMore.className   = 'cp-load-more-btn cp-btn cp-btn--secondary';
         loadMore.textContent = `Load more (${remaining} remaining)`;
         loadMore.addEventListener('click', () => loadCitations(pagination.page + 1));
         container.appendChild(loadMore);
@@ -1342,7 +1342,7 @@ function _appendRequestsPage(requests, container, pagination, currentUsername = 
     if (pagination && pagination.page < pagination.pages) {
         const remaining = pagination.total - pagination.page * pagination.limit;
         const loadMore = document.createElement('button');
-        loadMore.className   = 'cp-load-more-btn';
+        loadMore.className   = 'cp-load-more-btn cp-btn cp-btn--secondary';
         loadMore.textContent = `Load more (${remaining} remaining)`;
         loadMore.addEventListener('click', () => loadCitationRequests(pagination.page + 1));
         container.appendChild(loadMore);

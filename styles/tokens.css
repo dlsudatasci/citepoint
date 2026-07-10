@@ -107,6 +107,9 @@
     /* ── Focus ──────────────────────────────────── */
     --cp-focus-ring:     0 0 0 3px var(--cp-accent-bg-hover);
 
+    /* ── Overlay ────────────────────────────────── */
+    --cp-overlay-scrim:  rgba(0, 0, 0, 0.5);
+
     /* ── Z-Index Scale ──────────────────────────── */
     --cp-z-player-overlay:     60;
     --cp-z-player-overlay-top: 61;

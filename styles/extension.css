@@ -393,72 +393,6 @@ body {
     color: var(--cp-accent);
 }
 
-/* ── Nav Tabs ───────────────────────────────────────── */
-
-.nav-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    padding: 8px;
-    border-bottom: 1px solid var(--cp-border);
-}
-
-.nav-tab {
-    background: none;
-    border: none;
-    border-radius: var(--cp-radius-pill);
-    color: var(--cp-text-secondary);
-    cursor: pointer;
-    font-family: var(--cp-font);
-    font-size: 14px;
-    font-weight: 500;
-    padding: 8px 16px;
-    transition: all var(--cp-transition);
-}
-
-.nav-tab:hover {
-    background-color: var(--cp-bg-hover);
-    color: var(--cp-text-primary);
-}
-
-.nav-tab.active {
-    background-color: var(--cp-text-primary);
-    color: white;
-}
-
-/* ── Nav Bar (form pages) ───────────────────────────── */
-
-#nav-bar {
-    background-color: white;
-    padding: 12px;
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    border-bottom: 1px solid var(--cp-border);
-}
-
-.nav-btn {
-    background-color: var(--cp-bg-input);
-    border: none;
-    border-radius: var(--cp-radius-pill);
-    color: var(--cp-text-primary);
-    cursor: pointer;
-    font-family: var(--cp-font);
-    font-size: 14px;
-    font-weight: 500;
-    padding: 8px 12px;
-    transition: background-color var(--cp-transition);
-}
-
-.nav-btn:hover {
-    background-color: var(--cp-bg-input-hover);
-}
-
-.nav-btn.active {
-    background-color: var(--cp-text-primary);
-    color: white;
-}
-
 /* ── Sort Controls ──────────────────────────────────── */
 
 .sort-container {
@@ -1429,45 +1363,35 @@ h3 {
     margin-bottom: 20px;
 }
 
-/* ── Empty & Error States ───────────────────────────── */
+/* Empty/error states and the loading skeleton now live in
+   styles/components.css (.empty-state/.error-message/.cp-loading/
+   .cp-skeleton) — same class names, centralized definition. */
 
-.empty-state {
-    color: var(--cp-text-secondary);
-    font-size: 13px;
-    text-align: center;
-    padding: 16px 0;
-    font-style: italic;
-}
+/* ── Previously-Unstyled Gaps ────────────────────────── */
 
-.error-message {
-    color: var(--cp-error);
-    font-size: 14px;
-}
-
-/* ── Loading skeleton ─────────────────────────────────── */
-
-.cp-loading {
+.citation-header {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 4px 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cp-space-8);
+    margin-bottom: var(--cp-space-4);
 }
 
-.cp-skeleton {
-    height: 48px;
-    border-radius: var(--cp-radius-lg);
-    background: linear-gradient(90deg, var(--cp-bg-surface) 25%, var(--cp-border) 50%, var(--cp-bg-surface) 75%);
-    background-size: 200% 100%;
-    animation: cp-skeleton-shimmer 1.4s ease infinite;
+.category-filter-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.cp-skeleton--short {
-    height: 32px;
+.field-locked {
+    background-color: var(--cp-bg-input);
+    color: var(--cp-text-tertiary);
+    cursor: not-allowed;
 }
 
-@keyframes cp-skeleton-shimmer {
-    0%   { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+.cp-load-more-btn {
+    width: 100%;
+    margin-top: var(--cp-space-8);
 }
 
 /* ── Recorded Segments Panel ─────────────────────────── */
@@ -1812,30 +1736,8 @@ ytd-watch-flexy[theater] div#secondary {
     position: relative;
 }
 
-/* ── Toast Notifications ────────────────────────────── */
-
-.cp-toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(16px);
-    padding: 10px 20px;
-    border-radius: var(--cp-radius-md);
-    font-family: var(--cp-font);
-    font-size: 13px;
-    font-weight: 500;
-    color: #fff;
-    opacity: 0;
-    transition: opacity 0.25s ease, transform 0.25s ease;
-    z-index: 99999;
-    pointer-events: none;
-}
-
-.cp-toast--visible  { opacity: 1; transform: translateX(-50%) translateY(0); }
-.cp-toast--success  { background: var(--cp-success); }
-.cp-toast--error    { background: var(--cp-error); }
-.cp-toast--warning  { background: var(--cp-warning); }
-.cp-toast--info     { background: var(--cp-accent); }
+/* Toast notifications now live in styles/components.css (.cp-toast*) —
+   same class names, centralized definition. */
 
 /* ── Confirm Dialog ─────────────────────────────────── */
 
