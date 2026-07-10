@@ -103,4 +103,19 @@
 
     /* ── Transitions ────────────────────────────── */
     --cp-transition:     0.15s ease;
+
+    /* ── Focus ──────────────────────────────────── */
+    --cp-focus-ring:     0 0 0 3px var(--cp-accent-bg-hover);
+
+    /* ── Z-Index Scale ──────────────────────────── */
+    --cp-z-player-overlay:     60;
+    --cp-z-player-overlay-top: 61;
+    --cp-z-timeline-range:     99;
+    --cp-z-timeline-bar:       101;
+    --cp-z-theater:            999;
+    --cp-z-dropdown:           1000;
+    --cp-z-panel-modal:        2000;
+    --cp-z-confirm-overlay:    99998;
+    --cp-z-toast:              99999;
+    --cp-z-confirm-box:        99999;
 }
