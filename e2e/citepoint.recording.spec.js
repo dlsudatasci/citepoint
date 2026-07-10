@@ -445,10 +445,10 @@ test('C-021: recording multiple segments creates separate cards in the panel', a
 });
 
 // ─────────────────────────────────────────────
-// C-022: Panel collapse/expand toggle
+// C-022: Panel close button
 // ─────────────────────────────────────────────
 
-test('C-022: clicking the toggle button collapses and expands the segments panel', async () => {
+test('C-022: clicking the close button hides the segments panel', async () => {
     await startRecording();
     await page.waitForTimeout(2000);
     await endRecording();
@@ -456,11 +456,8 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
     const panel = page.locator('.recorded-segments-panel');
     await expect(panel).toBeVisible();
 
-    await panel.locator('.toggle-btn').click();
-    await expect(panel).toHaveClass(/collapsed/);
-
-    await panel.locator('.toggle-btn').click();
-    await expect(panel).not.toHaveClass(/collapsed/);
+    await panel.locator('.segments-close-btn').click();
+    await expect(panel).toBeHidden();
 });
 
 // ─────────────────────────────────────────────
