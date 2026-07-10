@@ -471,7 +471,7 @@ test('VOT-024: sending invalid delta via API returns 400 with error message', as
 // VOT-025: Repeated Delta Inflates Score
 // ─────────────────────────────────────────────
 
-test('VOT-025: sending delta=2 multiple times via API — backend handles without error', async () => {
+test('VOT-025: repeated delta=2 replay is rejected by the server-side vote state machine', async () => {
     const title = `VOT-025 Citation ${Date.now()}`;
     await createCitation(title);
 
@@ -480,26 +480,41 @@ test('VOT-025: sending delta=2 multiple times via API — backend handles withou
     const citationId = await card.locator('.delete-btn').getAttribute('data-id');
 
     const http = require('http');
-    const results = [];
-    for (let i = 0; i < 5; i++) {
-        const status = await new Promise((resolve, reject) => {
-            const body = JSON.stringify({ delta: 2 });
+    function patchVote(delta) {
+        return new Promise((resolve, reject) => {
+            const body = JSON.stringify({ delta, username: '@testuser' });
             const req = http.request({
                 hostname: 'localhost', port: 3000,
                 path: `/api/citations/dQw4w9WgXcQ/${citationId}/vote`,
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-            }, (res) => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+            }, (res) => {
+                let raw = '';
+                res.on('data', chunk => { raw += chunk; });
+                res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(raw || '{}') }));
+            });
             req.on('error', reject);
             req.write(body);
             req.end();
         });
-        results.push(status);
     }
 
-    // All requests should return 200 — backend handles repeated votes without crashing
-    for (const status of results) {
-        expect(status).toBe(200);
+    // Establish a downvote first, so delta=2 (down -> up) is a legal switch exactly once.
+    const first = await patchVote(-1);
+    expect(first.status).toBe(200);
+    const scoreAfterDownvote = first.body.newScore;
+
+    // Replaying delta=2 five times simulates a vote-inflation attack: only the first
+    // is a legal down->up switch: the state machine must reject every repeat.
+    const results = [];
+    for (let i = 0; i < 5; i++) {
+        results.push(await patchVote(2));
+    }
+
+    expect(results[0].status).toBe(200);
+    expect(results[0].body.newScore).toBe(scoreAfterDownvote + 2);
+    for (const result of results.slice(1)) {
+        expect(result.status).toBe(409);
     }
 
     await deleteCitation(title);
