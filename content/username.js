@@ -34,6 +34,7 @@ async function getYouTubeUsername() {
         }
 
         // 4. Passive wait — observe the DOM until YouTube hydrates the handle.
+        //    No clicks, no side effects. Gives up after 10s.
         const observed = await _waitForHandleInDOM(10000);
         if (observed) {
             _cacheUsername(observed);

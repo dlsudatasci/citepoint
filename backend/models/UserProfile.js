@@ -4,8 +4,8 @@ const userProfileSchema = new mongoose.Schema({
     username:       { type: String, required: true, unique: true },
     displayName:    { type: String, default: '' },
     bio:            { type: String, default: '', maxlength: 500 },
-    followedCategories: [{ type: String }],
-    mutedCategories:    [{ type: String }],
+    followedTopics: [{ type: String }],
+    mutedTopics:    [{ type: String }],
     createdAt:      { type: Date, default: Date.now },
 });
 

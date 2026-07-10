@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
-const { ALL_CATEGORIES } = require('../config/categories');
+const { TOPICS } = require('../config/constants');
 
 const expertApplicationSchema = new mongoose.Schema({
     username:    { type: String, required: true },
-    category:    { type: String, required: true, enum: ALL_CATEGORIES },
+    topics: [{ type: String, enum: TOPICS, required: true }],
     credentials: { type: String, required: true },
     status:      { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     reason:      { type: String, default: null },

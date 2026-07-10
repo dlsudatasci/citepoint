@@ -39,21 +39,21 @@ describe('PUT /api/profile/:username', () => {
         expect(profile.displayName).toBe('Alice A.');
     });
 
-    it('rejects an invalid category in followedCategories', async () => {
+    it('rejects an invalid topic in followedTopics', async () => {
         const res = await request(app)
             .put('/api/profile/alice')
-            .send({ requesterUsername: 'alice', followedCategories: ['Not A Real Category'] });
+            .send({ requesterUsername: 'alice', followedTopics: ['Not A Real Topic'] });
 
         expect(res.status).toBe(400);
     });
 
-    it('accepts valid categories in followedCategories', async () => {
+    it('accepts valid topics in followedTopics', async () => {
         const res = await request(app)
             .put('/api/profile/alice')
-            .send({ requesterUsername: 'alice', followedCategories: ['Historical Claim'] });
+            .send({ requesterUsername: 'alice', followedTopics: ['History'] });
 
         expect(res.status).toBe(200);
-        expect(res.body.profile.followedCategories).toEqual(['Historical Claim']);
+        expect(res.body.profile.followedTopics).toEqual(['History']);
     });
 });
 

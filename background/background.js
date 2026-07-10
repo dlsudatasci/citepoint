@@ -185,7 +185,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
     if (request.type === 'applyExpert') {
-        handleApplyExpert(request.username, request.category, request.credentials).then(sendResponse);
+        handleApplyExpert(request.username, request.topics, request.credentials).then(sendResponse);
         return true;
     }
     if (request.type === 'getMyApplications') {
@@ -193,7 +193,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
     if (request.type === 'getPendingApplications') {
-        handleGetPendingApplications().then(sendResponse);
+        handleGetPendingApplications(request.adminUsername).then(sendResponse);
         return true;
     }
     if (request.type === 'reviewApplication') {
@@ -238,6 +238,18 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     if (request.type === 'getProfileHistory') {
         handleGetProfileHistory(request.username, request.page).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'upsertVideo') {
+        handleUpsertVideo(request.data).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getExpertFeed') {
+        handleGetExpertFeed(request.username).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'getGeneralFeed') {
+        handleGetGeneralFeed(request.topic, request.page, request.limit).then(sendResponse);
         return true;
     }
 });
@@ -431,7 +443,11 @@ async function handleUpdateCategory(itemType, videoId, itemId, category, usernam
 async function handleCheckExpert(username) {
     try {
         const result = await apiRequest(`/experts/${encodeURIComponent(username)}`);
-        return { success: true, isExpert: result.isExpert };
+        return {
+            success: true,
+            isExpert: result.isExpert,
+            topics: result.topics || [],
+        };
     } catch (error) {
         return { success: false, error: error.message };
     }
@@ -468,9 +484,9 @@ async function handleReportItem(data) {
     }
 }
 
-async function handleApplyExpert(username, category, credentials) {
+async function handleApplyExpert(username, topics, credentials) {
     try {
-        const result = await apiRequest('/experts/apply', 'POST', { username, category, credentials });
+        const result = await apiRequest('/experts/apply', 'POST', { username, topics, credentials });
         return { success: true, id: result.id };
     } catch (error) {
         return { success: false, error: error.message };
@@ -486,9 +502,9 @@ async function handleGetMyApplications(username) {
     }
 }
 
-async function handleGetPendingApplications() {
+async function handleGetPendingApplications(adminUsername) {
     try {
-        const data = await apiRequest('/experts/applications/pending');
+        const data = await apiRequest(`/experts/applications/pending?adminUsername=${encodeURIComponent(adminUsername || '')}`);
         return { success: true, applications: data.applications || [] };
     } catch (error) {
         return { success: false, error: error.message };
@@ -594,6 +610,36 @@ async function handleAddQuickReply({ parentCitationId, description, videoId, use
             parentCitationId, description, videoId, username,
         });
         return { success: true, id: data.id };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+// ── Feeds & Metadata Handlers ──────────────────
+
+async function handleUpsertVideo(data) {
+    try {
+        const result = await apiRequest('/videos/upsert', 'POST', data);
+        return { success: true, data: result.data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetExpertFeed(username) {
+    try {
+        const result = await apiRequest(`/feeds/expert?username=${encodeURIComponent(username)}`);
+        return { success: true, data: result.data };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetGeneralFeed(topic, page = 1, limit = 20) {
+    try {
+        const query = new URLSearchParams({ topic: topic || 'All', page, limit }).toString();
+        const result = await apiRequest(`/feeds/general?${query}`);
+        return { success: true, data: result.data, pagination: result.pagination };
     } catch (error) {
         return { success: false, error: error.message };
     }

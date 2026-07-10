@@ -4,6 +4,7 @@ const notificationSchema = new mongoose.Schema({
     username:  { type: String, required: true },
     type:      { type: String, enum: ['new_citation', 'new_request', 'application_approved', 'application_rejected'], required: true },
     category:  { type: String, default: null },
+    topic:     { type: String, default: null },
     videoId:   { type: String, default: null },
     itemId:    { type: String, default: null },
     itemType:  { type: String, enum: ['citation', 'request', null], default: null },

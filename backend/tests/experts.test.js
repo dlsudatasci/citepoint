@@ -30,7 +30,7 @@ describe('GET /api/experts/applications/pending', () => {
 
     it('allows requests from an allowlisted admin', async () => {
         await request(app).post('/api/experts/apply').send({
-            username: 'alice', category: 'Historical Claim', credentials: 'I have a degree',
+            username: 'alice', topics: ['History'], credentials: 'I have a degree',
         });
 
         const res = await request(app).get('/api/experts/applications/pending?adminUsername=admin_carol');
@@ -43,7 +43,7 @@ describe('GET /api/experts/applications/pending', () => {
 describe('PATCH /api/experts/applications/:id/review', () => {
     async function submitApplication(overrides = {}) {
         const res = await request(app).post('/api/experts/apply').send({
-            username: 'alice', category: 'Historical Claim', credentials: 'I have a degree',
+            username: 'alice', topics: ['History'], credentials: 'I have a degree',
             ...overrides,
         });
         return res.body.id;
@@ -78,6 +78,6 @@ describe('PATCH /api/experts/applications/:id/review', () => {
 
         const check = await request(app).get('/api/experts/alice');
         expect(check.body.isExpert).toBe(true);
-        expect(check.body.categories).toContain('Historical Claim');
+        expect(check.body.topics).toContain('History');
     });
 });

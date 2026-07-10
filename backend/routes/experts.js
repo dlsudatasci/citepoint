@@ -3,20 +3,20 @@ const Expert            = require('../models/Expert');
 const ExpertApplication = require('../models/ExpertApplication');
 const { isExpert: isHardcodedExpert } = require('../config/experts');
 const { isAdmin } = require('../config/admins');
-const { ALL_CATEGORIES } = require('../config/categories');
+const { TOPICS } = require('../config/constants');
 
 // GET /api/experts/:username — check if user is an expert
 router.get('/:username', async (req, res) => {
     try {
         if (isHardcodedExpert(req.params.username)) {
-            return res.json({ success: true, isExpert: true, categories: ALL_CATEGORIES });
+            return res.json({ success: true, isExpert: true, topics: TOPICS });
         }
         const expert = await Expert.findOne({ username: req.params.username }).lean();
         res.set('Cache-Control', 'no-store');
         res.json({
             success: true,
             isExpert: !!expert,
-            categories: expert ? expert.categories : [],
+            topics: expert ? expert.topics : [],
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -26,22 +26,22 @@ router.get('/:username', async (req, res) => {
 // POST /api/experts/apply — submit expert application
 router.post('/apply', async (req, res) => {
     try {
-        const { username, category, credentials } = req.body;
-        if (!username || !category || !credentials) {
-            return res.status(400).json({ success: false, error: 'username, category, and credentials are required' });
+        const { username, topics, credentials } = req.body;
+        if (!username || !topics || !Array.isArray(topics) || topics.length === 0 || !credentials) {
+            return res.status(400).json({ success: false, error: 'username, topics (non-empty array), and credentials are required' });
         }
-        if (!ALL_CATEGORIES.includes(category)) {
-            return res.status(400).json({ success: false, error: 'Invalid category' });
+        if (!topics.every(t => TOPICS.includes(t))) {
+            return res.status(400).json({ success: false, error: 'Invalid topic' });
         }
 
         const existing = await ExpertApplication.findOne({
-            username, category, status: 'pending',
+            username, status: 'pending',
         });
         if (existing) {
-            return res.status(409).json({ success: false, error: 'You already have a pending application for this category' });
+            return res.status(409).json({ success: false, error: 'You already have a pending application' });
         }
 
-        const app = await ExpertApplication.create({ username, category, credentials });
+        const app = await ExpertApplication.create({ username, topics, credentials });
         res.status(201).json({ success: true, id: app._id });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -103,7 +103,7 @@ router.patch('/applications/:id/review', async (req, res) => {
         if (status === 'approved') {
             await Expert.findOneAndUpdate(
                 { username: app.username },
-                { $addToSet: { categories: app.category }, $setOnInsert: { grantedAt: new Date(), grantedBy: reviewedBy } },
+                { $addToSet: { topics: { $each: app.topics } }, $setOnInsert: { grantedAt: new Date(), grantedBy: reviewedBy } },
                 { upsert: true }
             );
         }

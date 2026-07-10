@@ -59,6 +59,8 @@ function setupTimeTracking() {
 
 function setupVideoChangeTracking() {
     _currentVideoId = getCurrentVideoId();
+    
+    syncVideoMetadata();
 
     window.addEventListener('yt-navigate-start', () => {
         console.log('[player] YouTube navigation started');
@@ -71,6 +73,8 @@ function setupVideoChangeTracking() {
             console.log('[player] Video changed to:', newVideoId);
             _currentVideoId = newVideoId;
             currentTime     = 0;
+
+            syncVideoMetadata();
 
             setTimeout(() => {
                 const newVideo = document.querySelector('video');
@@ -93,4 +97,54 @@ function setupVideoChangeTracking() {
 function seekToTime(seconds) {
     const video = document.querySelector('video');
     if (video) video.currentTime = seconds;
+}
+
+// ── Metadata & Topic Extraction ───────────────
+
+async function syncVideoMetadata() {
+    const videoId = getCurrentVideoId();
+    if (!videoId) return;
+
+    try {
+
+        const titleEl = document.querySelector('meta[name="title"]');
+        const title = titleEl ? titleEl.content : document.title.replace(' - YouTube', '');
+
+        const channelEl = document.querySelector('link[itemprop="name"]');
+        const channelName = channelEl ? channelEl.getAttribute('content') : '';
+
+        let rawTags = [];
+        
+        const keywordMeta = document.querySelector('meta[name="keywords"]');
+        if (keywordMeta && keywordMeta.content) {
+            rawTags = keywordMeta.content.split(',').map(s => s.trim());
+        }
+
+        const schemaScript = document.querySelector('script[type="application/ld+json"]');
+        if (schemaScript) {
+            try {
+                const data = JSON.parse(schemaScript.textContent);
+                if (data.genre) {
+                    if (Array.isArray(data.genre)) {
+                        rawTags.push(...data.genre);
+                    } else {
+                        rawTags.push(data.genre);
+                    }
+                }
+            } catch (e) {
+                console.warn('[metadata] Could not parse JSON-LD');
+            }
+        }
+
+        await apiUpsertVideo({
+            videoId,
+            title,
+            channelName,
+            rawTags
+        });
+        
+        console.log(`[metadata] Synced metadata for video: ${videoId}`);
+    } catch (err) {
+        console.error('[metadata] Failed to sync video metadata:', err);
+    }
 }

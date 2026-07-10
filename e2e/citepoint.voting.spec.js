@@ -1,5 +1,6 @@
 const { test, expect, chromium } = require('@playwright/test');
 const path = require('path');
+const channel = require('./browserChannel');
 
 const EXTENSION_PATH = path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
@@ -14,6 +15,7 @@ let EXTENSION_ID = '';
 test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
         headless: false,
+        channel,
         args: [
             `--load-extension=${EXTENSION_PATH}`,
             `--disable-extensions-except=${EXTENSION_PATH}`,
@@ -43,12 +45,20 @@ test.beforeEach(async () => {
     await page.waitForSelector('ytd-watch-metadata', { timeout: 30000 });
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await _expandPanel();
     await mockLogin('@testuser');
     await page.locator('#citations-btn').click();
     await page.waitForSelector('#citations-container', { timeout: 10000 });
 });
 
 // ── Helpers ───────────────────────────────────────────────────────────────
+
+// Panel loads minimized by default (tab buttons are disabled until expanded) — click
+// the toggle to open it before interacting with tabs/content.
+async function _expandPanel() {
+    await page.locator('#toggle-extension').click();
+    await page.waitForSelector('#extension-content:not([style*="display: none"])', { timeout: 5000 }).catch(() => {});
+}
 
 async function mockLogin(handle = '@testuser') {
     const sw = context.serviceWorkers().find(w => w.url().includes(EXTENSION_ID));
@@ -90,9 +100,9 @@ async function _waitForAdToFinish(maxWaitMs = 60000) {
     }
 }
 
-async function expectToast(text) {
+async function expectToast(text, timeout = 8000) {
     const toast = page.locator('.cp-toast');
-    await expect(toast).toBeVisible({ timeout: 8000 });
+    await expect(toast).toBeVisible({ timeout });
     await expect(toast).toContainText(text);
 }
 
@@ -120,6 +130,7 @@ async function createCitation(title = 'VOT Test Citation') {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await _expandPanel();
     await mockLogin('@testuser');
     await page.locator('#citations-btn').click();
     await page.waitForSelector('#citations-container', { timeout: 10000 });
@@ -322,6 +333,7 @@ test('VOT-013: upvote state persists after page reload', async () => {
     await page.reload({ waitUntil: 'domcontentloaded' });
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await _expandPanel();
     await mockLogin('@testuser');
     await page.locator('#citations-btn').click();
     await page.waitForSelector('#citations-container', { timeout: 10000 });
@@ -352,6 +364,7 @@ test('VOT-015: upvote state persists after navigating away and back via SPA', as
     await page.waitForSelector('ytd-watch-metadata', { timeout: 30000 });
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await _expandPanel();
     await mockLogin('@testuser');
     await page.locator('#citations-btn').click();
     await page.waitForSelector('#citations-container', { timeout: 10000 });
@@ -375,7 +388,9 @@ test('VOT-016: voting without YouTube login shows login error toast', async () =
     const scoreBefore = parseInt((await scoreEl.textContent()).trim(), 10);
 
     await upvoteBtn.click();
-    await expectToast('You must be logged in to vote');
+    // getYouTubeUsername()'s DOM-detection fallback can take up to 10s when
+    // genuinely logged out, so give this toast more room than the default.
+    await expectToast('You must be logged in to vote', 13000);
 
     const scoreAfter = parseInt((await scoreEl.textContent()).trim(), 10);
     expect(scoreAfter).toBe(scoreBefore);
@@ -402,6 +417,7 @@ test('VOT-022: after clearing extension storage, user can vote again on same cit
     await page.reload({ waitUntil: 'domcontentloaded' });
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await _expandPanel();
     await mockLogin('@testuser');
     await page.locator('#citations-btn').click();
     await page.waitForSelector('#citations-container', { timeout: 10000 });
@@ -455,7 +471,7 @@ test('VOT-024: sending invalid delta via API returns 400 with error message', as
 // VOT-025: Repeated Delta Inflates Score
 // ─────────────────────────────────────────────
 
-test('VOT-025: sending delta=2 multiple times via API — backend handles without error', async () => {
+test('VOT-025: repeated delta=2 replay is rejected by the server-side vote state machine', async () => {
     const title = `VOT-025 Citation ${Date.now()}`;
     await createCitation(title);
 
@@ -464,26 +480,41 @@ test('VOT-025: sending delta=2 multiple times via API — backend handles withou
     const citationId = await card.locator('.delete-btn').getAttribute('data-id');
 
     const http = require('http');
-    const results = [];
-    for (let i = 0; i < 5; i++) {
-        const status = await new Promise((resolve, reject) => {
-            const body = JSON.stringify({ delta: 2 });
+    function patchVote(delta) {
+        return new Promise((resolve, reject) => {
+            const body = JSON.stringify({ delta, username: '@testuser' });
             const req = http.request({
                 hostname: 'localhost', port: 3000,
                 path: `/api/citations/dQw4w9WgXcQ/${citationId}/vote`,
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
-            }, (res) => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+            }, (res) => {
+                let raw = '';
+                res.on('data', chunk => { raw += chunk; });
+                res.on('end', () => resolve({ status: res.statusCode, body: JSON.parse(raw || '{}') }));
+            });
             req.on('error', reject);
             req.write(body);
             req.end();
         });
-        results.push(status);
     }
 
-    // All requests should return 200 — backend handles repeated votes without crashing
-    for (const status of results) {
-        expect(status).toBe(200);
+    // Establish a downvote first, so delta=2 (down -> up) is a legal switch exactly once.
+    const first = await patchVote(-1);
+    expect(first.status).toBe(200);
+    const scoreAfterDownvote = first.body.newScore;
+
+    // Replaying delta=2 five times simulates a vote-inflation attack: only the first
+    // is a legal down->up switch: the state machine must reject every repeat.
+    const results = [];
+    for (let i = 0; i < 5; i++) {
+        results.push(await patchVote(2));
+    }
+
+    expect(results[0].status).toBe(200);
+    expect(results[0].body.newScore).toBe(scoreAfterDownvote + 2);
+    for (const result of results.slice(1)) {
+        expect(result.status).toBe(409);
     }
 
     await deleteCitation(title);

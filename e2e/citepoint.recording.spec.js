@@ -1,5 +1,6 @@
 const { test, expect, chromium } = require('@playwright/test');
 const path = require('path');
+const channel = require('./browserChannel');
 
 const EXTENSION_PATH = path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
@@ -13,6 +14,7 @@ let EXTENSION_ID = '';
 test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
         headless: false,
+        channel,
         args: [
             `--load-extension=${EXTENSION_PATH}`,
             `--disable-extensions-except=${EXTENSION_PATH}`,
@@ -212,7 +214,7 @@ test('C-007: ending a recording creates a segment card in the floating panel', a
     const panel = page.locator('.recorded-segments-panel');
     await expect(panel).toBeVisible({ timeout: 5000 });
     await expect(panel.locator('.recorded-segment')).toHaveCount(1);
-    await expect(panel.locator('.time-range')).toBeVisible();
+    await expect(panel.locator('.segment-time-range')).toBeVisible();
 });
 
 // ─────────────────────────────────────────────
@@ -399,7 +401,7 @@ test('C-019: clicking the time range in a segment card seeks the video to start 
 
     const timeBefore = await page.evaluate(() => document.querySelector('video')?.currentTime || 0);
 
-    await page.locator('.recorded-segment .time-range').first().click();
+    await page.locator('.recorded-segment .segment-time-range').first().click();
     await page.waitForTimeout(500);
 
     const timeAfter = await page.evaluate(() => document.querySelector('video')?.currentTime || 0);
@@ -417,7 +419,7 @@ test('C-020: clicking Delete on a segment card removes it and hides panel if emp
 
     await expect(page.locator('.recorded-segment')).toHaveCount(1);
 
-    await page.locator('.recorded-segment .delete-btn').first().click();
+    await page.locator('.recorded-segment .segment-delete-btn').first().click();
     await page.waitForTimeout(500);
 
     await expect(page.locator('.recorded-segment')).toHaveCount(0);
@@ -443,10 +445,10 @@ test('C-021: recording multiple segments creates separate cards in the panel', a
 });
 
 // ─────────────────────────────────────────────
-// C-022: Panel collapse/expand toggle
+// C-022: Panel close button
 // ─────────────────────────────────────────────
 
-test('C-022: clicking the toggle button collapses and expands the segments panel', async () => {
+test('C-022: clicking the close button hides the segments panel', async () => {
     await startRecording();
     await page.waitForTimeout(2000);
     await endRecording();
@@ -454,11 +456,8 @@ test('C-022: clicking the toggle button collapses and expands the segments panel
     const panel = page.locator('.recorded-segments-panel');
     await expect(panel).toBeVisible();
 
-    await panel.locator('.toggle-btn').click();
-    await expect(panel).toHaveClass(/collapsed/);
-
-    await panel.locator('.toggle-btn').click();
-    await expect(panel).not.toHaveClass(/collapsed/);
+    await panel.locator('.segments-close-btn').click();
+    await expect(panel).toBeHidden();
 });
 
 // ─────────────────────────────────────────────

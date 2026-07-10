@@ -1,5 +1,6 @@
 const { test, expect, chromium } = require('@playwright/test');
 const path = require('path');
+const channel = require('./browserChannel');
 
 const EXTENSION_PATH = path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
@@ -13,6 +14,7 @@ let EXTENSION_ID = '';
 test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
         headless: false,
+        channel,
         args: [
             `--load-extension=${EXTENSION_PATH}`,
             `--disable-extensions-except=${EXTENSION_PATH}`,
@@ -40,9 +42,17 @@ test.beforeEach(async () => {
     await page.waitForSelector('ytd-watch-metadata', { timeout: 30000 });
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await _expandPanel();
     await mockLogin('@testuser');
     await page.locator('#citations-btn').click();
 });
+
+// Panel loads minimized by default (tab buttons are disabled until expanded) — click
+// the toggle to open it before interacting with tabs/content.
+async function _expandPanel() {
+    await page.locator('#toggle-extension').click();
+    await page.waitForSelector('#extension-content:not([style*="display: none"])', { timeout: 5000 }).catch(() => {});
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
@@ -97,9 +107,9 @@ async function fillForm({
     await form.locator('#description').fill(description);
 }
 
-async function expectToast(text) {
+async function expectToast(text, timeout = 8000) {
     const toast = page.locator('.cp-toast');
-    await expect(toast).toBeVisible({ timeout: 8000 });
+    await expect(toast).toBeVisible({ timeout });
     await expect(toast).toContainText(text);
 }
 
@@ -158,6 +168,7 @@ test('ADD-004: submitting a valid citation shows success toast and refreshes lis
     await page.reload({ waitUntil: 'domcontentloaded' });
     await _waitForAdToFinish();
     await page.waitForSelector('#citation-controls', { timeout: 30000 });
+    await _expandPanel();
     await mockLogin('@testuser');
     await page.locator('#citations-btn').click();
     await expect(page.locator('#citations-container')).not.toBeEmpty({ timeout: 30000 });
@@ -273,7 +284,9 @@ test('ADD-015: submitting without YouTube login shows login error toast', async 
     await _waitForAdToFinish();
     await submitForm();
 
-    await expectToast('You must be logged in to submit a citation.');
+    // getYouTubeUsername()'s DOM-detection fallback can take up to 10s when
+    // genuinely logged out, so give this toast more room than the default.
+    await expectToast('You must be logged in to submit a citation.', 13000);
 });
 
 // ─────────────────────────────────────────────

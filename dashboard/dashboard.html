@@ -5,108 +5,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Citepoint Dashboard</title>
     <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="dist/dashboard.bundle.css">
 </head>
 <body>
-    <div class="dashboard-container">
-        <header class="dashboard-header">
-            <h1>Citepoint Dashboard</h1>
-            <p class="dashboard-subtitle">Trending categories and expert verification activity</p>
-            <div class="dashboard-scope">
-                <label for="scope-select">Scope:</label>
-                <select id="scope-select">
-                    <option value="video">This video</option>
-                    <option value="global">All videos</option>
-                </select>
-            </div>
-        </header>
-
-        <main id="dashboard-content">
-            <section class="dashboard-section">
-                <h2>Trending Requested Categories</h2>
-                <div id="requests-chart" class="bar-chart"></div>
-            </section>
-
-            <section class="dashboard-section">
-                <h2>Citations by Category</h2>
-                <div id="citations-chart" class="bar-chart"></div>
-            </section>
-
-            <section class="dashboard-section">
-                <h2>Expert Verification Activity</h2>
-                <div class="verification-group">
-                    <h3>Citations</h3>
-                    <div id="citations-verification-chart" class="stacked-chart"></div>
-                </div>
-                <div class="verification-group">
-                    <h3>Citation Requests</h3>
-                    <div id="requests-verification-chart" class="stacked-chart"></div>
-                </div>
-            </section>
-            <section class="dashboard-section" id="notifications-section">
-                <div class="notif-header">
-                    <h2>Notifications <span id="notif-badge" class="notif-badge" style="display:none;">0</span></h2>
-                    <button id="mark-all-read-btn" class="mark-all-btn" style="display:none;">Mark all read</button>
-                </div>
-                <div id="notifications-list"></div>
-            </section>
-
-            <section class="dashboard-section" id="profile-section">
-                <h2>My Profile</h2>
-                <div id="profile-content">
-                    <div id="profile-stats" class="profile-stats-row"></div>
-                    <form id="profile-form" style="display:none;">
-                        <div class="form-group">
-                            <label for="profile-display-name">Display Name:</label>
-                            <input type="text" id="profile-display-name" placeholder="Your display name">
-                        </div>
-                        <div class="form-group">
-                            <label for="profile-bio">Bio:</label>
-                            <textarea id="profile-bio" rows="3" maxlength="500" placeholder="Tell others about yourself..."></textarea>
-                        </div>
-                        <button type="submit" class="submit-btn">Save Profile</button>
-                    </form>
-                    <div id="profile-history"></div>
-                </div>
-            </section>
-
-            <section class="dashboard-section" id="expert-section">
-                <h2>Expert Verification</h2>
-                <div id="expert-status"></div>
-                <div id="expert-apply-form" style="display:none;">
-                    <h3>Apply to Become a Verified Expert</h3>
-                    <form id="expert-application-form">
-                        <div class="form-group">
-                            <label for="expert-category">Expertise Category:</label>
-                            <select id="expert-category" required>
-                                <option value="">Select a category...</option>
-                                <option value="Statistics & Data">Statistics &amp; Data</option>
-                                <option value="Quote / Misattribution">Quote / Misattribution</option>
-                                <option value="Historical Claim">Historical Claim</option>
-                                <option value="Scientific Claim">Scientific Claim</option>
-                                <option value="Context / Methodology">Context / Methodology</option>
-                                <option value="Other">Other</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="expert-credentials">Credentials (degree, license, portfolio link, etc.):</label>
-                            <textarea id="expert-credentials" rows="4" required placeholder="Describe your qualifications for this category..."></textarea>
-                        </div>
-                        <button type="submit" class="submit-btn">Submit Application</button>
-                    </form>
-                </div>
-                <div id="expert-applications-list"></div>
-            </section>
-
-            <section class="dashboard-section" id="admin-section" style="display:none;">
-                <h2>Admin: Pending Expert Applications</h2>
-                <div id="admin-pending-list"></div>
-            </section>
-        </main>
-    </div>
+    <div id="react-dashboard-root"></div>
 
     <script src="../lib/browser-polyfill.js"></script>
     <script src="../config/config.js"></script>
     <script src="../content/api.js"></script>
-    <script src="dashboard.js"></script>
+    <script type="module" src="dist/dashboard.bundle.js"></script>
 </body>
 </html>

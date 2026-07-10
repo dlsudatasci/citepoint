@@ -1,7 +1,7 @@
 const router      = require('express').Router();
 const Citation    = require('../models/Citation');
 const sseEmitter  = require('../lib/sseEmitter');
-const { CATEGORIES, ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/categories');
+const { ALL_CATEGORIES, DEFAULT_CATEGORY, TOPICS } = require('../config/constants');
 const { isExpert } = require('../config/experts');
 const { notifyExpertsForCategory } = require('../lib/notifyExperts');
 const { applyVote } = require('../lib/voting');
@@ -231,7 +231,7 @@ router.patch('/:videoId/:id/category', async (req, res) => {
         if (!category || !username) {
             return res.status(400).json({ success: false, error: 'category and username are required' });
         }
-        if (!CATEGORIES.includes(category)) {
+        if (!ALL_CATEGORIES.includes(category)) {
             return res.status(400).json({ success: false, error: 'Invalid category' });
         }
 

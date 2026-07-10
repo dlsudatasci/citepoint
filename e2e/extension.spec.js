@@ -1,5 +1,6 @@
 const { test, expect, chromium } = require('@playwright/test');
 const path = require('path');
+const channel = require('./browserChannel');
 
 const EXTENSION_PATH = path.resolve(__dirname, '..');
 const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
@@ -12,6 +13,7 @@ let page;
 test.beforeAll(async () => {
     context = await chromium.launchPersistentContext('', {
         headless: false,
+        channel,
         args: [
             `--load-extension=${EXTENSION_PATH}`,
             `--disable-extensions-except=${EXTENSION_PATH}`,
@@ -30,6 +32,13 @@ test.beforeEach(async () => {
     await page.goto(TEST_VIDEO, { waitUntil: 'domcontentloaded' });
     await page.waitForSelector('ytd-watch-metadata', { timeout: 30000 });
     await page.waitForSelector('#citation-controls',  { timeout: 30000 });
+
+    // Panel loads minimized by default (tab buttons are disabled until expanded).
+    const content = page.locator('#extension-content');
+    if (!(await content.isVisible())) {
+        await page.locator('#toggle-extension').click();
+        await expect(content).toBeVisible();
+    }
 });
 
 // ─────────────────────────────────────────────
@@ -76,14 +85,16 @@ test('toggle button collapses and expands the panel', async () => {
 
 test('clicking Citations tab shows citations section', async () => {
     await page.locator('#citations-btn').click();
-    const title = page.locator('#citation-title');
-    await expect(title).toContainText('Citations');
+    await expect(page.locator('#citations-container')).toBeVisible();
+    await expect(page.locator('#citation-requests-container')).toBeHidden();
+    await expect(page.locator('#citations-btn')).toHaveClass(/active/);
 });
 
 test('clicking Citation Requests tab switches the view', async () => {
     await page.locator('#citation-requests-btn').click();
-    const title = page.locator('#citation-title');
-    await expect(title).toContainText('Requests');
+    await expect(page.locator('#citation-requests-container')).toBeVisible();
+    await expect(page.locator('#citations-container')).toBeHidden();
+    await expect(page.locator('#citation-requests-btn')).toHaveClass(/active/);
 });
 
 // ─────────────────────────────────────────────

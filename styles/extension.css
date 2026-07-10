@@ -1478,6 +1478,32 @@ h3 {
     font-size: 14px;
 }
 
+/* ── Loading skeleton ─────────────────────────────────── */
+
+.cp-loading {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 4px 0;
+}
+
+.cp-skeleton {
+    height: 48px;
+    border-radius: var(--cp-radius-lg);
+    background: linear-gradient(90deg, var(--cp-bg-surface) 25%, var(--cp-border) 50%, var(--cp-bg-surface) 75%);
+    background-size: 200% 100%;
+    animation: cp-skeleton-shimmer 1.4s ease infinite;
+}
+
+.cp-skeleton--short {
+    height: 32px;
+}
+
+@keyframes cp-skeleton-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
 /* ── Recorded Segments Panel ─────────────────────────── */
 
 .recorded-segments-panel {

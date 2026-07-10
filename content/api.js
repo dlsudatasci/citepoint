@@ -170,11 +170,14 @@ async function apiUpdateCategory(itemId, itemType, videoId, category, username) 
 
 async function apiCheckExpert(username) {
     const res = await _send({ type: 'checkExpert', username });
-    return !!res.isExpert;
+    return {
+        isExpert: !!res.isExpert,
+        topics: res.topics || [],
+    };
 }
 
-async function apiApplyExpert(username, category, credentials) {
-    return _send({ type: 'applyExpert', username, category, credentials });
+async function apiApplyExpert(username, topics, credentials) {
+    return _send({ type: 'applyExpert', username, topics, credentials });
 }
 
 async function apiGetMyApplications(username) {
@@ -182,8 +185,8 @@ async function apiGetMyApplications(username) {
     return res.applications || [];
 }
 
-async function apiGetPendingApplications() {
-    const res = await _send({ type: 'getPendingApplications' });
+async function apiGetPendingApplications(adminUsername) {
+    const res = await _send({ type: 'getPendingApplications', adminUsername });
     return res.applications || [];
 }
 
@@ -227,5 +230,39 @@ async function apiGetDashboardStats(videoId) {
         requestsByCategory: res.requestsByCategory || [],
         citationsByCategory: res.citationsByCategory || [],
         verificationStats: res.verificationStats || { citations: [], requests: [] },
+    };
+}
+
+// ── Feeds & Video Metadata ───────────────────
+
+/**
+ * Sends scraped YouTube metadata to the backend for caching/upserting.
+ * @param {Object} metadata - { videoId, title, channelName, rawTags }
+ */
+async function apiUpsertVideo(metadata) {
+    return _send({ type: 'upsertVideo', data: metadata });
+}
+
+/**
+ * Fetches the personalized feed for an expert based on their assigned Topics.
+ * @param {string} username
+ */
+async function apiGetExpertFeed(username) {
+    const res = await _send({ type: 'getExpertFeed', username });
+    return res.data || [];
+}
+
+/**
+ * Fetches the general browsable feed, optionally filtered by a video Topic
+ * (backend/routes/feeds.js matches against the linked video's youtubeTopics).
+ * @param {string} topic
+ * @param {number} page
+ * @param {number} limit
+ */
+async function apiGetGeneralFeed(topic = 'All', page = 1, limit = 20) {
+    const res = await _send({ type: 'getGeneralFeed', topic, page, limit });
+    return {
+        feed: res.data || [],
+        pagination: res.pagination || null,
     };
 }

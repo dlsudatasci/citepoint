@@ -3,10 +3,10 @@ const UserProfile = require('../models/UserProfile');
 const Citation    = require('../models/Citation');
 const Request     = require('../models/Request');
 const Expert      = require('../models/Expert');
-const { ALL_CATEGORIES } = require('../config/categories');
+const { TOPICS } = require('../config/constants');
 
 const MAX_DISPLAY_NAME_LEN = 100;
-const MAX_FOLLOWED_CATEGORIES = ALL_CATEGORIES.length;
+const MAX_FOLLOWED_TOPICS  = TOPICS.length;
 
 // Case-insensitive, '@'-prefix-tolerant username match — same convention used
 // for ownership checks elsewhere in the backend.
@@ -36,9 +36,9 @@ router.get('/:username', async (req, res) => {
         res.set('Cache-Control', 'no-store');
         res.json({
             success: true,
-            profile: profile || { username, displayName: '', bio: '', followedCategories: [] },
+            profile: profile || { username, displayName: '', bio: '', followedTopics: [] },
             stats: { citations: citationCount, requests: requestCount, upvotes },
-            expert: expert ? { categories: expert.categories } : null,
+            expert: expert ? { topics: expert.topics } : null,
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
@@ -52,21 +52,21 @@ router.put('/:username', async (req, res) => {
             return res.status(403).json({ success: false, error: 'You can only edit your own profile' });
         }
 
-        const { displayName, bio, followedCategories } = req.body;
+        const { displayName, bio, followedTopics } = req.body;
 
         if (displayName !== undefined && (typeof displayName !== 'string' || displayName.length > MAX_DISPLAY_NAME_LEN)) {
             return res.status(400).json({ success: false, error: `displayName must be at most ${MAX_DISPLAY_NAME_LEN} characters` });
         }
-        if (followedCategories !== undefined) {
-            if (!Array.isArray(followedCategories) || followedCategories.length > MAX_FOLLOWED_CATEGORIES
-                || !followedCategories.every(c => ALL_CATEGORIES.includes(c))) {
-                return res.status(400).json({ success: false, error: 'followedCategories must be an array of valid category names' });
+        if (followedTopics !== undefined) {
+            if (!Array.isArray(followedTopics) || followedTopics.length > MAX_FOLLOWED_TOPICS
+                || !followedTopics.every(t => TOPICS.includes(t))) {
+                return res.status(400).json({ success: false, error: 'followedTopics must be an array of valid topic names' });
             }
         }
 
         const profile = await UserProfile.findOneAndUpdate(
             { username: req.params.username },
-            { displayName, bio, followedCategories },
+            { displayName, bio, followedTopics },
             { upsert: true, new: true }
         );
 

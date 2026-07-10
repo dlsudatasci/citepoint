@@ -10,12 +10,15 @@ const requestSchema = new mongoose.Schema({
     username:       { type: String, required: true },
     dateAdded:      { type: Date, default: Date.now },
     voteScore:      { type: Number, default: 0 },
+
     category:         { type: String, enum: ALL_CATEGORIES, default: DEFAULT_CATEGORY },
     categoryVerified: { type: Boolean, default: false },
+    
+    topics:           { type: [String], default: [] },
+    
     verifiedBy:       { type: String, default: null },
     verifiedAt:       { type: Date, default: null },
 });
-
 // ── Indexes ───────────────────────────────────
 
 // Primary sort index: list queries filter by videoId then sort by date.
@@ -29,5 +32,8 @@ requestSchema.index({ videoId: 1, username: 1 });
 
 // Category filter/aggregation index for the panel filter and dashboard.
 requestSchema.index({ videoId: 1, category: 1 });
+
+// Filter within given topic
+requestSchema.index({ topics: 1, verifiedBy: 1 });
 
 module.exports = mongoose.model('Request', requestSchema);
