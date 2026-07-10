@@ -164,8 +164,6 @@ body {
     border-color: var(--cp-accent);
 }
 
-<<<<<<< HEAD
-=======
 /* ── Thread Nodes (nesting) ─────────────────────────── */
 
 .thread-node {
@@ -190,17 +188,12 @@ body {
     display: none;
 }
 
->>>>>>> origin/dev
 /* ── Thread Items ───────────────────────────────────── */
 
 .thread-item {
     background: var(--cp-bg-card);
     border: 1px solid var(--cp-divider);
     border-radius: var(--cp-radius-lg);
-<<<<<<< HEAD
-    padding: var(--cp-space-16);
-    margin-bottom: var(--cp-space-10);
-=======
     padding: var(--cp-space-12) var(--cp-space-16);
     margin-bottom: var(--cp-space-8);
 }
@@ -211,19 +204,13 @@ body {
     border-radius: 0;
     padding: var(--cp-space-8) 0;
     margin-bottom: 0;
->>>>>>> origin/dev
 }
 
 .thread-item-header {
     display: flex;
     align-items: center;
-<<<<<<< HEAD
-    gap: var(--cp-space-8);
-    margin-bottom: var(--cp-space-8);
-=======
     gap: var(--cp-space-6);
     margin-bottom: var(--cp-space-4);
->>>>>>> origin/dev
 }
 
 .thread-author {
@@ -251,11 +238,7 @@ body {
 .thread-description {
     font-size: var(--cp-text-md);
     line-height: var(--cp-leading-normal);
-<<<<<<< HEAD
-    margin: 0 0 var(--cp-space-8);
-=======
     margin: 0 0 var(--cp-space-6);
->>>>>>> origin/dev
 }
 
 .thread-category {
@@ -269,15 +252,6 @@ body {
     margin-right: var(--cp-space-8);
 }
 
-<<<<<<< HEAD
-.thread-score {
-    font-size: var(--cp-text-base);
-    font-weight: var(--cp-weight-medium);
-    color: var(--cp-success);
-    margin-top: var(--cp-space-6);
-}
-
-=======
 /* ── Vote Controls ──────────────────────────────────── */
 
 .vote-controls {
@@ -481,7 +455,6 @@ body {
     text-decoration: underline;
 }
 
->>>>>>> origin/dev
 /* ── Empty State ────────────────────────────────────── */
 
 .empty-message {
@@ -514,8 +487,6 @@ body {
         margin-left: 0;
         width: 100%;
     }
-<<<<<<< HEAD
-=======
 
     .thread-node--nested {
         margin-left: 12px;
@@ -525,5 +496,4 @@ body {
     .thread-continue-link {
         margin-left: 22px;
     }
->>>>>>> origin/dev
 }
