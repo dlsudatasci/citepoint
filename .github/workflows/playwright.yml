@@ -51,6 +51,13 @@ jobs:
       run: |
         sed -i 's#^var API_BASE_URL = .*#var API_BASE_URL = "http://localhost:3000/api";#' config/config.js
         grep API_BASE_URL config/config.js
+        # background.js / content/api.js derive the real runtime API base from
+        # manifest.json's host_permissions (first non-YouTube entry), not from
+        # config.js. Keep only localhost + YouTube here so CI can never resolve
+        # to a deployed/remote host.
+        jq '.host_permissions |= map(select(. == "http://localhost:3000/*" or test("youtube")))' manifest.json > manifest.json.tmp
+        mv manifest.json.tmp manifest.json
+        jq '.host_permissions' manifest.json
 
     - name: Prepare clean extension for Firefox
       run: |
