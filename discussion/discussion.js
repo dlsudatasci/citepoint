@@ -434,8 +434,8 @@ function _showReplyForm(parentEl, parentItem) {
     form.innerHTML = `
         <textarea placeholder="Write a reply..." rows="3"></textarea>
         <div class="thread-reply-actions">
-            <button class="reply-submit-btn">Reply</button>
-            <button class="reply-cancel-btn">Cancel</button>
+            <button class="reply-submit-btn cp-btn cp-btn--primary">Reply</button>
+            <button class="reply-cancel-btn cp-btn cp-btn--secondary">Cancel</button>
         </div>
     `;
 

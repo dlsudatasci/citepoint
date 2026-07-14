@@ -48,6 +48,8 @@
 
     --cp-record:         #ff4444;
     --cp-record-hover:   #cc0000;
+    --cp-record-bg:      rgba(255, 68, 68, 0.06);
+    --cp-record-bg-hover:rgba(255, 68, 68, 0.12);
 
     /* ── Colors: Neutral ────────────────────────── */
     --cp-text-primary:   #0f0f0f;
@@ -103,4 +105,22 @@
 
     /* ── Transitions ────────────────────────────── */
     --cp-transition:     0.15s ease;
+
+    /* ── Focus ──────────────────────────────────── */
+    --cp-focus-ring:     0 0 0 3px var(--cp-accent-bg-hover);
+
+    /* ── Overlay ────────────────────────────────── */
+    --cp-overlay-scrim:  rgba(0, 0, 0, 0.5);
+
+    /* ── Z-Index Scale ──────────────────────────── */
+    --cp-z-player-overlay:     60;
+    --cp-z-player-overlay-top: 61;
+    --cp-z-timeline-range:     99;
+    --cp-z-timeline-bar:       101;
+    --cp-z-theater:            999;
+    --cp-z-dropdown:           1000;
+    --cp-z-panel-modal:        2000;
+    --cp-z-confirm-overlay:    99998;
+    --cp-z-toast:              99999;
+    --cp-z-confirm-box:        99999;
 }

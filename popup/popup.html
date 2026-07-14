@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CitePoint — Help</title>
     <link rel="stylesheet" href="../styles/tokens.css">
+    <link rel="stylesheet" href="../styles/components.css">
     <style>
         body {
             font-family: var(--cp-font);
@@ -55,7 +56,7 @@
             line-height: var(--cp-leading-normal);
         }
         .tip {
-            background-color: rgba(6, 95, 212, 0.08);
+            background-color: var(--cp-accent-bg);
             padding: var(--cp-space-8) var(--cp-space-12);
             border-radius: var(--cp-radius-sm);
             border-left: 4px solid var(--cp-accent);
@@ -69,7 +70,7 @@
             color: var(--cp-accent);
         }
         .timestamp {
-            background: rgba(6, 95, 212, 0.08);
+            background: var(--cp-accent-bg);
             color: var(--cp-accent);
             padding: 1px 4px;
             border-radius: 2px;
@@ -99,21 +100,7 @@
             font-size: var(--cp-text-md);
         }
         .btn {
-            background-color: var(--cp-accent);
-            color: white;
-            border: none;
-            padding: var(--cp-space-8) var(--cp-space-16);
-            border-radius: var(--cp-radius-pill);
-            font-size: var(--cp-text-md);
-            font-weight: var(--cp-weight-medium);
-            font-family: var(--cp-font);
-            cursor: pointer;
             margin-top: var(--cp-space-8);
-            display: inline-block;
-            transition: background-color var(--cp-transition);
-        }
-        .btn:hover {
-            background-color: var(--cp-accent-hover);
         }
     </style>
 </head>
@@ -123,12 +110,12 @@
 
         <p>This extension helps you create, manage, and share citations for YouTube videos. It adds a citation panel to the right side of YouTube videos.</p>
 
-        <button id="open-dashboard" class="btn">Open Dashboard</button>
+        <button id="open-dashboard" class="btn cp-btn cp-btn--primary">Open Dashboard</button>
 
         <div id="not-on-youtube">
             <p><strong>Notice:</strong> You're not currently on a YouTube video page.</p>
             <p>Go to a YouTube video to use the citation features.</p>
-            <button id="open-youtube" class="btn">Open YouTube</button>
+            <button id="open-youtube" class="btn cp-btn cp-btn--primary">Open YouTube</button>
         </div>
 
         <div class="feature">
