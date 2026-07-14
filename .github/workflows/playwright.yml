@@ -47,6 +47,11 @@ jobs:
         echo "Backend PID: $!"
         sleep 5
 
+    - name: Point extension at local test backend
+      run: |
+        sed -i 's#^var API_BASE_URL = .*#var API_BASE_URL = "http://localhost:3000/api";#' config/config.js
+        grep API_BASE_URL config/config.js
+
     - name: Prepare clean extension for Firefox
       run: |
         mkdir -p /tmp/citepoint-ext
