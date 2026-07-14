@@ -48,6 +48,8 @@
 
     --cp-record:         #ff4444;
     --cp-record-hover:   #cc0000;
+    --cp-record-bg:      rgba(255, 68, 68, 0.06);
+    --cp-record-bg-hover:rgba(255, 68, 68, 0.12);
 
     /* ── Colors: Neutral ────────────────────────── */
     --cp-text-primary:   #0f0f0f;

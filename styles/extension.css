@@ -764,8 +764,8 @@ h3 {
     border: 1px solid var(--cp-border);
     border-radius: var(--cp-radius-md);
     font-family: var(--cp-font);
-    font-size: 13px;
-    font-weight: 500;
+    font-size: var(--cp-text-base, 13px);
+    font-weight: var(--cp-weight-medium, 500);
     cursor: pointer;
     transition: all var(--cp-transition);
     background-color: var(--cp-bg-card, white);
@@ -775,11 +775,11 @@ h3 {
 .record-start-active {
     border-color: var(--cp-record, #ff4444);
     color: var(--cp-record, #ff4444);
-    background: rgba(255, 68, 68, 0.06);
+    background: var(--cp-record-bg, rgba(255, 68, 68, 0.06));
 }
 
 .record-start-active:hover {
-    background: rgba(255, 68, 68, 0.12);
+    background: var(--cp-record-bg-hover, rgba(255, 68, 68, 0.12));
 }
 
 .record-stop-disabled {
@@ -792,12 +792,12 @@ h3 {
 .record-stop-disabled:not([disabled]) {
     border-color: var(--cp-record, #ff4444);
     color: var(--cp-record, #ff4444);
-    background: rgba(255, 68, 68, 0.06);
+    background: var(--cp-record-bg, rgba(255, 68, 68, 0.06));
     cursor: pointer;
 }
 
 .record-stop-disabled:not([disabled]):hover {
-    background: rgba(255, 68, 68, 0.12);
+    background: var(--cp-record-bg-hover, rgba(255, 68, 68, 0.12));
 }
 
 .record-start-active[disabled] {
