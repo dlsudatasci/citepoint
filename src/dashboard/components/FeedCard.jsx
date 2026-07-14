@@ -71,7 +71,7 @@ export default function FeedCard({ item }) {
             </div>
             
             <div className="feed-card-actions">
-                <a className="submit-btn feed-go-btn" href={videoUrl} target="_blank" rel="noopener noreferrer">
+                <a className="submit-btn feed-go-btn cp-btn cp-btn--primary" href={videoUrl} target="_blank" rel="noopener noreferrer">
                     View Video
                 </a>
             </div>

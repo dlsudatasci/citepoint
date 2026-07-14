@@ -65,7 +65,6 @@
             "popup/popup.js",
             "popup/popup.html",
             "dashboard/dashboard.html",
-            "dashboard/dashboard.js",
             "dashboard/dashboard.css",
             "dashboard/dist/dashboard.bundle.js",
             "dashboard/dist/dashboard.bundle.css",
