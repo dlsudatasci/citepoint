@@ -56,18 +56,6 @@ async function getYouTubeUsername() {
  * @returns {Promise<string|null>}
  */
 async function getCachedUsername() {
-    // Try chrome.storage.local first
-    try {
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            return new Promise(resolve => {
-                chrome.storage.local.get(['youtubeUsername'], result => {
-                    resolve(result.youtubeUsername || null);
-                });
-            });
-        }
-    } catch (_) {}
-
-    // Fallback to localStorage
     try {
         return localStorage.getItem('youtubeUsername') || null;
     } catch (_) {}
@@ -181,18 +169,9 @@ function _waitForHandleInDOM(timeoutMs) {
  * Writes to chrome.storage.local and localStorage as fallback.
  */
 function _cacheUsername(handle) {
-    // chrome.storage.local — primary
-    try {
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            chrome.storage.local.set({ youtubeUsername: handle }, () => {
-                console.log('[username] Cached:', handle);
-            });
-        }
-    } catch (_) {}
-
-    // localStorage — fallback for Firefox/Selenium environments
     try {
         localStorage.setItem('youtubeUsername', handle);
+        console.log('[username] Cached:', handle);
     } catch (_) {}
 }
 
