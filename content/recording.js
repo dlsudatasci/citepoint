@@ -73,6 +73,22 @@ function _syncBars() {
         _rangeHL.style.left  = `${l}%`;
         _rangeHL.style.width = `${w}%`;
     }
+    _syncHandleAria();
+}
+
+/** Keep the draggable handles' ARIA slider attributes current for screen readers */
+function _syncHandleAria() {
+    const duration = Math.floor(_duration());
+    if (_startBar) {
+        _startBar.setAttribute('aria-valuemax', duration);
+        _startBar.setAttribute('aria-valuenow', Math.floor(_startSecs));
+        _startBar.setAttribute('aria-valuetext', formatTime(Math.floor(_startSecs)));
+    }
+    if (_endBar) {
+        _endBar.setAttribute('aria-valuemax', duration);
+        _endBar.setAttribute('aria-valuenow', Math.floor(_endSecs));
+        _endBar.setAttribute('aria-valuetext', formatTime(Math.floor(_endSecs)));
+    }
 }
 
 // ── Dragging ──────────────────────────────────
@@ -115,6 +131,41 @@ function _makeDraggable(bar, which) {
         document.addEventListener('mousemove', onMove);
         document.addEventListener('mouseup', onUp);
     });
+
+    // ── Keyboard alternative (WAI-ARIA slider pattern) ──
+    // Left/Right (or Down/Up) nudge by 1s, Shift adds a 5s step, Home/End jump to the ends.
+    bar.addEventListener('keydown', e => {
+        let delta = null;
+        switch (e.key) {
+            case 'ArrowLeft':
+            case 'ArrowDown':
+                delta = -(e.shiftKey ? 5 : 1);
+                break;
+            case 'ArrowRight':
+            case 'ArrowUp':
+                delta = (e.shiftKey ? 5 : 1);
+                break;
+            case 'Home':
+                delta = which === 'start' ? -_startSecs : -(_endSecs - _startSecs - 0.5);
+                break;
+            case 'End':
+                delta = which === 'start' ? (_endSecs - _startSecs - 0.5) : (_duration() - _endSecs);
+                break;
+            default:
+                return;
+        }
+
+        e.preventDefault();
+        if (which === 'end' && _recordingLive) _stopLiveTracking();
+
+        if (which === 'start') {
+            _startSecs = Math.max(0, Math.min(_startSecs + delta, _endSecs - 0.5));
+        } else {
+            _endSecs = Math.max(_startSecs + 0.5, Math.min(_endSecs + delta, _duration()));
+        }
+        _syncBars();
+        _syncToForm();
+    });
 }
 
 // ── Create / destroy bars ─────────────────────
@@ -132,12 +183,22 @@ function _createBars() {
     _startBar = document.createElement('div');
     _startBar.className = 'cp-timeline-bar cp-bar-start';
     _startBar.title = 'Drag to adjust start time';
+    _startBar.tabIndex = 0;
+    _startBar.setAttribute('role', 'slider');
+    _startBar.setAttribute('aria-orientation', 'horizontal');
+    _startBar.setAttribute('aria-label', 'Segment start time');
+    _startBar.setAttribute('aria-valuemin', '0');
     container.appendChild(_startBar);
     _makeDraggable(_startBar, 'start');
 
     _endBar = document.createElement('div');
     _endBar.className = 'cp-timeline-bar cp-bar-end';
     _endBar.title = 'Drag to adjust end time';
+    _endBar.tabIndex = 0;
+    _endBar.setAttribute('role', 'slider');
+    _endBar.setAttribute('aria-orientation', 'horizontal');
+    _endBar.setAttribute('aria-label', 'Segment end time');
+    _endBar.setAttribute('aria-valuemin', '0');
     container.appendChild(_endBar);
     _makeDraggable(_endBar, 'end');
 
