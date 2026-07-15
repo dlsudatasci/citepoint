@@ -29,6 +29,11 @@ jobs:
     - name: Install backend dependencies
       run: npm ci --prefix backend
 
+    - name: Run backend tests
+      run: npm test --prefix backend
+      env:
+        NODE_ENV: test
+
     - name: Install Playwright Browsers and System Dependencies
       run: npx playwright install --with-deps
 
