@@ -147,6 +147,7 @@ function _wireCategoryControls(el, item, itemType) {
 // We use setTimeout + self-rescheduling so the interval can adapt dynamically
 // (fast when idle-timeout hasn't triggered, slow when SSE is active or user is idle).
 let _pollTimeout        = null;
+let _pollingActive      = false; // true between startPolling() and stopPolling()
 
 // Idle tracking (#8) — interaction resets the timer; after _IDLE_THRESHOLD_MS
 // without interaction the poll slows to _POLL_SLOW_MS.
@@ -1197,7 +1198,7 @@ function _getPollingInterval() {
 function _schedulePoll() {
     if (_isContextInvalidated()) return;
     // Only schedule if polling is still active (stopPolling hasn't been called)
-    if (_pollTimeout === null && typeof _pollActive === 'undefined') return;
+    if (!_pollingActive) return;
     const delay = _getPollingInterval();
     _pollTimeout = setTimeout(() => {
         _doPoll();
@@ -1225,10 +1226,12 @@ function startPolling() {
     _wireIdleTracking();
 
     // Schedule the polling safety-net
+    _pollingActive = true;
     _schedulePoll();
 }
 
 function stopPolling() {
+    _pollingActive = false;
     if (_pollTimeout !== null) {
         clearTimeout(_pollTimeout);
         _pollTimeout = null;

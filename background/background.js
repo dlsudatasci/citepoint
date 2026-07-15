@@ -495,7 +495,7 @@ async function handleApplyExpert(username, topics, credentials) {
 
 async function handleGetMyApplications(username) {
     try {
-        const data = await apiRequest(`/experts/applications/${encodeURIComponent(username)}`);
+        const data = await apiRequest(`/experts/applications/${encodeURIComponent(username)}?requesterUsername=${encodeURIComponent(username)}`);
         return { success: true, applications: data.applications || [] };
     } catch (error) {
         return { success: false, error: error.message };

@@ -29,6 +29,11 @@ jobs:
     - name: Install backend dependencies
       run: npm ci --prefix backend
 
+    - name: Run backend tests
+      run: npm test --prefix backend
+      env:
+        NODE_ENV: test
+
     - name: Install Playwright Browsers and System Dependencies
       run: npx playwright install --with-deps
 
@@ -43,7 +48,10 @@ jobs:
     - name: Start backend for Selenium
       run: |
         cd backend
-        MONGODB_URI=mongodb://localhost:27017/citepoint_test PORT=3000 NODE_ENV=test npm start &
+        # ALLOWED_ORIGINS=* opts into accepting any chrome-extension://moz-extension://
+        # origin -- needed here since Firefox assigns the temporary/unpacked test
+        # extension a fresh, unpredictable origin on every run. See backend/app.js.
+        MONGODB_URI=mongodb://localhost:27017/citepoint_test PORT=3000 NODE_ENV=test ALLOWED_ORIGINS='*' npm start &
         echo "Backend PID: $!"
         sleep 5
 

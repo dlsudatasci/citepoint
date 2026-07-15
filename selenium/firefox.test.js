@@ -169,6 +169,95 @@ async function elementCount(selector) {
     return (await driver.findElements(By.css(selector))).length;
 }
 
+// ── Mutation-flow helpers ─────────────────────
+//
+// content/username.js falls back to localStorage when chrome.storage.local
+// isn't reachable from the calling context (its own comment: "fallback for
+// Firefox/Selenium environments") -- that's the seam these tests use, since
+// driver.executeScript() runs in the page's main world, which has no access
+// to the extension-privileged chrome.storage API but shares the same
+// same-origin localStorage as the content script's isolated world.
+async function mockLogin(handle = '@e2e_firefox_user') {
+    await driver.executeScript(
+        `localStorage.setItem('youtubeUsername', arguments[0]);`,
+        handle
+    );
+}
+
+function _titleXPath(title) {
+    return `//span[contains(@class,"citation-title") and contains(text(),"${title}")]`;
+}
+
+async function countCitationsWithTitle(title) {
+    return (await driver.findElements(By.xpath(_titleXPath(title)))).length;
+}
+
+async function findCitationCardByTitle(title, timeout = 10000) {
+    await driver.wait(until.elementLocated(By.xpath(_titleXPath(title))), timeout);
+    return driver.findElement(By.xpath(`${_titleXPath(title)}/ancestor::*[contains(@class,"citation-item")]`));
+}
+
+// The Chrome/Playwright suite runs against the same shared citepoint_test
+// database in CI (both suites reuse the one backend the workflow starts) --
+// a citation this suite creates and never removes is visible to Playwright's
+// tests too, and a loosely-scoped locator there (e.g. .first()) can resolve
+// to it instead of the citation that test created. Every test that leaves a
+// citation behind must clean it up itself.
+async function deleteCitationByTitle(title) {
+    const card = await findCitationCardByTitle(title);
+    await card.findElement(By.css('.delete-btn')).click();
+    await driver.wait(until.elementLocated(By.css('.cp-confirm-box')), 5000);
+    await driver.findElement(By.css('.cp-confirm-ok')).click();
+    await driver.sleep(1500);
+}
+
+async function addCitation(title) {
+    await driver.findElement(By.id('citations-btn')).click();
+    await driver.sleep(300);
+    await driver.findElement(By.id('add-item-btn')).click();
+    const form = await driver.wait(until.elementLocated(By.css('#add-form-container #citation-form')), 10000);
+
+    // Scoped to the form -- driver.findElement(By.id(...)) at the document
+    // level can match an unrelated element elsewhere on the YouTube page that
+    // happens to share the same id (e.g. an SVG <g id="description"> icon
+    // group), which isn't a form control and isn't keyboard-reachable.
+    //
+    // .clear() first: unlike Playwright's .fill(), WebDriver's sendKeys()
+    // appends rather than replaces. #timestampStart in particular is
+    // auto-filled with the current video position when the form opens
+    // (_autoFillStartTimestamp in content/forms.js), so an un-cleared
+    // sendKeys() here concatenates onto that value instead of replacing it.
+    async function setField(id, value) {
+        const field = await form.findElement(By.id(id));
+        await field.clear();
+        await field.sendKeys(value);
+    }
+
+    await setField('citationTitle', title);
+    await setField('timestampStart', '00:01:00');
+    await setField('timestampEnd', '00:02:00');
+    await setField('source', 'https://example.com');
+    await setField('description', 'Selenium e2e test citation');
+
+    const localStorageUsername = await driver.executeScript(`return localStorage.getItem('youtubeUsername');`);
+    console.log('  [addCitation] localStorage.youtubeUsername before submit:', localStorageUsername);
+
+    await form.findElement(By.id('submit-btn')).click();
+    await driver.sleep(2000); // allow submit round-trip + list refresh
+
+    // Surface *why* a submit failed instead of leaving the caller to guess
+    // from a missing citation alone -- the toast text (a DOM node, visible to
+    // driver.executeScript/findElement regardless of the content-script
+    // isolated-world boundary) carries the actual error.
+    const toastEls = await driver.findElements(By.id('cp-toast'));
+    if (toastEls.length > 0) {
+        const toastText = await toastEls[0].getText();
+        console.log('  [addCitation] toast after submit:', JSON.stringify(toastText));
+    } else {
+        console.log('  [addCitation] no toast present after submit');
+    }
+}
+
 async function test_panelAppearsOnYouTube() {
     console.log('  running: panel appears on YouTube watch page');
     await goToVideo();
@@ -236,6 +325,94 @@ async function test_addCitationOpensForm() {
     console.log('  ✓ clicking Add Citation opens form');
 }
 
+async function test_addCitation() {
+    console.log('  running: adding a citation shows it in the list');
+    await goToVideo();
+    await mockLogin();
+    const title = 'SEL-ADD-' + Date.now();
+
+    await addCitation(title);
+
+    const count = await countCitationsWithTitle(title);
+    if (count > 0) await deleteCitationByTitle(title); // don't leak into the shared test DB
+    assert.ok(count > 0, `Citation "${title}" should appear in the list after adding`);
+    console.log('  ✓ adding a citation shows it in the list');
+}
+
+async function test_deleteCitation() {
+    console.log('  running: deleting own citation shows a confirm dialog and removes it');
+    await goToVideo();
+    await mockLogin();
+    const title = 'SEL-DEL-' + Date.now();
+    await addCitation(title);
+
+    const card = await findCitationCardByTitle(title);
+    await card.findElement(By.css('.delete-btn')).click();
+
+    await driver.wait(until.elementLocated(By.css('.cp-confirm-box')), 5000);
+    assert.ok(await isVisible('.cp-confirm-box'), 'Confirm dialog should appear');
+    assert.ok(await isVisible('.cp-confirm-cancel'), 'Cancel button should be visible');
+    assert.ok(await isVisible('.cp-confirm-ok'), 'Confirm button should be visible');
+
+    await driver.findElement(By.css('.cp-confirm-ok')).click();
+    await driver.sleep(2000);
+
+    const countAfter = await countCitationsWithTitle(title);
+    assert.strictEqual(countAfter, 0, 'Citation should be removed from the list after confirming delete');
+    console.log('  ✓ deleting own citation shows a confirm dialog and removes it');
+}
+
+async function test_deleteCancelKeepsCitation() {
+    console.log('  running: cancelling delete keeps the citation');
+    await goToVideo();
+    await mockLogin();
+    const title = 'SEL-DELCANCEL-' + Date.now();
+    await addCitation(title);
+
+    const card = await findCitationCardByTitle(title);
+    await card.findElement(By.css('.delete-btn')).click();
+
+    await driver.wait(until.elementLocated(By.css('.cp-confirm-box')), 5000);
+    await driver.findElement(By.css('.cp-confirm-cancel')).click();
+    await driver.sleep(500);
+
+    assert.strictEqual(await elementCount('.cp-confirm-box'), 0, 'Confirm dialog should be closed after cancel');
+    const countAfter = await countCitationsWithTitle(title);
+    if (countAfter > 0) await deleteCitationByTitle(title); // teardown -- don't leak into the shared test DB
+    assert.ok(countAfter > 0, 'Citation should still be present after cancelling delete');
+    console.log('  ✓ cancelling delete keeps the citation');
+}
+
+async function test_voteOnCitation() {
+    console.log('  running: upvoting a citation updates the score and button state');
+    await goToVideo();
+    await mockLogin();
+    const title = 'SEL-VOTE-' + Date.now();
+    await addCitation(title);
+
+    const card = await findCitationCardByTitle(title);
+    const scoreBefore = parseInt(await (await card.findElement(By.css('.vote-score'))).getText(), 10);
+
+    await card.findElement(By.css('.upvote-btn')).click();
+    await driver.sleep(1500);
+
+    // Vote submission can patch the DOM node in place -- re-find fresh to
+    // avoid a stale-element error either way.
+    const refreshedCard = await findCitationCardByTitle(title);
+    const upvoteAfter = await refreshedCard.findElement(By.css('.upvote-btn'));
+    const scoreAfter = parseInt(await (await refreshedCard.findElement(By.css('.vote-score'))).getText(), 10);
+
+    const classAttr = await upvoteAfter.getAttribute('class');
+    const votedOk = classAttr.includes('voted');
+    const scoreOk = scoreAfter === scoreBefore + 1;
+
+    await deleteCitationByTitle(title); // don't leak into the shared test DB
+
+    assert.ok(votedOk, 'Upvote button should be marked voted after clicking');
+    assert.ok(scoreOk, 'Vote score should increase by 1 after upvoting');
+    console.log('  ✓ upvoting a citation updates the score and button state');
+}
+
 async function test_multipleTabsIndependent() {
     console.log('  running: two tabs show panels independently');
     await goToVideo();
@@ -270,6 +447,10 @@ const tests = [
     test_citationsTab,
     test_requestsTab,
     test_addCitationOpensForm,
+    test_addCitation,
+    test_deleteCitation,
+    test_deleteCancelKeepsCitation,
+    test_voteOnCitation,
     test_multipleTabsIndependent,
 ];
 

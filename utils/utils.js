@@ -98,6 +98,12 @@ function showToast(message, type = 'info', duration = 3000) {
     const toast = document.createElement('div');
     toast.id = 'cp-toast';
     toast.className = `cp-toast cp-toast--${type}`;
+    // Errors are announced assertively (interrupts); everything else is
+    // polite (waits for a pause) — screen readers previously got zero
+    // feedback from toasts since neither attribute was ever set.
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+    toast.setAttribute('aria-atomic', 'true');
     toast.textContent = message;
     document.body.appendChild(toast);
 
@@ -111,16 +117,93 @@ function showToast(message, type = 'info', duration = 3000) {
     }
 }
 
+// ── Shared accessible-dialog helpers ──────────
+//
+// Every custom modal in this codebase (confirm box, report dialog) built its
+// own DOM with no dialog semantics, no focus trap, and no focus restoration —
+// keyboard/screen-reader users could tab behind an "open" dialog and had no
+// indication one was even open. These two helpers centralize the fix so any
+// future dialog gets it for free instead of re-implementing it per call site.
+
+let _cpDialogIdCounter = 0;
+function _nextDialogId(prefix) {
+    _cpDialogIdCounter += 1;
+    return `${prefix}-${_cpDialogIdCounter}`;
+}
+
+const _CP_FOCUSABLE_SELECTOR =
+    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+/**
+ * Traps Tab/Shift+Tab focus cycling within `container` and routes Escape to
+ * `onEscape`. Returns a cleanup function that removes the listener.
+ */
+function _trapFocus(container, { onEscape } = {}) {
+    function getFocusable() {
+        return Array.from(container.querySelectorAll(_CP_FOCUSABLE_SELECTOR))
+            .filter(el => el.offsetParent !== null);
+    }
+
+    function handleKeydown(e) {
+        if (e.key === 'Escape') {
+            if (onEscape) { e.preventDefault(); onEscape(); }
+            return;
+        }
+        if (e.key !== 'Tab') return;
+
+        const focusable = getFocusable();
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last  = focusable[focusable.length - 1];
+
+        if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+        }
+    }
+
+    container.addEventListener('keydown', handleKeydown);
+    return () => container.removeEventListener('keydown', handleKeydown);
+}
+
+/**
+ * Wires standard accessible-dialog behavior onto an already-appended dialog
+ * element: focus trap, Escape-to-close, and focus restoration to whatever
+ * had focus before the dialog opened. `close` is called with no args by
+ * Escape — callers whose close handler needs a "cancelled" result should
+ * wrap it (see showConfirm below).
+ */
+function _wireDialogA11y(dialogEl, { onEscape, initialFocusEl } = {}) {
+    const previouslyFocused = document.activeElement;
+    const untrap = _trapFocus(dialogEl, { onEscape });
+
+    (initialFocusEl || dialogEl.querySelector(_CP_FOCUSABLE_SELECTOR) || dialogEl).focus();
+
+    return function restoreFocus() {
+        untrap();
+        if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+            previouslyFocused.focus();
+        }
+    };
+}
 
 function showConfirm(message) {
     return new Promise(resolve => {
         const overlay = document.createElement('div');
         overlay.className = 'cp-confirm-overlay';
 
+        const messageId = _nextDialogId('cp-confirm-message');
+
         const box = document.createElement('div');
         box.className = 'cp-confirm-box';
+        box.setAttribute('role', 'alertdialog');
+        box.setAttribute('aria-modal', 'true');
+        box.setAttribute('aria-labelledby', messageId);
         box.innerHTML = `
-            <p class="cp-confirm-message">${_escapeHtml(message)}</p>
+            <p class="cp-confirm-message" id="${messageId}">${_escapeHtml(message)}</p>
             <div class="cp-confirm-actions">
                 <button class="cp-confirm-cancel">Cancel</button>
                 <button class="cp-confirm-ok">Confirm</button>
@@ -128,10 +211,25 @@ function showConfirm(message) {
         `;
 
         document.body.append(overlay, box);
-        const cleanup = (result) => { overlay.remove(); box.remove(); resolve(result); };
+
+        const cancelBtn = box.querySelector('.cp-confirm-cancel');
+        // Default focus goes to Cancel, not Confirm — showConfirm mainly
+        // gates destructive actions (delete), so a stray Enter right after
+        // open shouldn't be able to confirm one.
+        const restoreFocus = _wireDialogA11y(box, {
+            onEscape: () => cleanup(false),
+            initialFocusEl: cancelBtn,
+        });
+
+        const cleanup = (result) => {
+            restoreFocus();
+            overlay.remove();
+            box.remove();
+            resolve(result);
+        };
 
         box.querySelector('.cp-confirm-ok').addEventListener('click', () => cleanup(true));
-        box.querySelector('.cp-confirm-cancel').addEventListener('click', () => cleanup(false));
+        cancelBtn.addEventListener('click', () => cleanup(false));
         overlay.addEventListener('click', () => cleanup(false));
     });
 }

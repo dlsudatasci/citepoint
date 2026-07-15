@@ -5,6 +5,13 @@ const { isExpert: isHardcodedExpert } = require('../config/experts');
 const { isAdmin } = require('../config/admins');
 const { TOPICS } = require('../config/constants');
 
+// Case-insensitive, '@'-prefix-tolerant username match — same convention used
+// for ownership checks elsewhere in the backend.
+function usernameMatches(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    return a.replace(/^@/, '').toLowerCase() === b.replace(/^@/, '').toLowerCase();
+}
+
 // GET /api/experts/:username — check if user is an expert
 router.get('/:username', async (req, res) => {
     try {
@@ -63,8 +70,11 @@ router.get('/applications/pending', async (req, res) => {
     }
 });
 
-// GET /api/experts/applications/:username — user's own applications
+// GET /api/experts/applications/:username?requesterUsername=... — user's own applications
 router.get('/applications/:username', async (req, res) => {
+    if (!usernameMatches(req.params.username, req.query.requesterUsername)) {
+        return res.status(403).json({ success: false, error: 'You can only view your own applications' });
+    }
     try {
         const apps = await ExpertApplication.find({ username: req.params.username })
             .sort({ submittedAt: -1 })

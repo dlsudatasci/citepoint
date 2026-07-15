@@ -43,18 +43,18 @@
     --cp-error-hover:    #b71c1c;
     --cp-error-bg:       rgba(211, 47, 47, 0.1);
 
-    --cp-warning:        #e65100;
+    --cp-warning:        #b34000;
     --cp-warning-bg:     rgba(230, 81, 0, 0.12);
 
-    --cp-record:         #ff4444;
-    --cp-record-hover:   #cc0000;
+    --cp-record:         #cc0000;
+    --cp-record-hover:   #a30000;
     --cp-record-bg:      rgba(255, 68, 68, 0.06);
     --cp-record-bg-hover:rgba(255, 68, 68, 0.12);
 
     /* ── Colors: Neutral ────────────────────────── */
     --cp-text-primary:   #0f0f0f;
     --cp-text-secondary: #606060;
-    --cp-text-tertiary:  #909090;
+    --cp-text-tertiary:  #6e6e6e;
     --cp-text-on-accent: #ffffff;
 
     --cp-bg-page:        #eef3f8;
@@ -72,7 +72,7 @@
 
     /* ── Category Colors ────────────────────────── */
     --cp-cat-statistics: #651fff;
-    --cp-cat-quote:      #e65100;
+    --cp-cat-quote:      #b34000;
     --cp-cat-historical: #00897b;
     --cp-cat-scientific: #065fd4;
     --cp-cat-context:    #c2185b;

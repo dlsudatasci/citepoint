@@ -5,21 +5,12 @@ const { ALL_CATEGORIES, DEFAULT_CATEGORY, TOPICS } = require('../config/constant
 const { isExpert } = require('../config/experts');
 const { notifyExpertsForCategory } = require('../lib/notifyExperts');
 const { applyVote } = require('../lib/voting');
+const { isValidVideoId, isValidTimestamp } = require('../lib/validators');
 
 // ── Validation helpers ────────────────────────
 
-const YOUTUBE_ID_RE  = /^[a-zA-Z0-9_-]{1,64}$/;
-const TIMESTAMP_RE   = /^\d{1,2}:\d{2}(:\d{2})?$/;
 const MAX_TITLE_LEN  = 500;
 const MAX_REASON_LEN = 5000;
-
-function isValidVideoId(id) {
-    return typeof id === 'string' && YOUTUBE_ID_RE.test(id);
-}
-
-function isValidTimestamp(ts) {
-    return !ts || TIMESTAMP_RE.test(ts);
-}
 
 // GET /api/requests/:videoId
 router.get('/:videoId', async (req, res) => {

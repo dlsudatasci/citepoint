@@ -45,11 +45,16 @@ async function showReportDialog(itemId, itemType) {
     const overlay = document.createElement('div');
     overlay.className = 'report-dialog-overlay cp-overlay';
 
+    const titleId = _nextDialogId('report-dialog-title');
+
     const dialog = document.createElement('div');
     dialog.className = 'report-dialog cp-modal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', titleId);
     dialog.innerHTML = `
-        <h3>Report ${itemType === 'citation' ? 'Citation' : 'Request'}</h3>
-        <select id="report-reason" class="cp-select" required>
+        <h3 id="${titleId}">Report ${itemType === 'citation' ? 'Citation' : 'Request'}</h3>
+        <select id="report-reason" class="cp-select" aria-label="Reason for report" required>
             <option value="">Select a reason</option>
             <option value="inappropriate_content">Inappropriate Content</option>
             <option value="spam">Spam</option>
@@ -57,7 +62,7 @@ async function showReportDialog(itemId, itemType) {
             <option value="harassment">Harassment</option>
             <option value="other">Other</option>
         </select>
-        <textarea id="report-details" class="cp-textarea" placeholder="Additional details (optional)"></textarea>
+        <textarea id="report-details" class="cp-textarea" aria-label="Additional details (optional)" placeholder="Additional details (optional)"></textarea>
         <div class="report-dialog-buttons">
             <button class="cancel-btn cp-btn cp-btn--secondary">Cancel</button>
             <button class="submit-btn cp-btn cp-btn--primary">Submit Report</button>
@@ -66,7 +71,12 @@ async function showReportDialog(itemId, itemType) {
 
     document.body.append(overlay, dialog);
 
-    const close = () => { overlay.remove(); dialog.remove(); };
+    const restoreFocus = _wireDialogA11y(dialog, {
+        onEscape: () => close(),
+        initialFocusEl: dialog.querySelector('#report-reason'),
+    });
+
+    const close = () => { restoreFocus(); overlay.remove(); dialog.remove(); };
 
     dialog.querySelector('.cancel-btn').addEventListener('click', close);
     overlay.addEventListener('click', close);
