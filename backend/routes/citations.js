@@ -5,22 +5,13 @@ const { ALL_CATEGORIES, DEFAULT_CATEGORY, TOPICS } = require('../config/constant
 const { isExpert } = require('../config/experts');
 const { notifyExpertsForCategory } = require('../lib/notifyExperts');
 const { applyVote } = require('../lib/voting');
+const { isValidVideoId, isValidTimestamp, isSafeSourceUrl } = require('../lib/validators');
 
 // ── Validation helpers ────────────────────────
 
-const YOUTUBE_ID_RE  = /^[a-zA-Z0-9_-]{1,64}$/;
-const TIMESTAMP_RE   = /^\d{1,2}:\d{2}(:\d{2})?$/;
 const MAX_TITLE_LEN  = 500;
 const MAX_DESC_LEN   = 5000;
 const MAX_SOURCE_LEN = 2048;
-
-function isValidVideoId(id) {
-    return typeof id === 'string' && YOUTUBE_ID_RE.test(id);
-}
-
-function isValidTimestamp(ts) {
-    return !ts || TIMESTAMP_RE.test(ts);
-}
 
 // GET /api/citations/:videoId
 router.get('/:videoId', async (req, res) => {
@@ -107,6 +98,9 @@ router.post('/:videoId', async (req, res) => {
         }
         if (source && source.length > MAX_SOURCE_LEN) {
             return res.status(400).json({ success: false, error: `source URL must be at most ${MAX_SOURCE_LEN} characters` });
+        }
+        if (!isSafeSourceUrl(source)) {
+            return res.status(400).json({ success: false, error: 'source must be a valid http(s) URL' });
         }
         if (category && !ALL_CATEGORIES.includes(category)) {
             return res.status(400).json({ success: false, error: 'Invalid category' });

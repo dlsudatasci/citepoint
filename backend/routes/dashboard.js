@@ -1,12 +1,7 @@
 const router   = require('express').Router();
 const Citation = require('../models/Citation');
 const Request  = require('../models/Request');
-
-const YOUTUBE_ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
-
-function isValidVideoId(id) {
-    return typeof id === 'string' && YOUTUBE_ID_RE.test(id);
-}
+const { isValidVideoId } = require('../lib/validators');
 
 async function countByCategory(Model, filter) {
     const rows = await Model.aggregate([

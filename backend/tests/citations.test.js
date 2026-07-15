@@ -92,6 +92,27 @@ describe('POST /api/citations/:videoId', () => {
         expect(res.body.success).toBe(false);
     });
 
+    it('accepts a valid http(s) source URL', async () => {
+        const res = await request(app).post(BASE).send({
+            citationTitle: 'Cited', username: 'alice', source: 'https://example.com/article',
+        });
+        expect(res.status).toBe(201);
+    });
+
+    it('rejects a javascript: source URL', async () => {
+        const res = await request(app).post(BASE).send({
+            citationTitle: 'Cited', username: 'alice', source: 'javascript:alert(1)',
+        });
+        expect(res.status).toBe(400);
+    });
+
+    it('rejects a data: source URL', async () => {
+        const res = await request(app).post(BASE).send({
+            citationTitle: 'Cited', username: 'alice', source: 'data:text/html,<script>alert(1)</script>',
+        });
+        expect(res.status).toBe(400);
+    });
+
     it('rejects missing username with 400', async () => {
         const res = await request(app).post(BASE).send({ citationTitle: 'No user' });
         expect(res.status).toBe(400);

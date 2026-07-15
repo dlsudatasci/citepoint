@@ -31,7 +31,10 @@ router.get('/general', async (req, res) => {
             }
         ];
 
-        if (topic && topic !== 'All') {
+        if (topic !== undefined && topic !== 'All') {
+            if (typeof topic !== 'string') {
+                return res.status(400).json({ success: false, error: 'Invalid topic' });
+            }
             pipeline.push({ $match: { topics: topic } });
         }
 
@@ -50,7 +53,9 @@ router.get('/general', async (req, res) => {
 router.get('/expert', async (req, res) => {
     try {
         const { username } = req.query;
-        if (!username) return res.status(400).json({ success: false, error: 'Username required' });
+        if (typeof username !== 'string' || !username.trim()) {
+            return res.status(400).json({ success: false, error: 'Username required' });
+        }
 
         const expert = await Expert.findOne({ username });
         if (!expert || !expert.topics || expert.topics.length === 0) {
