@@ -12,13 +12,21 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
         ? [process.env.ALLOWED_ORIGIN.trim()]
         : [];
 
+// '*' is an explicit, opt-in wildcard for local dev / CI, where the
+// extension's origin isn't fixed ahead of time (unpacked/temporary loads get
+// a fresh chrome-extension://<id> or moz-extension://<id> each run). Without
+// it, only origins explicitly listed in ALLOWED_ORIGIN(S) are accepted — any
+// other installed extension is rejected, closing the previous behavior where
+// *every* chrome-extension:// or moz-extension:// origin was accepted
+// regardless of this allowlist.
+const allowAnyExtensionOrigin = allowedOrigins.includes('*');
+
 app.use(cors({
     origin: function (origin, callback) {
         if (
             !origin ||
             allowedOrigins.includes(origin) ||
-            origin.startsWith('moz-extension://') ||
-            origin.startsWith('chrome-extension://') ||
+            (allowAnyExtensionOrigin && (origin.startsWith('moz-extension://') || origin.startsWith('chrome-extension://'))) ||
             origin === 'https://www.youtube.com' ||
             origin === 'https://m.youtube.com'
         ) {
