@@ -773,8 +773,8 @@ h3 {
 }
 
 .record-start-active {
-    border-color: var(--cp-record, #ff4444);
-    color: var(--cp-record, #ff4444);
+    border-color: var(--cp-record, #cc0000);
+    color: var(--cp-record, #cc0000);
     background: var(--cp-record-bg, rgba(255, 68, 68, 0.06));
 }
 
@@ -784,14 +784,14 @@ h3 {
 
 .record-stop-disabled {
     background-color: var(--cp-bg-input, rgba(0, 0, 0, 0.05));
-    color: var(--cp-text-tertiary, #909090);
+    color: var(--cp-text-tertiary, #6e6e6e);
     cursor: not-allowed;
     border-color: transparent;
 }
 
 .record-stop-disabled:not([disabled]) {
-    border-color: var(--cp-record, #ff4444);
-    color: var(--cp-record, #ff4444);
+    border-color: var(--cp-record, #cc0000);
+    color: var(--cp-record, #cc0000);
     background: var(--cp-record-bg, rgba(255, 68, 68, 0.06));
     cursor: pointer;
 }
@@ -802,7 +802,7 @@ h3 {
 
 .record-start-active[disabled] {
     background-color: var(--cp-bg-input, rgba(0, 0, 0, 0.05));
-    color: var(--cp-text-tertiary, #909090);
+    color: var(--cp-text-tertiary, #6e6e6e);
     cursor: not-allowed;
     border-color: transparent;
 }
