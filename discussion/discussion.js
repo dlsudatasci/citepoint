@@ -24,6 +24,19 @@ function _escapeHtml(str) {
     return d.innerHTML;
 }
 
+// Only http(s) URLs are safe to render as an href — blocks javascript:,
+// data:, and other schemes that would execute in the extension page context.
+// Same technique as content/citations.js's _safeSourceLink().
+function _safeUrl(str) {
+    if (typeof str !== 'string' || !str) return null;
+    try {
+        const parsed = new URL(str);
+        return (parsed.protocol === 'http:' || parsed.protocol === 'https:') ? str : null;
+    } catch {
+        return null;
+    }
+}
+
 function _formatDate(dateStr) {
     if (!dateStr) return '';
     const d = new Date(dateStr);
@@ -197,7 +210,7 @@ function _renderOriginalCitation(c) {
             </div>
             ${c.category ? `<span class="original-category">${_escapeHtml(c.category)}</span>` : ''}
             ${c.description ? `<p class="original-description">${_escapeHtml(c.description)}</p>` : ''}
-            ${c.source ? `<a class="original-source" href="${_escapeHtml(c.source)}" target="_blank" rel="noopener noreferrer">Source ↗</a>` : ''}
+            ${_safeUrl(c.source) ? `<a class="original-source" href="${_escapeHtml(_safeUrl(c.source))}" target="_blank" rel="noopener noreferrer">Source ↗</a>` : ''}
             ${_buildVoteControls(c, 'citation')}
             ${c.videoId ? `<a class="video-link" href="https://www.youtube.com/watch?v=${_escapeHtml(c.videoId)}&t=${_timestampToSeconds(c.timestampStart)}" target="_blank">Watch on YouTube ↗</a>` : ''}
         </div>
@@ -288,7 +301,7 @@ function _createThreadNode(item, depth) {
         </div>
         <div class="thread-item-body ${collapsed ? 'thread-collapsed' : ''}">
             <p class="thread-description">${_escapeHtml(desc)}</p>
-            ${item.source ? `<a class="thread-source" href="${_escapeHtml(item.source)}" target="_blank" rel="noopener noreferrer">Source ↗</a>` : ''}
+            ${_safeUrl(item.source) ? `<a class="thread-source" href="${_escapeHtml(_safeUrl(item.source))}" target="_blank" rel="noopener noreferrer">Source ↗</a>` : ''}
             <div class="thread-item-actions">
                 ${_buildVoteControls(item, 'citation')}
                 ${!isOwner ? `<button class="thread-reply-btn" data-id="${item.id || item._id}">Reply</button>` : ''}
@@ -390,7 +403,7 @@ function _renderFlatList() {
                 <span class="thread-date">${_formatDate(item.dateAdded)}</span>
             </div>
             <p class="thread-description">${_escapeHtml(desc)}</p>
-            ${item.source ? `<a class="thread-source" href="${_escapeHtml(item.source)}" target="_blank" rel="noopener noreferrer">Source ↗</a>` : ''}
+            ${_safeUrl(item.source) ? `<a class="thread-source" href="${_escapeHtml(_safeUrl(item.source))}" target="_blank" rel="noopener noreferrer">Source ↗</a>` : ''}
             <div class="thread-item-actions">
                 ${_buildVoteControls(item, 'citation')}
                 ${!isOwner ? `<button class="thread-reply-btn" data-id="${item.id || item._id}">Reply</button>` : ''}
