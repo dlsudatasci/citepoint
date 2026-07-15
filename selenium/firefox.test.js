@@ -207,11 +207,23 @@ async function addCitation(title) {
     // level can match an unrelated element elsewhere on the YouTube page that
     // happens to share the same id (e.g. an SVG <g id="description"> icon
     // group), which isn't a form control and isn't keyboard-reachable.
-    await form.findElement(By.id('citationTitle')).sendKeys(title);
-    await form.findElement(By.id('timestampStart')).sendKeys('00:01:00');
-    await form.findElement(By.id('timestampEnd')).sendKeys('00:02:00');
-    await form.findElement(By.id('source')).sendKeys('https://example.com');
-    await form.findElement(By.id('description')).sendKeys('Selenium e2e test citation');
+    //
+    // .clear() first: unlike Playwright's .fill(), WebDriver's sendKeys()
+    // appends rather than replaces. #timestampStart in particular is
+    // auto-filled with the current video position when the form opens
+    // (_autoFillStartTimestamp in content/forms.js), so an un-cleared
+    // sendKeys() here concatenates onto that value instead of replacing it.
+    async function setField(id, value) {
+        const field = await form.findElement(By.id(id));
+        await field.clear();
+        await field.sendKeys(value);
+    }
+
+    await setField('citationTitle', title);
+    await setField('timestampStart', '00:01:00');
+    await setField('timestampEnd', '00:02:00');
+    await setField('source', 'https://example.com');
+    await setField('description', 'Selenium e2e test citation');
 
     const localStorageUsername = await driver.executeScript(`return localStorage.getItem('youtubeUsername');`);
     console.log('  [addCitation] localStorage.youtubeUsername before submit:', localStorageUsername);
