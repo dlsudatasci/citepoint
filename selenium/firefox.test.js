@@ -212,8 +212,24 @@ async function addCitation(title) {
     await form.findElement(By.id('timestampEnd')).sendKeys('00:02:00');
     await form.findElement(By.id('source')).sendKeys('https://example.com');
     await form.findElement(By.id('description')).sendKeys('Selenium e2e test citation');
+
+    const localStorageUsername = await driver.executeScript(`return localStorage.getItem('youtubeUsername');`);
+    console.log('  [addCitation] localStorage.youtubeUsername before submit:', localStorageUsername);
+
     await form.findElement(By.id('submit-btn')).click();
     await driver.sleep(2000); // allow submit round-trip + list refresh
+
+    // Surface *why* a submit failed instead of leaving the caller to guess
+    // from a missing citation alone -- the toast text (a DOM node, visible to
+    // driver.executeScript/findElement regardless of the content-script
+    // isolated-world boundary) carries the actual error.
+    const toastEls = await driver.findElements(By.id('cp-toast'));
+    if (toastEls.length > 0) {
+        const toastText = await toastEls[0].getText();
+        console.log('  [addCitation] toast after submit:', JSON.stringify(toastText));
+    } else {
+        console.log('  [addCitation] no toast present after submit');
+    }
 }
 
 async function test_panelAppearsOnYouTube() {
