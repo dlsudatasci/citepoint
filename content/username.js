@@ -59,11 +59,17 @@ async function getCachedUsername() {
     // Try chrome.storage.local first
     try {
         if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            return new Promise(resolve => {
+            const fromChromeStorage = await new Promise(resolve => {
                 chrome.storage.local.get(['youtubeUsername'], result => {
                     resolve(result.youtubeUsername || null);
                 });
             });
+            // Only short-circuit on an actual value -- chrome.storage.local
+            // being *available* isn't the same as it being *populated* (e.g.
+            // a content script always has the API, but nothing may have been
+            // written to it yet), so an empty result still falls through to
+            // the localStorage check below instead of resolving to null.
+            if (fromChromeStorage) return fromChromeStorage;
         }
     } catch (_) {}
 
