@@ -197,6 +197,20 @@ async function findCitationCardByTitle(title, timeout = 10000) {
     return driver.findElement(By.xpath(`${_titleXPath(title)}/ancestor::*[contains(@class,"citation-item")]`));
 }
 
+// The Chrome/Playwright suite runs against the same shared citepoint_test
+// database in CI (both suites reuse the one backend the workflow starts) --
+// a citation this suite creates and never removes is visible to Playwright's
+// tests too, and a loosely-scoped locator there (e.g. .first()) can resolve
+// to it instead of the citation that test created. Every test that leaves a
+// citation behind must clean it up itself.
+async function deleteCitationByTitle(title) {
+    const card = await findCitationCardByTitle(title);
+    await card.findElement(By.css('.delete-btn')).click();
+    await driver.wait(until.elementLocated(By.css('.cp-confirm-box')), 5000);
+    await driver.findElement(By.css('.cp-confirm-ok')).click();
+    await driver.sleep(1500);
+}
+
 async function addCitation(title) {
     await driver.findElement(By.id('citations-btn')).click();
     await driver.sleep(300);
@@ -320,6 +334,7 @@ async function test_addCitation() {
     await addCitation(title);
 
     const count = await countCitationsWithTitle(title);
+    if (count > 0) await deleteCitationByTitle(title); // don't leak into the shared test DB
     assert.ok(count > 0, `Citation "${title}" should appear in the list after adding`);
     console.log('  ✓ adding a citation shows it in the list');
 }
@@ -363,6 +378,7 @@ async function test_deleteCancelKeepsCitation() {
 
     assert.strictEqual(await elementCount('.cp-confirm-box'), 0, 'Confirm dialog should be closed after cancel');
     const countAfter = await countCitationsWithTitle(title);
+    if (countAfter > 0) await deleteCitationByTitle(title); // teardown -- don't leak into the shared test DB
     assert.ok(countAfter > 0, 'Citation should still be present after cancelling delete');
     console.log('  ✓ cancelling delete keeps the citation');
 }
@@ -387,8 +403,13 @@ async function test_voteOnCitation() {
     const scoreAfter = parseInt(await (await refreshedCard.findElement(By.css('.vote-score'))).getText(), 10);
 
     const classAttr = await upvoteAfter.getAttribute('class');
-    assert.ok(classAttr.includes('voted'), 'Upvote button should be marked voted after clicking');
-    assert.strictEqual(scoreAfter, scoreBefore + 1, 'Vote score should increase by 1 after upvoting');
+    const votedOk = classAttr.includes('voted');
+    const scoreOk = scoreAfter === scoreBefore + 1;
+
+    await deleteCitationByTitle(title); // don't leak into the shared test DB
+
+    assert.ok(votedOk, 'Upvote button should be marked voted after clicking');
+    assert.ok(scoreOk, 'Vote score should increase by 1 after upvoting');
     console.log('  ✓ upvoting a citation updates the score and button state');
 }
 
