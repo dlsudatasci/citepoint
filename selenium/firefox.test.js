@@ -201,14 +201,18 @@ async function addCitation(title) {
     await driver.findElement(By.id('citations-btn')).click();
     await driver.sleep(300);
     await driver.findElement(By.id('add-item-btn')).click();
-    await driver.wait(until.elementLocated(By.css('#add-form-container #citation-form')), 10000);
+    const form = await driver.wait(until.elementLocated(By.css('#add-form-container #citation-form')), 10000);
 
-    await driver.findElement(By.id('citationTitle')).sendKeys(title);
-    await driver.findElement(By.id('timestampStart')).sendKeys('00:01:00');
-    await driver.findElement(By.id('timestampEnd')).sendKeys('00:02:00');
-    await driver.findElement(By.id('source')).sendKeys('https://example.com');
-    await driver.findElement(By.id('description')).sendKeys('Selenium e2e test citation');
-    await driver.findElement(By.css('#add-form-container #submit-btn')).click();
+    // Scoped to the form -- driver.findElement(By.id(...)) at the document
+    // level can match an unrelated element elsewhere on the YouTube page that
+    // happens to share the same id (e.g. an SVG <g id="description"> icon
+    // group), which isn't a form control and isn't keyboard-reachable.
+    await form.findElement(By.id('citationTitle')).sendKeys(title);
+    await form.findElement(By.id('timestampStart')).sendKeys('00:01:00');
+    await form.findElement(By.id('timestampEnd')).sendKeys('00:02:00');
+    await form.findElement(By.id('source')).sendKeys('https://example.com');
+    await form.findElement(By.id('description')).sendKeys('Selenium e2e test citation');
+    await form.findElement(By.id('submit-btn')).click();
     await driver.sleep(2000); // allow submit round-trip + list refresh
 }
 
