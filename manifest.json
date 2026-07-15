@@ -16,6 +16,7 @@
         "tabs"
     ],
     "host_permissions": [
+        "http://altdsidccf.dlsu.edu.ph:15020/*",
         "http://localhost:3000/*",
         "*://www.youtube.com/*",
         "*://m.youtube.com/*"
@@ -47,7 +48,7 @@
                 "content/player.js",
                 "content/content.js"
             ],
-            "css": ["styles/extension.css"]
+            "css": ["styles/tokens.css", "styles/components.css", "styles/extension.css"]
         }
     ],
     "background": {
@@ -60,11 +61,11 @@
             "forms/youtube_extension_request.html",
             "styles/extension.css",
             "styles/tokens.css",
+            "styles/components.css",
             "config/config.js",
             "popup/popup.js",
             "popup/popup.html",
             "dashboard/dashboard.html",
-            "dashboard/dashboard.js",
             "dashboard/dashboard.css",
             "dashboard/dist/dashboard.bundle.js",
             "dashboard/dist/dashboard.bundle.css",

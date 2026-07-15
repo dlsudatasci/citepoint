@@ -83,15 +83,19 @@ export default function Analytics() {
     const [scope, setScope] = useState('video');
     const [stats, setStats] = useState(null);
     const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     const loadStats = useCallback(async () => {
         setError(null);
+        setLoading(true);
         try {
             const videoId = scope === 'video' ? await getActiveVideoId() : null;
             const result = await window.apiGetDashboardStats(videoId);
             setStats(result);
         } catch (err) {
             setError(err.message);
+        } finally {
+            setLoading(false);
         }
     }, [scope]);
 
@@ -111,7 +115,15 @@ export default function Analytics() {
 
             {error && <p className="error-message">Error loading dashboard stats: {error}</p>}
 
-            {stats && (
+            {loading && !error && (
+                <div className="cp-loading">
+                    <div className="cp-skeleton"></div>
+                    <div className="cp-skeleton"></div>
+                    <div className="cp-skeleton"></div>
+                </div>
+            )}
+
+            {!loading && stats && (
                 <>
                     <section className="dashboard-section">
                         <h2>Trending Requested Categories</h2>

@@ -23,12 +23,12 @@ function insertCitationButtons() {
     panel.innerHTML = `
         <div class="extension-header" id="extension-header">
             <span class="minimized-logo">CitePoint</span>
-            <div class="button-container" id="tab-container">
-                <button id="citation-requests-btn" class="tab-btn disabled">
+            <div class="button-container" id="tab-container" role="tablist">
+                <button id="citation-requests-btn" class="tab-btn cp-tab disabled" role="tab" aria-selected="false" aria-controls="citation-requests-container">
                     Citation Requests
                     <span class="tab-counter" id="requests-counter">0</span>
                 </button>
-                <button id="citations-btn" class="tab-btn disabled">
+                <button id="citations-btn" class="tab-btn cp-tab disabled" role="tab" aria-selected="true" aria-controls="citations-container">
                     Citations
                     <span class="tab-counter" id="citations-counter">0</span>
                 </button>
@@ -250,7 +250,10 @@ function _wireTabs() {
     document.getElementById('citations-btn').addEventListener('click', function () {
         if (this.classList.contains('disabled')) return;
         this.classList.add('active');
-        document.getElementById('citation-requests-btn').classList.remove('active');
+        this.setAttribute('aria-selected', 'true');
+        const requestsBtn = document.getElementById('citation-requests-btn');
+        requestsBtn.classList.remove('active');
+        requestsBtn.setAttribute('aria-selected', 'false');
         document.getElementById('citations-container').style.display = 'block';
         document.getElementById('citation-requests-container').style.display = 'none';
         document.getElementById('add-item-btn').textContent = '+ Add Citation';
@@ -264,7 +267,10 @@ function _wireTabs() {
     document.getElementById('citation-requests-btn').addEventListener('click', function () {
         if (this.classList.contains('disabled')) return;
         this.classList.add('active');
-        document.getElementById('citations-btn').classList.remove('active');
+        this.setAttribute('aria-selected', 'true');
+        const citationsBtn = document.getElementById('citations-btn');
+        citationsBtn.classList.remove('active');
+        citationsBtn.setAttribute('aria-selected', 'false');
         document.getElementById('citations-container').style.display = 'none';
         document.getElementById('citation-requests-container').style.display = 'block';
         document.getElementById('add-item-btn').textContent = '+ Add Request';

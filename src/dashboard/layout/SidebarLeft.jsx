@@ -6,7 +6,7 @@ export default function SidebarLeft({ activeView, setActiveView }) {
 
     return (
         <aside className="sidebar-left">
-            <div className="brand-logo" style={{ fontSize: '24px', fontWeight: 'bold', color: '#065fd4', padding: '0 16px' }}>
+            <div className="brand-logo">
                 CitePoint
             </div>
             
@@ -36,7 +36,7 @@ export default function SidebarLeft({ activeView, setActiveView }) {
                 </button>
             </nav>
 
-            <div style={{ flexGrow: 1 }}></div>
+            <div className="sidebar-spacer"></div>
 
             <nav className="nav-menu">
                 <button 

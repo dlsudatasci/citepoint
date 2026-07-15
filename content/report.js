@@ -43,13 +43,13 @@ async function showReportDialog(itemId, itemType) {
 
     // ── Build dialog ──────────────────────────
     const overlay = document.createElement('div');
-    overlay.className = 'report-dialog-overlay';
+    overlay.className = 'report-dialog-overlay cp-overlay';
 
     const dialog = document.createElement('div');
-    dialog.className = 'report-dialog';
+    dialog.className = 'report-dialog cp-modal';
     dialog.innerHTML = `
         <h3>Report ${itemType === 'citation' ? 'Citation' : 'Request'}</h3>
-        <select id="report-reason" required>
+        <select id="report-reason" class="cp-select" required>
             <option value="">Select a reason</option>
             <option value="inappropriate_content">Inappropriate Content</option>
             <option value="spam">Spam</option>
@@ -57,10 +57,10 @@ async function showReportDialog(itemId, itemType) {
             <option value="harassment">Harassment</option>
             <option value="other">Other</option>
         </select>
-        <textarea id="report-details" placeholder="Additional details (optional)"></textarea>
+        <textarea id="report-details" class="cp-textarea" placeholder="Additional details (optional)"></textarea>
         <div class="report-dialog-buttons">
-            <button class="cancel-btn">Cancel</button>
-            <button class="submit-btn">Submit Report</button>
+            <button class="cancel-btn cp-btn cp-btn--secondary">Cancel</button>
+            <button class="submit-btn cp-btn cp-btn--primary">Submit Report</button>
         </div>
     `;
 

@@ -1,7 +1,10 @@
 /* ══════════════════════════════════════════════
    CitePoint Extension Stylesheet
    Injected into YouTube pages via content_scripts.
-   Imports design tokens from tokens.css (loaded via manifest).
+   Design tokens (styles/tokens.css) are injected as a separate,
+   earlier entry in manifest.json's content_scripts.css array —
+   NOT via @import, which Chrome does not resolve for CSS files
+   injected this way (custom properties silently fail to apply).
    ══════════════════════════════════════════════ */
 
 /* ── Base Overrides (scoped to .citation-controls) ─── */
@@ -15,43 +18,6 @@ body {
 /* ── Panel Root ─────────────────────────────────────── */
 
 .citation-controls {
-    --cp-font:           "Roboto", "Arial", sans-serif;
-    --cp-font-mono:      "Roboto Mono", monospace;
-    --cp-accent:         #065fd4;
-    --cp-accent-hover:   #0356c6;
-    --cp-accent-active:  #024fb1;
-    --cp-accent-bg:      rgba(6, 95, 212, 0.08);
-    --cp-success:        #27ae60;
-    --cp-success-hover:  #219a52;
-    --cp-success-bg:     rgba(39, 174, 96, 0.1);
-    --cp-error:          #d32f2f;
-    --cp-error-hover:    #b71c1c;
-    --cp-error-bg:       rgba(211, 47, 47, 0.1);
-    --cp-warning:        #e65100;
-    --cp-record:         #ff4444;
-    --cp-record-hover:   #cc0000;
-    --cp-text-primary:   #0f0f0f;
-    --cp-text-secondary: #606060;
-    --cp-text-tertiary:  #909090;
-    --cp-bg-page:        #eef3f8;
-    --cp-bg-surface:     #f7f9fc;
-    --cp-bg-card:        #ffffff;
-    --cp-bg-input:       rgba(0, 0, 0, 0.05);
-    --cp-bg-input-hover: rgba(0, 0, 0, 0.08);
-    --cp-bg-hover:       rgba(0, 0, 0, 0.04);
-    --cp-border:         rgba(0, 0, 0, 0.10);
-    --cp-border-strong:  rgba(0, 0, 0, 0.15);
-    --cp-border-input:   #dadce0;
-    --cp-divider:        rgba(0, 0, 0, 0.08);
-    --cp-radius-sm:      4px;
-    --cp-radius-md:      8px;
-    --cp-radius-lg:      12px;
-    --cp-radius-pill:    18px;
-    --cp-shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.08);
-    --cp-shadow-md:      0 2px 8px rgba(0, 0, 0, 0.12);
-    --cp-shadow-lg:      0 4px 24px rgba(0, 0, 0, 0.16);
-    --cp-transition:     0.15s ease;
-
     background-color: var(--cp-bg-page);
     padding: var(--cp-space-10, 10px);
     margin-bottom: 10px;
@@ -427,72 +393,6 @@ body {
     color: var(--cp-accent);
 }
 
-/* ── Nav Tabs ───────────────────────────────────────── */
-
-.nav-tabs {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    padding: 8px;
-    border-bottom: 1px solid var(--cp-border);
-}
-
-.nav-tab {
-    background: none;
-    border: none;
-    border-radius: var(--cp-radius-pill);
-    color: var(--cp-text-secondary);
-    cursor: pointer;
-    font-family: var(--cp-font);
-    font-size: 14px;
-    font-weight: 500;
-    padding: 8px 16px;
-    transition: all var(--cp-transition);
-}
-
-.nav-tab:hover {
-    background-color: var(--cp-bg-hover);
-    color: var(--cp-text-primary);
-}
-
-.nav-tab.active {
-    background-color: var(--cp-text-primary);
-    color: white;
-}
-
-/* ── Nav Bar (form pages) ───────────────────────────── */
-
-#nav-bar {
-    background-color: white;
-    padding: 12px;
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    border-bottom: 1px solid var(--cp-border);
-}
-
-.nav-btn {
-    background-color: var(--cp-bg-input);
-    border: none;
-    border-radius: var(--cp-radius-pill);
-    color: var(--cp-text-primary);
-    cursor: pointer;
-    font-family: var(--cp-font);
-    font-size: 14px;
-    font-weight: 500;
-    padding: 8px 12px;
-    transition: background-color var(--cp-transition);
-}
-
-.nav-btn:hover {
-    background-color: var(--cp-bg-input-hover);
-}
-
-.nav-btn.active {
-    background-color: var(--cp-text-primary);
-    color: white;
-}
-
 /* ── Sort Controls ──────────────────────────────────── */
 
 .sort-container {
@@ -546,7 +446,7 @@ body {
     border-radius: var(--cp-radius-lg);
     box-shadow: var(--cp-shadow-md);
     min-width: 180px;
-    z-index: 1000;
+    z-index: var(--cp-z-dropdown);
     padding: 8px 0;
 }
 
@@ -656,7 +556,7 @@ body {
     min-width: 200px;
     max-height: 320px;
     overflow-y: auto;
-    z-index: 1000;
+    z-index: var(--cp-z-dropdown);
     padding: 8px 0;
 }
 
@@ -864,8 +764,8 @@ h3 {
     border: 1px solid var(--cp-border);
     border-radius: var(--cp-radius-md);
     font-family: var(--cp-font);
-    font-size: 13px;
-    font-weight: 500;
+    font-size: var(--cp-text-base, 13px);
+    font-weight: var(--cp-weight-medium, 500);
     cursor: pointer;
     transition: all var(--cp-transition);
     background-color: var(--cp-bg-card, white);
@@ -875,11 +775,11 @@ h3 {
 .record-start-active {
     border-color: var(--cp-record, #ff4444);
     color: var(--cp-record, #ff4444);
-    background: rgba(255, 68, 68, 0.06);
+    background: var(--cp-record-bg, rgba(255, 68, 68, 0.06));
 }
 
 .record-start-active:hover {
-    background: rgba(255, 68, 68, 0.12);
+    background: var(--cp-record-bg-hover, rgba(255, 68, 68, 0.12));
 }
 
 .record-stop-disabled {
@@ -892,12 +792,12 @@ h3 {
 .record-stop-disabled:not([disabled]) {
     border-color: var(--cp-record, #ff4444);
     color: var(--cp-record, #ff4444);
-    background: rgba(255, 68, 68, 0.06);
+    background: var(--cp-record-bg, rgba(255, 68, 68, 0.06));
     cursor: pointer;
 }
 
 .record-stop-disabled:not([disabled]):hover {
-    background: rgba(255, 68, 68, 0.12);
+    background: var(--cp-record-bg-hover, rgba(255, 68, 68, 0.12));
 }
 
 .record-start-active[disabled] {
@@ -1239,7 +1139,7 @@ h3 {
     font-size: 12px;
     font-weight: 500;
     padding: 4px 10px;
-    border-radius: var(--cp-radius-lg);
+    border-radius: var(--cp-radius-pill);
     line-height: 1.4;
 }
 
@@ -1463,63 +1363,42 @@ h3 {
     margin-bottom: 20px;
 }
 
-/* ── Empty & Error States ───────────────────────────── */
+/* Empty/error states and the loading skeleton now live in
+   styles/components.css (.empty-state/.error-message/.cp-loading/
+   .cp-skeleton) — same class names, centralized definition. */
 
-.empty-state {
-    color: var(--cp-text-secondary);
-    font-size: 13px;
-    text-align: center;
-    padding: 16px 0;
-    font-style: italic;
-}
+/* ── Previously-Unstyled Gaps ────────────────────────── */
 
-.error-message {
-    color: var(--cp-error);
-    font-size: 14px;
-}
-
-/* ── Loading skeleton ─────────────────────────────────── */
-
-.cp-loading {
+.citation-header {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 4px 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cp-space-8);
+    margin-bottom: var(--cp-space-4);
 }
 
-.cp-skeleton {
-    height: 48px;
-    border-radius: var(--cp-radius-lg);
-    background: linear-gradient(90deg, var(--cp-bg-surface) 25%, var(--cp-border) 50%, var(--cp-bg-surface) 75%);
-    background-size: 200% 100%;
-    animation: cp-skeleton-shimmer 1.4s ease infinite;
+.category-filter-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.cp-skeleton--short {
-    height: 32px;
+.field-locked {
+    background-color: var(--cp-bg-input);
+    color: var(--cp-text-tertiary);
+    cursor: not-allowed;
 }
 
-@keyframes cp-skeleton-shimmer {
-    0%   { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
+.cp-load-more-btn {
+    width: 100%;
+    margin-top: var(--cp-space-8);
 }
 
 /* ── Recorded Segments Panel ─────────────────────────── */
 
 .recorded-segments-panel {
-    --cp-font:           "Roboto", "Arial", sans-serif;
-    --cp-accent:         #065fd4;
-    --cp-accent-hover:   #0356c6;
-    --cp-text-primary:   #0f0f0f;
-    --cp-text-secondary: #606060;
-    --cp-bg-page:        #eef3f8;
-    --cp-bg-surface:     #f7f9fc;
-    --cp-border:         rgba(0, 0, 0, 0.10);
-    --cp-error:          #d32f2f;
-    --cp-radius-md:      8px;
-    --cp-radius-lg:      12px;
-
     position: fixed;
+    z-index: var(--cp-z-panel-modal);
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
@@ -1527,7 +1406,6 @@ h3 {
     border: 1px solid var(--cp-border);
     border-radius: var(--cp-radius-lg);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-    z-index: 2000;
     width: 320px;
     max-width: 90vw;
     max-height: 70vh;
@@ -1732,7 +1610,7 @@ h3 {
     border: 3px solid #ff0000;
     border-radius: 0;
     pointer-events: none;
-    z-index: 60;
+    z-index: var(--cp-z-player-overlay);
     animation: cp-overlay-pulse 1.5s ease-in-out infinite;
 }
 
@@ -1751,7 +1629,7 @@ h3 {
     background: rgba(0, 0, 0, 0.75);
     border-radius: 6px;
     padding: 5px 10px;
-    z-index: 61;
+    z-index: var(--cp-z-player-overlay-top);
     pointer-events: auto;
     cursor: default;
 }
@@ -1788,9 +1666,14 @@ h3 {
     height: 100%;
     transform: translateX(-50%);
     cursor: ew-resize;
-    z-index: 101;
+    z-index: var(--cp-z-timeline-bar);
     border-radius: 2px;
     box-shadow: 0 -6px 0 0 currentColor;
+}
+
+.cp-timeline-bar:focus-visible {
+    outline: none;
+    box-shadow: 0 -6px 0 0 currentColor, var(--cp-focus-ring);
 }
 
 .cp-timeline-bar::before {
@@ -1838,7 +1721,7 @@ h3 {
     height: 100%;
     background: rgba(255, 68, 68, 0.3);
     pointer-events: none;
-    z-index: 99;
+    z-index: var(--cp-z-timeline-range);
 }
 
 /* ── Theater Mode ───────────────────────────────────── */
@@ -1846,7 +1729,7 @@ h3 {
 .citation-controls.theater-mode {
     position: relative;
     top: auto;
-    z-index: 999;
+    z-index: var(--cp-z-theater);
     background-color: white;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
@@ -1858,30 +1741,8 @@ ytd-watch-flexy[theater] div#secondary {
     position: relative;
 }
 
-/* ── Toast Notifications ────────────────────────────── */
-
-.cp-toast {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%) translateY(16px);
-    padding: 10px 20px;
-    border-radius: var(--cp-radius-md);
-    font-family: var(--cp-font);
-    font-size: 13px;
-    font-weight: 500;
-    color: #fff;
-    opacity: 0;
-    transition: opacity 0.25s ease, transform 0.25s ease;
-    z-index: 99999;
-    pointer-events: none;
-}
-
-.cp-toast--visible  { opacity: 1; transform: translateX(-50%) translateY(0); }
-.cp-toast--success  { background: var(--cp-success); }
-.cp-toast--error    { background: var(--cp-error); }
-.cp-toast--warning  { background: var(--cp-warning); }
-.cp-toast--info     { background: var(--cp-accent); }
+/* Toast notifications now live in styles/components.css (.cp-toast*) —
+   same class names, centralized definition. */
 
 /* ── Confirm Dialog ─────────────────────────────────── */
 
@@ -1889,7 +1750,7 @@ ytd-watch-flexy[theater] div#secondary {
     position: fixed;
     inset: 0;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 99998;
+    z-index: var(--cp-z-confirm-overlay);
 }
 
 .cp-confirm-box {
@@ -1902,7 +1763,7 @@ ytd-watch-flexy[theater] div#secondary {
     border-radius: 6px;
     padding: 16px 20px;
     font-size: 13px;
-    z-index: 99999;
+    z-index: var(--cp-z-confirm-box);
     min-width: 280px;
     box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
     border: 1px solid rgba(255, 255, 255, 0.1);
