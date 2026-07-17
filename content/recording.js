@@ -228,6 +228,7 @@ function _startLiveTracking() {
             if (video) {
                 _endSecs = video.currentTime;
                 _syncBars();
+                _syncToForm(); // keep the End Timestamp field live, not just on Stop
             }
         }
 
