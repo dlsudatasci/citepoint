@@ -31,7 +31,7 @@ export default function ExpertFeed() {
     return (
         <section className="dashboard-section" style={{ border: 'none', background: 'transparent', padding: 0 }}>
             <h2 style={{ fontSize: '20px', margin: '0 0 16px 0' }}>Expert Feed</h2>
-            <p className="dashboard-subtitle">Requests matching the topics you're verified in.</p>
+            <p className="dashboard-subtitle">Requests matching the topics you&apos;re verified in.</p>
 
             {loading && <p className="empty-message">Loading feed...</p>}
             {error && <p className="error-message">Error: {error}</p>}

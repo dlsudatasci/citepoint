@@ -481,32 +481,6 @@ body {
     margin-left: 8px;
 }
 
-#sort-options {
-    appearance: none;
-    background-color: var(--cp-bg-input);
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>');
-    background-repeat: no-repeat;
-    background-position: right 12px center;
-    border: none;
-    border-radius: var(--cp-radius-pill);
-    color: var(--cp-text-primary);
-    cursor: pointer;
-    font-family: var(--cp-font);
-    font-size: 14px;
-    font-weight: 500;
-    padding: 8px 36px 8px 16px;
-    transition: background-color var(--cp-transition);
-}
-
-#sort-options:hover {
-    background-color: var(--cp-bg-input-hover);
-}
-
-#sort-options:focus {
-    outline: none;
-    background-color: rgba(0, 0, 0, 0.1);
-}
-
 /* ── Category Filter ────────────────────────────────── */
 
 .category-filter-container {
@@ -686,7 +660,7 @@ h3 {
     background-color: white;
     border-color: var(--cp-accent);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(6, 95, 212, 0.1);
+    box-shadow: var(--cp-focus-ring);
 }
 
 .form-group textarea {
@@ -713,7 +687,7 @@ h3 {
     background-color: white;
     border-color: var(--cp-accent);
     outline: none;
-    box-shadow: 0 0 0 2px rgba(6, 95, 212, 0.1);
+    box-shadow: var(--cp-focus-ring);
 }
 
 .form-buttons {
@@ -1261,7 +1235,7 @@ h3 {
 .inline-reply-form textarea:focus {
     outline: none;
     border-color: var(--cp-accent, #065fd4);
-    box-shadow: 0 0 0 2px rgba(6, 95, 212, 0.1);
+    box-shadow: var(--cp-focus-ring, 0 0 0 3px rgba(6, 95, 212, 0.12));
 }
 
 .inline-reply-actions {

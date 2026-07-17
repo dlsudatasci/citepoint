@@ -13,6 +13,7 @@ export default function SidebarLeft({ activeView, setActiveView }) {
             <nav className="nav-menu">
                 <button
                     className={`nav-item ${activeView === 'general' ? 'active' : ''}`}
+                    aria-current={activeView === 'general' ? 'page' : undefined}
                     onClick={() => setActiveView('general')}
                 >
                  General Feed
@@ -20,6 +21,7 @@ export default function SidebarLeft({ activeView, setActiveView }) {
 
                 <button
                     className={`nav-item ${activeView === 'discussions' || activeView === 'discussionThread' ? 'active' : ''}`}
+                    aria-current={activeView === 'discussions' || activeView === 'discussionThread' ? 'page' : undefined}
                     onClick={() => setActiveView('discussions')}
                 >
                  Discussions
@@ -27,16 +29,18 @@ export default function SidebarLeft({ activeView, setActiveView }) {
 
                 {/* only render Expert Feed button if they are verified */}
                 {user.isExpert && (
-                    <button 
+                    <button
                         className={`nav-item ${activeView === 'expert' ? 'active' : ''}`}
+                        aria-current={activeView === 'expert' ? 'page' : undefined}
                         onClick={() => setActiveView('expert')}
                     >
                      Expert Feed
                     </button>
                 )}
 
-                <button 
+                <button
                     className={`nav-item ${activeView === 'analytics' ? 'active' : ''}`}
+                    aria-current={activeView === 'analytics' ? 'page' : undefined}
                     onClick={() => setActiveView('analytics')}
                 >
                  Analytics
@@ -46,8 +50,9 @@ export default function SidebarLeft({ activeView, setActiveView }) {
             <div className="sidebar-spacer"></div>
 
             <nav className="nav-menu">
-                <button 
+                <button
                     className={`nav-item ${activeView === 'profile' ? 'active' : ''}`}
+                    aria-current={activeView === 'profile' ? 'page' : undefined}
                     onClick={() => setActiveView('profile')}
                 >
                  {user.username || 'Log In'}

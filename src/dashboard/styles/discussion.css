@@ -274,6 +274,7 @@
 .thread-sort-select:focus {
     outline: none;
     border-color: var(--cp-accent);
+    box-shadow: var(--cp-focus-ring);
 }
 
 .thread-node {

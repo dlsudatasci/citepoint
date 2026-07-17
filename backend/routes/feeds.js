@@ -5,8 +5,10 @@ const Expert = require('../models/Expert');
 // ── GET /api/feeds/general ───────────────────
 router.get('/general', async (req, res) => {
     try {
-        const { topic, page = 1, limit = 20 } = req.query;
-        const skip = (parseInt(page) - 1) * parseInt(limit);
+        const { topic } = req.query;
+        const page  = Math.max(1, parseInt(req.query.page)  || 1);
+        const limit = Math.min(50, parseInt(req.query.limit) || 20);
+        const skip  = (page - 1) * limit;
 
         const pipeline = [
             {
@@ -18,7 +20,7 @@ router.get('/general', async (req, res) => {
                 }
             },
             { $unwind: { path: '$videoDoc', preserveNullAndEmptyArrays: true } },
-            
+
             {
                 $addFields: {
                     video: {
@@ -26,7 +28,7 @@ router.get('/general', async (req, res) => {
                         thumbnailUrl: '$videoDoc.thumbnailUrl',
                         videoId: '$videoId'
                     },
-                    topics: { $ifNull: ['$videoDoc.youtubeTopics', []] } 
+                    topics: { $ifNull: ['$videoDoc.youtubeTopics', []] }
                 }
             }
         ];
@@ -39,11 +41,24 @@ router.get('/general', async (req, res) => {
         }
 
         pipeline.push({ $sort: { voteScore: -1, dateAdded: -1 } });
-        pipeline.push({ $skip: skip }, { $limit: parseInt(limit) });
+        // $facet computes the paginated page and the total match count (needed for
+        // the UI's "load more" button) in a single aggregation call.
+        pipeline.push({
+            $facet: {
+                data:       [{ $skip: skip }, { $limit: limit }],
+                totalCount: [{ $count: 'count' }],
+            },
+        });
 
-        const feed = await Request.aggregate(pipeline);
+        const [result] = await Request.aggregate(pipeline);
+        const feed  = result?.data || [];
+        const total = result?.totalCount?.[0]?.count || 0;
 
-        res.json({ success: true, data: feed });
+        res.json({
+            success: true,
+            data: feed,
+            pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+        });
     } catch (error) {
         res.status(500).json({ success: false, error: error.message });
     }
