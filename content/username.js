@@ -1,13 +1,21 @@
 // ─────────────────────────────────────────────
 // username.js
 // YouTube username/handle detection.
-// On YouTube, cross-checks a cheap DOM read against the
-// cached value on every call, so switching accounts is
-// picked up instead of sticking to whichever handle was
-// cached first. Off YouTube, or before the DOM has
-// hydrated, falls back to the cache, then to a passive
-// DOM wait (observe + poll, no clicks) on first run.
+//
+// On current YouTube builds, the signed-in handle isn't exposed anywhere
+// "passive" (yt.config_.CHANNEL_HANDLE, ytInitialData, and the topbar
+// button's internal data have all been confirmed empty) — it only exists
+// in the DOM while the account-switcher dropdown is open. So detection
+// tries the cheap passive read first (in case that ever changes), then
+// falls back to briefly opening that dropdown, reading the handle, and
+// closing it again — once per fresh page load, not on every call, so
+// switching YouTube accounts and reloading the page picks up the new
+// identity without flashing the menu open on every poll tick.
 // ─────────────────────────────────────────────
+
+// Reset to false on every real page load (content scripts re-initialize
+// fresh) — guards the menu-click fallback so it runs at most once per load.
+let _didActiveHandleCheckThisLoad = false;
 
 /**
  * Attempt to get the signed-in YouTube handle (@username).
@@ -17,23 +25,36 @@
 async function getYouTubeUsername() {
     try {
         const cached = await getCachedUsername();
-
-        // On YouTube, always cross-check the cache against a cheap, synchronous
-        // DOM read — chrome.storage.local survives account switches and browser
-        // restarts, so trusting a cache hit forever means the extension keeps
-        // acting as whichever account it first detected, even after the user
-        // signs into a different one.
         const onYouTube = location.hostname?.includes('youtube.com');
+
         if (onYouTube) {
+            // Cheap, synchronous passive read — cross-checked against the cache
+            // (not trusted blindly) so an account switch is picked up instead of
+            // sticking to whichever handle was cached first. chrome.storage.local
+            // survives account switches and browser restarts, so a cache hit
+            // alone doesn't mean it's still correct.
             const quick = _tryGetHandleFromDOM();
             if (quick) {
                 if (quick !== cached) _cacheUsername(quick);
                 return quick;
             }
+
+            // Active fallback — the passive sources above are confirmed empty on
+            // current YouTube builds, so the only remaining way to read the real
+            // handle is to open the account-switcher dropdown. Runs at most once
+            // per fresh page load (see _didActiveHandleCheckThisLoad above).
+            if (!_didActiveHandleCheckThisLoad) {
+                _didActiveHandleCheckThisLoad = true;
+                const viaMenu = await _tryGetHandleViaMenuClick();
+                if (viaMenu) {
+                    if (viaMenu !== cached) _cacheUsername(viaMenu);
+                    return viaMenu;
+                }
+            }
         }
 
-        // 1. Cache — works on any page (extension pages, or YouTube pages that
-        //    haven't hydrated the handle into the DOM yet).
+        // 1. Cache — works on any page (extension pages, or YouTube pages where
+        //    every detection method above came up empty).
         if (cached) {
             return cached;
         }
@@ -44,8 +65,10 @@ async function getYouTubeUsername() {
             return null;
         }
 
-        // 3. Passive wait — observe the DOM until YouTube hydrates the handle.
-        //    No clicks, no side effects. Gives up after 10s.
+        // 3. Passive wait — observe the DOM in case the handle becomes available
+        //    some other way (e.g., YouTube hydrating late). No clicks. Gives up
+        //    after 10s. Last resort, since the menu-click fallback above already
+        //    covers the case this was originally meant for.
         const observed = await _waitForHandleInDOM(10000);
         if (observed) {
             _cacheUsername(observed);
@@ -159,10 +182,73 @@ function _tryGetHandleFromDOM() {
     return null;
 }
 
+// Buttons that open YouTube's account-switcher dropdown, tried in order.
+const _AVATAR_BUTTON_SELECTORS = [
+    '#avatar-btn',
+    'button[aria-label="Account menu"]',
+    'ytd-topbar-menu-button-renderer button[aria-haspopup="true"]',
+];
+
+// Where the handle actually lives once that dropdown is open.
+const _MENU_HANDLE_SELECTOR = 'yt-formatted-string#channel-handle, ytd-active-account-header-renderer #channel-handle';
+
+function _findAvatarButton() {
+    for (const sel of _AVATAR_BUTTON_SELECTORS) {
+        const el = document.querySelector(sel);
+        if (el) return el;
+    }
+    return null;
+}
+
+function _readMenuHandle() {
+    const el = document.querySelector(_MENU_HANDLE_SELECTOR);
+    return _normalizeHandle(el?.getAttribute('title') || el?.textContent);
+}
+
 /**
- * Open the account menu briefly, observe the DOM for the handle, then close.
- * Resolves in at most 500ms — fast enough that the menu flash is barely noticeable.
- * Only called on first session when cache is empty and DOM detection failed.
+ * Briefly opens YouTube's account-switcher dropdown to read the signed-in
+ * handle (the only place it currently exists in the DOM — see the file
+ * header), then closes it again the same way it was opened. Resolves within
+ * ~2s or null if the button can't be found or the handle never appears.
+ */
+function _tryGetHandleViaMenuClick() {
+    return new Promise(resolve => {
+        // Already open for some other reason (e.g. the user has it open
+        // themselves) — just read it, no need to click anything.
+        const existing = _readMenuHandle();
+        if (existing) { resolve(existing); return; }
+
+        const btn = _findAvatarButton();
+        if (!btn) { resolve(null); return; }
+
+        let settled = false;
+        const finish = (result) => {
+            if (settled) return;
+            settled = true;
+            observer.disconnect();
+            clearTimeout(timeoutId);
+            btn.click(); // close it again
+            resolve(result);
+        };
+
+        const observer = new MutationObserver(() => {
+            const h = _readMenuHandle();
+            if (h) finish(h);
+        });
+        observer.observe(document.body, { childList: true, subtree: true });
+
+        const timeoutId = setTimeout(() => finish(null), 2000);
+
+        btn.click(); // open it
+    });
+}
+
+/**
+ * Passively observe the DOM until YouTube hydrates the handle into one of
+ * the sources _tryGetHandleFromDOM() checks. No clicks, no side effects —
+ * see _tryGetHandleViaMenuClick() for the active fallback that actually
+ * opens the account menu. Kept as a last resort in case a future YouTube
+ * build exposes the handle passively again.
  */
 function _waitForHandleInDOM(timeoutMs) {
     return new Promise(resolve => {
