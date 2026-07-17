@@ -13,6 +13,11 @@ const citationSchema = new mongoose.Schema({
     voteScore:      { type: Number, default: 0 },
     requestId:         { type: String, default: null },
     parentCitationId:  { type: String, default: null },
+    // Denormalized pointer to the top of this citation's reply thread: equal to its own
+    // _id when it's a root citation, or copied from the parent's rootId when it's a
+    // reply. Resolved once at write time so "which thread is this reply in" is O(1)
+    // instead of walking parentCitationId recursively (see buildTree() in discussion.js).
+    rootId:            { type: String, default: null },
     category:         { type: String, enum: ALL_CATEGORIES, default: DEFAULT_CATEGORY },
     categoryVerified: { type: Boolean, default: false },
     topics:           { type: [String], default: [] },
@@ -43,5 +48,12 @@ citationSchema.index({ topics: 1, verifiedBy: 1 });
 
 // Thread index: speeds up nested reply queries.
 citationSchema.index({ parentCitationId: 1, dateAdded: 1 });
+
+// "Threads I've replied in" — used by the My Discussions aggregation to find a user's
+// reply activity without a per-row parentCitationId walk.
+citationSchema.index({ username: 1, rootId: 1 });
+
+// "Latest reply per thread" — used by the My Discussions aggregation's $group.
+citationSchema.index({ rootId: 1, dateAdded: -1 });
 
 module.exports = mongoose.model('Citation', citationSchema);

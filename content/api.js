@@ -145,8 +145,25 @@ async function apiGetDiscussionTree(id) {
     return _send({ type: 'getDiscussionCitationTree', id });
 }
 
+async function apiGetDiscussionRequest(id) {
+    return _send({ type: 'getDiscussionRequest', id });
+}
+
 async function apiAddQuickReply(parentCitationId, description, videoId, username) {
     return _send({ type: 'addQuickReply', parentCitationId, description, videoId, username });
+}
+
+// ── My Discussions (dashboard hub) ──────────
+
+/**
+ * @param {string} username
+ * @param {'all'|'mine'|'requests'|'participated'|'unread'} filter
+ * @param {number} page
+ * @param {string} search
+ */
+async function apiGetMyDiscussions(username, filter = 'all', page = 1, search = '') {
+    const res = await _send({ type: 'getMyDiscussions', username, filter, page, search });
+    return { discussions: res.discussions || [], pagination: res.pagination || null };
 }
 
 // ── SSE ──────────────────────────────────────

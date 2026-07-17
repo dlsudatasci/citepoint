@@ -1,43 +1,164 @@
 /* ══════════════════════════════════════════════
-   CitePoint Discussion Page
+   My Discussions hub + unified Discussion Thread
+   Ported from discussion/discussion.css (retired —
+   the extension's "View discussion" now opens this
+   dashboard module instead of a standalone page).
    ══════════════════════════════════════════════ */
 
-@import url('../styles/components.css');
+/* ── My Discussions: filters + search ──────────────── */
 
-* {
-    box-sizing: border-box;
+.discussions-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cp-space-8);
+    margin-bottom: var(--cp-space-16);
 }
 
-body {
+.discussions-filter-pill {
+    background: var(--cp-bg-active);
+    border: none;
+    border-radius: var(--cp-radius-pill);
+    padding: 6px 14px;
     font-family: var(--cp-font);
-    margin: 0;
-    padding: 0;
-    background-color: var(--cp-bg-page);
-    color: var(--cp-text-primary);
-}
-
-/* ── Layout ─────────────────────────────────────────── */
-
-.discussion-container {
-    max-width: 720px;
-    margin: 0 auto;
-    padding: var(--cp-space-24) var(--cp-space-16);
-}
-
-.discussion-header h1 {
-    font-size: var(--cp-text-2xl);
-    font-weight: var(--cp-weight-semi);
-    color: var(--cp-accent);
-    margin: 0 0 var(--cp-space-20);
-}
-
-.loading {
-    text-align: center;
+    font-size: var(--cp-text-sm);
+    font-weight: var(--cp-weight-medium);
     color: var(--cp-text-secondary);
-    padding: 40px;
+    cursor: pointer;
+    transition: background var(--cp-transition), color var(--cp-transition);
 }
 
-/* ── Original Item Card ─────────────────────────────── */
+.discussions-filter-pill:hover {
+    background: var(--cp-bg-hover);
+}
+
+.discussions-filter-pill.active {
+    background: var(--cp-accent-bg);
+    color: var(--cp-accent);
+}
+
+.discussions-search-input {
+    margin-left: auto;
+    border: 1px solid var(--cp-border-input);
+    border-radius: var(--cp-radius-md);
+    padding: 6px 12px;
+    font-family: var(--cp-font);
+    font-size: var(--cp-text-sm);
+    min-width: 200px;
+}
+
+.discussions-search-input:focus {
+    outline: none;
+    border-color: var(--cp-accent);
+    box-shadow: var(--cp-focus-ring);
+}
+
+.load-more-btn {
+    display: block;
+    margin: var(--cp-space-16) auto 0;
+}
+
+/* ── Discussion Card ────────────────────────────────── */
+
+.discussion-card {
+    display: flex;
+    gap: var(--cp-space-12);
+    background: var(--cp-bg-card);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-lg);
+    padding: var(--cp-space-12) var(--cp-space-16);
+    margin-bottom: var(--cp-space-10);
+}
+
+.discussion-card__thumb {
+    flex-shrink: 0;
+    width: 96px;
+    height: 54px;
+    border-radius: var(--cp-radius-md);
+    object-fit: cover;
+}
+
+.discussion-card__body {
+    flex: 1;
+    min-width: 0;
+}
+
+.discussion-card__title-row {
+    display: flex;
+    align-items: center;
+    gap: var(--cp-space-8);
+}
+
+.discussion-card__title {
+    font-size: var(--cp-text-md);
+    font-weight: var(--cp-weight-semi);
+    margin: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.discussion-card__unread-dot {
+    flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--cp-accent);
+}
+
+.discussion-card__video-title {
+    font-size: var(--cp-text-sm);
+    color: var(--cp-text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.discussion-card__last-reply {
+    font-size: var(--cp-text-sm);
+    color: var(--cp-text-secondary);
+    margin: var(--cp-space-6) 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.discussion-card__last-reply strong {
+    color: var(--cp-text-primary);
+    font-weight: var(--cp-weight-semi);
+}
+
+.discussion-card__meta-row {
+    display: flex;
+    align-items: center;
+    gap: var(--cp-space-10);
+    font-size: var(--cp-text-xs);
+    color: var(--cp-text-tertiary);
+}
+
+.discussion-card__unread-badge {
+    display: inline-block;
+    background: var(--cp-accent);
+    color: var(--cp-text-on-accent);
+    border-radius: var(--cp-radius-pill);
+    padding: 1px 8px;
+    font-size: var(--cp-text-xs);
+    font-weight: var(--cp-weight-semi);
+}
+
+.discussion-card__actions {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--cp-space-6);
+    justify-content: center;
+}
+
+/* ── Discussion Thread ──────────────────────────────── */
+
+.discussion-thread-container {
+    max-width: 720px;
+}
 
 .original-card {
     background: var(--cp-bg-card);
@@ -113,13 +234,6 @@ body {
     text-decoration: underline;
 }
 
-.original-score {
-    font-size: var(--cp-text-md);
-    font-weight: var(--cp-weight-medium);
-    color: var(--cp-success);
-    margin-top: var(--cp-space-8);
-}
-
 .video-link {
     display: inline-block;
     margin-top: var(--cp-space-10);
@@ -133,9 +247,7 @@ body {
     text-decoration: underline;
 }
 
-/* ── Thread Controls ────────────────────────────────── */
-
-#thread-controls {
+.thread-controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -148,7 +260,7 @@ body {
     color: var(--cp-text-primary);
 }
 
-#thread-sort {
+.thread-sort-select {
     padding: 6px 12px;
     border: 1px solid var(--cp-border-input);
     border-radius: var(--cp-radius-md);
@@ -159,12 +271,10 @@ body {
     transition: border-color var(--cp-transition);
 }
 
-#thread-sort:focus {
+.thread-sort-select:focus {
     outline: none;
     border-color: var(--cp-accent);
 }
-
-/* ── Thread Nodes (nesting) ─────────────────────────── */
 
 .thread-node {
     position: relative;
@@ -180,15 +290,9 @@ body {
     border-left-color: var(--cp-accent);
 }
 
-.thread-children {
-    margin-top: 0;
-}
-
 .thread-collapsed {
     display: none;
 }
-
-/* ── Thread Items ───────────────────────────────────── */
 
 .thread-item {
     background: var(--cp-bg-card);
@@ -240,19 +344,6 @@ body {
     line-height: var(--cp-leading-normal);
     margin: 0 0 var(--cp-space-6);
 }
-
-.thread-category {
-    display: inline-block;
-    font-size: var(--cp-text-xs);
-    font-weight: var(--cp-weight-medium);
-    padding: 2px 8px;
-    border-radius: var(--cp-radius-pill);
-    background: var(--cp-bg-active);
-    color: var(--cp-text-secondary);
-    margin-right: var(--cp-space-8);
-}
-
-/* ── Vote Controls ──────────────────────────────────── */
 
 .vote-controls {
     display: inline-flex;
@@ -308,8 +399,6 @@ body {
     margin-top: var(--cp-space-8);
 }
 
-/* ── Thread Item Actions ───────────────────────────── */
-
 .thread-item-actions {
     display: flex;
     align-items: center;
@@ -344,8 +433,6 @@ body {
     color: var(--cp-error);
 }
 
-/* ── Collapse Toggle ───────────────────────────────── */
-
 .thread-collapse-btn {
     background: none;
     border: none;
@@ -360,8 +447,6 @@ body {
 .thread-collapse-btn:hover {
     color: var(--cp-accent);
 }
-
-/* ── Inline Reply Form ─────────────────────────────── */
 
 .thread-reply-form {
     margin: var(--cp-space-8) 0 var(--cp-space-12);
@@ -400,47 +485,6 @@ body {
     margin-top: var(--cp-space-6);
 }
 
-.reply-submit-btn {
-    background: var(--cp-accent);
-    color: var(--cp-text-on-accent);
-    border: none;
-    border-radius: var(--cp-radius-pill);
-    padding: 6px 16px;
-    font-family: var(--cp-font);
-    font-size: var(--cp-text-base);
-    font-weight: var(--cp-weight-medium);
-    cursor: pointer;
-    transition: background var(--cp-transition);
-}
-
-.reply-submit-btn:hover {
-    background: var(--cp-accent-hover);
-}
-
-.reply-submit-btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-.reply-cancel-btn {
-    background: none;
-    border: 1px solid var(--cp-border-input);
-    border-radius: var(--cp-radius-pill);
-    padding: 6px 16px;
-    font-family: var(--cp-font);
-    font-size: var(--cp-text-base);
-    font-weight: var(--cp-weight-medium);
-    color: var(--cp-text-secondary);
-    cursor: pointer;
-    transition: background var(--cp-transition);
-}
-
-.reply-cancel-btn:hover {
-    background: var(--cp-bg-hover);
-}
-
-/* ── Continue Thread Link ──────────────────────────── */
-
 .thread-continue-link {
     display: block;
     font-size: var(--cp-text-sm);
@@ -449,28 +493,41 @@ body {
     text-decoration: none;
     padding: var(--cp-space-8) 0 var(--cp-space-4);
     margin-left: 36px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-family: var(--cp-font);
+    text-align: left;
+}
+
+.loading {
+    text-align: center;
+    color: var(--cp-text-secondary);
+    padding: 40px;
 }
 
 .thread-continue-link:hover {
     text-decoration: underline;
 }
 
-/* ── Empty State ────────────────────────────────────── */
-
-.empty-message {
-    text-align: center;
+.thread-back-link {
+    display: inline-block;
+    font-size: var(--cp-text-sm);
+    font-weight: var(--cp-weight-medium);
     color: var(--cp-text-secondary);
-    padding: 30px;
-    font-size: var(--cp-text-md);
+    text-decoration: none;
+    margin-bottom: var(--cp-space-16);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
 }
 
-/* ── Responsive ─────────────────────────────────────── */
+.thread-back-link:hover {
+    color: var(--cp-accent);
+}
 
 @media (max-width: 600px) {
-    .discussion-container {
-        padding: var(--cp-space-16) var(--cp-space-12);
-    }
-
     .original-card {
         padding: var(--cp-space-16);
     }
@@ -495,5 +552,14 @@ body {
 
     .thread-continue-link {
         margin-left: 22px;
+    }
+
+    .discussion-card {
+        flex-direction: column;
+    }
+
+    .discussion-card__thumb {
+        width: 100%;
+        height: auto;
     }
 }

@@ -1,11 +1,13 @@
 const router      = require('express').Router();
 const Citation    = require('../models/Citation');
+const Request     = require('../models/Request');
 const sseEmitter  = require('../lib/sseEmitter');
 const { ALL_CATEGORIES, DEFAULT_CATEGORY, TOPICS } = require('../config/constants');
 const { isExpert } = require('../config/experts');
 const { notifyExpertsForCategory } = require('../lib/notifyExperts');
 const { applyVote } = require('../lib/voting');
 const { isValidVideoId, isValidTimestamp, isSafeSourceUrl } = require('../lib/validators');
+const { resolveRootId, notifyOnReply } = require('../lib/threads');
 
 // ── Validation helpers ────────────────────────
 
@@ -82,7 +84,7 @@ router.post('/:videoId', async (req, res) => {
     }
 
     try {
-        const { citationTitle, username, timestampStart, timestampEnd, description, source, category } = req.body;
+        const { citationTitle, username, timestampStart, timestampEnd, description, source, category, parentCitationId, requestId } = req.body;
 
         if (!citationTitle || !username) {
             return res.status(400).json({ success: false, error: 'citationTitle and username are required' });
@@ -106,7 +108,26 @@ router.post('/:videoId', async (req, res) => {
             return res.status(400).json({ success: false, error: 'Invalid category' });
         }
 
-        const citation = await Citation.create({
+        // Reply-to-citation and respond-to-request are mutually exclusive (see
+        // content/forms.js's respondWithCitation) — resolve whichever parent is present
+        // so we can both notify its author and inherit/compute the thread's rootId.
+        let parentCitation = null;
+        if (parentCitationId) {
+            parentCitation = await Citation.findById(parentCitationId).lean();
+            if (!parentCitation) {
+                return res.status(404).json({ success: false, error: 'Parent citation not found' });
+            }
+        }
+
+        let parentRequest = null;
+        if (requestId) {
+            parentRequest = await Request.findById(requestId).lean();
+            if (!parentRequest) {
+                return res.status(404).json({ success: false, error: 'Request not found' });
+            }
+        }
+
+        const citation = new Citation({
             ...req.body,
             videoId:   req.params.videoId,
             dateAdded: new Date(),  // server-authoritative
@@ -116,6 +137,8 @@ router.post('/:videoId', async (req, res) => {
             verifiedBy: null,
             verifiedAt: null,
         });
+        citation.rootId = parentCitation ? await resolveRootId(parentCitation) : citation._id.toString();
+        await citation.save();
 
         sseEmitter.emit(req.params.videoId, {
             type:       'citationAdded',
@@ -130,6 +153,30 @@ router.post('/:videoId', async (req, res) => {
             title: citation.citationTitle,
             excludeUsername: citation.username,
         });
+
+        if (parentCitation) {
+            await notifyOnReply({
+                toUsername:   parentCitation.username,
+                fromUsername: username,
+                itemId:       citation._id.toString(),
+                itemType:     'citation',
+                rootItemId:   citation.rootId,
+                rootItemType: 'citation',
+                videoId:      req.params.videoId,
+                title:        parentCitation.citationTitle,
+            });
+        } else if (parentRequest) {
+            await notifyOnReply({
+                toUsername:   parentRequest.username,
+                fromUsername: username,
+                itemId:       citation._id.toString(),
+                itemType:     'citation',
+                rootItemId:   requestId,
+                rootItemType: 'request',
+                videoId:      req.params.videoId,
+                title:        parentRequest.title,
+            });
+        }
 
         res.status(201).json({ success: true, id: citation._id });
     } catch (err) {

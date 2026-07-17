@@ -52,8 +52,7 @@
         }
     ],
     "background": {
-        "service_worker": "background/background.js",
-        "scripts": ["background/background.js"]
+        "service_worker": "background/background.js"
     },
     "web_accessible_resources": [{
         "resources": [
@@ -69,9 +68,6 @@
             "dashboard/dashboard.css",
             "dashboard/dist/dashboard.bundle.js",
             "dashboard/dist/dashboard.bundle.css",
-            "discussion/discussion.html",
-            "discussion/discussion.js",
-            "discussion/discussion.css",
             "content/username.js",
             "utils/utils.js"
         ],

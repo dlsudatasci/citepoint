@@ -707,7 +707,7 @@ async function createRequestResponseGroupElement(request, responseCitations, vot
         : `View discussion`;
     discussionLink.addEventListener('click', e => {
         e.preventDefault();
-        const url = chrome.runtime.getURL(`discussion/discussion.html?type=request&id=${request.id || request._id}`);
+        const url = chrome.runtime.getURL(`dashboard/dashboard.html?view=discussion&type=request&id=${request.id || request._id}`);
         window.open(url, '_blank');
     });
     responsesContainer.appendChild(discussionLink);
@@ -850,7 +850,7 @@ async function createCitationReplyGroupElement(parentCitation, replies, votes, c
         : `View discussion`;
     discussionLink.addEventListener('click', e => {
         e.preventDefault();
-        const url = chrome.runtime.getURL(`discussion/discussion.html?type=citation&id=${parentCitation.id || parentCitation._id}`);
+        const url = chrome.runtime.getURL(`dashboard/dashboard.html?view=discussion&type=citation&id=${parentCitation.id || parentCitation._id}`);
         window.open(url, '_blank');
     });
     responsesContainer.appendChild(discussionLink);

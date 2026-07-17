@@ -11,11 +11,18 @@ export default function SidebarLeft({ activeView, setActiveView }) {
             </div>
             
             <nav className="nav-menu">
-                <button 
+                <button
                     className={`nav-item ${activeView === 'general' ? 'active' : ''}`}
                     onClick={() => setActiveView('general')}
                 >
                  General Feed
+                </button>
+
+                <button
+                    className={`nav-item ${activeView === 'discussions' || activeView === 'discussionThread' ? 'active' : ''}`}
+                    onClick={() => setActiveView('discussions')}
+                >
+                 Discussions
                 </button>
 
                 {/* only render Expert Feed button if they are verified */}

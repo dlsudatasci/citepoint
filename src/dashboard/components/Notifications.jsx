@@ -6,9 +6,10 @@ const ICONS = {
     new_request: '❓',
     application_approved: '✅',
     application_rejected: '❌',
+    reply: '💬',
 };
 
-export default function Notifications() {
+export default function Notifications({ onOpenDiscussion }) {
     const { user } = useContext(UserContext);
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
@@ -79,7 +80,12 @@ export default function Notifications() {
                         <div
                             key={n._id}
                             className={`notif-item ${n.read ? '' : 'unread'}`}
-                            onClick={() => !n.read && markRead(n._id)}
+                            onClick={() => {
+                                if (!n.read) markRead(n._id);
+                                if (n.type === 'reply' && n.rootItemId && n.rootItemType && onOpenDiscussion) {
+                                    onOpenDiscussion(n.rootItemType, n.rootItemId);
+                                }
+                            }}
                         >
                             <span className="notif-icon">{ICONS[n.type] || '❌'}</span>
                             <div className="notif-body">
