@@ -31,6 +31,13 @@ function trimReply(reply) {
 // count in a constant number of aggregation queries — regardless of how many threads
 // the user is in. See backend/models/Citation.js's rootId field and
 // backend/lib/threads.js for how rootId is populated at write time.
+//
+// No ownership check on `username` is intentional, not an oversight: it's the same
+// trust model as GET /api/notifications/:username and GET /api/profile/:username —
+// there's no real authentication anywhere in this app (a username is a free-text
+// client-supplied claim, tracked under issue #72), so gating this one read endpoint
+// wouldn't close any actual risk while every sibling read endpoint stays open.
+// Revisit together if/when #72 lands real auth.
 router.get('/mine', async (req, res) => {
     try {
         const username = req.query.username;

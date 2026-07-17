@@ -82,4 +82,7 @@ app.get('/health', (req, res) => {
     res.json({ status: 'ok', sseClients: clientCount() });
 });
 
+// Must be mounted last — Express recognizes an error handler by its 4-arg signature.
+app.use(require('./middleware/errorHandler'));
+
 module.exports = app;

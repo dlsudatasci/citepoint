@@ -67,11 +67,14 @@ router.put('/:username', async (req, res) => {
         const profile = await UserProfile.findOneAndUpdate(
             { username: req.params.username },
             { displayName, bio, followedTopics },
-            { upsert: true, new: true }
+            { upsert: true, new: true, runValidators: true, context: 'query' }
         );
 
         res.json({ success: true, profile });
     } catch (err) {
+        if (err.name === 'ValidationError') {
+            return res.status(400).json({ success: false, error: err.message });
+        }
         res.status(500).json({ success: false, error: err.message });
     }
 });

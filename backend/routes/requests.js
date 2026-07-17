@@ -6,6 +6,7 @@ const { isExpert } = require('../config/experts');
 const { notifyExpertsForCategory } = require('../lib/notifyExperts');
 const { applyVote } = require('../lib/voting');
 const { isValidVideoId, isValidTimestamp } = require('../lib/validators');
+const asyncHandler = require('../middleware/asyncHandler');
 
 // ── Validation helpers ────────────────────────
 
@@ -13,276 +14,248 @@ const MAX_TITLE_LEN  = 500;
 const MAX_REASON_LEN = 5000;
 
 // GET /api/requests/:videoId
-router.get('/:videoId', async (req, res) => {
+router.get('/:videoId', asyncHandler(async (req, res) => {
     if (!isValidVideoId(req.params.videoId)) {
         return res.status(400).json({ success: false, error: 'Invalid videoId' });
     }
 
-    try {
-        const page  = Math.max(1, parseInt(req.query.page)  || 1);
-        const limit = Math.min(50, parseInt(req.query.limit) || 20);
-        const skip  = (page - 1) * limit;
+    const page  = Math.max(1, parseInt(req.query.page)  || 1);
+    const limit = Math.min(50, parseInt(req.query.limit) || 20);
+    const skip  = (page - 1) * limit;
 
-        const filter = { videoId: req.params.videoId };
-        if (req.query.category) {
-            if (!ALL_CATEGORIES.includes(req.query.category)) {
-                return res.status(400).json({ success: false, error: 'Invalid category' });
-            }
-            filter.category = req.query.category;
+    const filter = { videoId: req.params.videoId };
+    if (req.query.category) {
+        if (!ALL_CATEGORIES.includes(req.query.category)) {
+            return res.status(400).json({ success: false, error: 'Invalid category' });
         }
-
-        const [requests, total] = await Promise.all([
-            Request.find(filter)
-                .sort({ dateAdded: -1 })
-                .skip(skip)
-                .limit(limit)
-                .lean(),
-            Request.countDocuments(filter),
-        ]);
-
-        res.set('Cache-Control', 'no-store');
-        res.json({
-            success: true,
-            requests,
-            pagination: { page, limit, total, pages: Math.ceil(total / limit) },
-        });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+        filter.category = req.query.category;
     }
-});
+
+    const [requests, total] = await Promise.all([
+        Request.find(filter)
+            .sort({ dateAdded: -1 })
+            .skip(skip)
+            .limit(limit)
+            .lean(),
+        Request.countDocuments(filter),
+    ]);
+
+    res.set('Cache-Control', 'no-store');
+    res.json({
+        success: true,
+        requests,
+        pagination: { page, limit, total, pages: Math.ceil(total / limit) },
+    });
+}));
 
 // GET /api/requests/:videoId/by-ids?ids=id1,id2,id3
 // ─── IMPORTANT: must be defined BEFORE /:videoId/:id ───────────────────────
-router.get('/:videoId/by-ids', async (req, res) => {
+router.get('/:videoId/by-ids', asyncHandler(async (req, res) => {
     if (!isValidVideoId(req.params.videoId)) {
         return res.status(400).json({ success: false, error: 'Invalid videoId' });
     }
 
-    try {
-        const raw = (req.query.ids || '').split(',').map(s => s.trim()).filter(Boolean);
-        if (raw.length === 0) {
-            return res.json({ success: true, requests: [] });
-        }
-
-        const ids = [...new Set(raw)].slice(0, 50);
-
-        const requests = await Request.find({
-            videoId: req.params.videoId,
-            _id:     { $in: ids },
-        }).lean();
-
-        res.set('Cache-Control', 'no-store');
-        res.json({ success: true, requests });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+    const raw = (req.query.ids || '').split(',').map(s => s.trim()).filter(Boolean);
+    if (raw.length === 0) {
+        return res.json({ success: true, requests: [] });
     }
-});
+
+    const ids = [...new Set(raw)].slice(0, 50);
+
+    const requests = await Request.find({
+        videoId: req.params.videoId,
+        _id:     { $in: ids },
+    }).lean();
+
+    res.set('Cache-Control', 'no-store');
+    res.json({ success: true, requests });
+}));
 
 // GET /api/requests/:videoId/:id  — single-item detail
-router.get('/:videoId/:id', async (req, res) => {
+router.get('/:videoId/:id', asyncHandler(async (req, res) => {
     if (!isValidVideoId(req.params.videoId)) {
         return res.status(400).json({ success: false, error: 'Invalid videoId' });
     }
 
-    try {
-        const request = await Request.findOne({
-            _id:     req.params.id,
-            videoId: req.params.videoId,
-        }).lean();
+    const request = await Request.findOne({
+        _id:     req.params.id,
+        videoId: req.params.videoId,
+    }).lean();
 
-        if (!request) {
-            return res.status(404).json({ success: false, error: 'Request not found' });
-        }
-
-        res.set('Cache-Control', 'no-store');
-        res.json({ success: true, request });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+    if (!request) {
+        return res.status(404).json({ success: false, error: 'Request not found' });
     }
-});
+
+    res.set('Cache-Control', 'no-store');
+    res.json({ success: true, request });
+}));
 
 // POST /api/requests/:videoId
-router.post('/:videoId', async (req, res) => {
+router.post('/:videoId', asyncHandler(async (req, res) => {
     if (!isValidVideoId(req.params.videoId)) {
         return res.status(400).json({ success: false, error: 'Invalid videoId' });
     }
 
-    try {
-        const { title, username, timestampStart, timestampEnd, reason, category } = req.body;
+    const { title, username, timestampStart, timestampEnd, reason, category } = req.body;
 
-        if (!title || !username) {
-            return res.status(400).json({ success: false, error: 'title and username are required' });
-        }
-        if (typeof title === 'string' && title.length > MAX_TITLE_LEN) {
-            return res.status(400).json({ success: false, error: `title must be at most ${MAX_TITLE_LEN} characters` });
-        }
-        if (!isValidTimestamp(timestampStart) || !isValidTimestamp(timestampEnd)) {
-            return res.status(400).json({ success: false, error: 'Timestamps must be in HH:MM or HH:MM:SS format' });
-        }
-        if (reason && reason.length > MAX_REASON_LEN) {
-            return res.status(400).json({ success: false, error: `reason must be at most ${MAX_REASON_LEN} characters` });
-        }
-        if (category && !ALL_CATEGORIES.includes(category)) {
-            return res.status(400).json({ success: false, error: 'Invalid category' });
-        }
-
-        const request = await Request.create({
-            ...req.body,
-            videoId:   req.params.videoId,
-            dateAdded: new Date(),  // server-authoritative
-            voteScore: 0,           // always start at zero
-            category:  category || DEFAULT_CATEGORY,
-            categoryVerified: false,
-            verifiedBy: null,
-            verifiedAt: null,
-        });
-
-        sseEmitter.emit(req.params.videoId, {
-            type:      'requestAdded',
-            videoId:   req.params.videoId,
-            requestId: request._id.toString(),
-        });
-
-        notifyExpertsForCategory(request.category, {
-            videoId: req.params.videoId,
-            itemId: request._id.toString(),
-            itemType: 'request',
-            title: request.title,
-            excludeUsername: request.username,
-        });
-
-        res.status(201).json({ success: true, id: request._id });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+    if (!title || !username) {
+        return res.status(400).json({ success: false, error: 'title and username are required' });
     }
-});
+    if (typeof title === 'string' && title.length > MAX_TITLE_LEN) {
+        return res.status(400).json({ success: false, error: `title must be at most ${MAX_TITLE_LEN} characters` });
+    }
+    if (!isValidTimestamp(timestampStart) || !isValidTimestamp(timestampEnd)) {
+        return res.status(400).json({ success: false, error: 'Timestamps must be in HH:MM or HH:MM:SS format' });
+    }
+    if (reason && reason.length > MAX_REASON_LEN) {
+        return res.status(400).json({ success: false, error: `reason must be at most ${MAX_REASON_LEN} characters` });
+    }
+    if (category && !ALL_CATEGORIES.includes(category)) {
+        return res.status(400).json({ success: false, error: 'Invalid category' });
+    }
+
+    const request = await Request.create({
+        ...req.body,
+        videoId:   req.params.videoId,
+        dateAdded: new Date(),  // server-authoritative
+        voteScore: 0,           // always start at zero
+        category:  category || DEFAULT_CATEGORY,
+        categoryVerified: false,
+        verifiedBy: null,
+        verifiedAt: null,
+    });
+
+    sseEmitter.emit(req.params.videoId, {
+        type:      'requestAdded',
+        videoId:   req.params.videoId,
+        requestId: request._id.toString(),
+    });
+
+    notifyExpertsForCategory(request.category, {
+        videoId: req.params.videoId,
+        itemId: request._id.toString(),
+        itemType: 'request',
+        title: request.title,
+        excludeUsername: request.username,
+    });
+
+    res.status(201).json({ success: true, id: request._id });
+}));
 
 // DELETE /api/requests/:videoId/:id  — body: { username }
-router.delete('/:videoId/:id', async (req, res) => {
+router.delete('/:videoId/:id', asyncHandler(async (req, res) => {
     if (!isValidVideoId(req.params.videoId)) {
         return res.status(400).json({ success: false, error: 'Invalid videoId' });
     }
 
-    try {
-        const { username } = req.body;
-        if (!username) {
-            return res.status(400).json({ success: false, error: 'username is required' });
-        }
-
-        const result = await Request.findOneAndDelete({
-            _id:     req.params.id,
-            videoId: req.params.videoId,
-            username: { $regex: new RegExp(`^@?${username.replace(/^@/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
-        });
-
-        if (!result) {
-            return res.status(403).json({ success: false, error: 'Not found or permission denied' });
-        }
-
-        sseEmitter.emit(req.params.videoId, {
-            type:      'requestDeleted',
-            videoId:   req.params.videoId,
-            requestId: req.params.id,
-        });
-
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+    const { username } = req.body;
+    if (!username) {
+        return res.status(400).json({ success: false, error: 'username is required' });
     }
-});
+
+    const result = await Request.findOneAndDelete({
+        _id:     req.params.id,
+        videoId: req.params.videoId,
+        username: { $regex: new RegExp(`^@?${username.replace(/^@/, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') },
+    });
+
+    if (!result) {
+        return res.status(403).json({ success: false, error: 'Not found or permission denied' });
+    }
+
+    sseEmitter.emit(req.params.videoId, {
+        type:      'requestDeleted',
+        videoId:   req.params.videoId,
+        requestId: req.params.id,
+    });
+
+    res.json({ success: true });
+}));
 
 // PATCH /api/requests/:videoId/:id/vote  — body: { delta: number }
-router.patch('/:videoId/:id/vote', async (req, res) => {
+router.patch('/:videoId/:id/vote', asyncHandler(async (req, res) => {
     if (!isValidVideoId(req.params.videoId)) {
         return res.status(400).json({ success: false, error: 'Invalid videoId' });
     }
 
-    try {
-        const delta = Number(req.body.delta);
-        if (![-2, -1, 1, 2].includes(delta)) {
-            return res.status(400).json({ success: false, error: 'delta must be -2, -1, 1, or 2' });
-        }
-        const { username } = req.body;
-        if (!username) {
-            return res.status(400).json({ success: false, error: 'username is required' });
-        }
-
-        const exists = await Request.exists({ _id: req.params.id, videoId: req.params.videoId });
-        if (!exists) return res.status(404).json({ success: false, error: 'Request not found' });
-
-        await applyVote(req.params.id, 'request', username, delta);
-
-        const request = await Request.findOneAndUpdate(
-            { _id: req.params.id, videoId: req.params.videoId },
-            { $inc: { voteScore: delta } },
-            { new: true }
-        );
-
-        sseEmitter.emit(req.params.videoId, {
-            type:      'requestVoteUpdated',
-            videoId:   req.params.videoId,
-            requestId: req.params.id,
-            voteScore: request.voteScore,
-        });
-
-        res.json({ success: true, newScore: request.voteScore });
-    } catch (err) {
-        res.status(err.status || 500).json({ success: false, error: err.message });
+    const delta = Number(req.body.delta);
+    if (![-2, -1, 1, 2].includes(delta)) {
+        return res.status(400).json({ success: false, error: 'delta must be -2, -1, 1, or 2' });
     }
-});
+    const { username } = req.body;
+    if (!username) {
+        return res.status(400).json({ success: false, error: 'username is required' });
+    }
+
+    const exists = await Request.exists({ _id: req.params.id, videoId: req.params.videoId });
+    if (!exists) return res.status(404).json({ success: false, error: 'Request not found' });
+
+    await applyVote(req.params.id, 'request', username, delta);
+
+    const request = await Request.findOneAndUpdate(
+        { _id: req.params.id, videoId: req.params.videoId },
+        { $inc: { voteScore: delta } },
+        { new: true }
+    );
+
+    sseEmitter.emit(req.params.videoId, {
+        type:      'requestVoteUpdated',
+        videoId:   req.params.videoId,
+        requestId: req.params.id,
+        voteScore: request.voteScore,
+    });
+
+    res.json({ success: true, newScore: request.voteScore });
+}));
 
 // PATCH /api/requests/:videoId/:id/category  — body: { category, username }
-router.patch('/:videoId/:id/category', async (req, res) => {
+router.patch('/:videoId/:id/category', asyncHandler(async (req, res) => {
     if (!isValidVideoId(req.params.videoId)) {
         return res.status(400).json({ success: false, error: 'Invalid videoId' });
     }
 
-    try {
-        const { category, username } = req.body;
-        if (!category || !username) {
-            return res.status(400).json({ success: false, error: 'category and username are required' });
-        }
-        if (!ALL_CATEGORIES.includes(category)) {
-            return res.status(400).json({ success: false, error: 'Invalid category' });
-        }
-
-        const request = await Request.findOne({ _id: req.params.id, videoId: req.params.videoId });
-        if (!request) return res.status(404).json({ success: false, error: 'Request not found' });
-
-        const expert = isExpert(username);
-        if (request.categoryVerified && !expert) {
-            return res.status(403).json({ success: false, error: 'Only experts can change a verified category' });
-        }
-
-        request.category = category;
-        if (expert) {
-            request.categoryVerified = true;
-            request.verifiedBy = username;
-            request.verifiedAt = new Date();
-        } else {
-            request.categoryVerified = false;
-            request.verifiedBy = null;
-            request.verifiedAt = null;
-        }
-        await request.save();
-
-        sseEmitter.emit(req.params.videoId, {
-            type:             'requestCategoryUpdated',
-            videoId:          req.params.videoId,
-            requestId:        req.params.id,
-            category:         request.category,
-            categoryVerified: request.categoryVerified,
-        });
-
-        res.json({
-            success: true,
-            category: request.category,
-            categoryVerified: request.categoryVerified,
-            verifiedBy: request.verifiedBy,
-        });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+    const { category, username } = req.body;
+    if (!category || !username) {
+        return res.status(400).json({ success: false, error: 'category and username are required' });
     }
-});
+    if (!ALL_CATEGORIES.includes(category)) {
+        return res.status(400).json({ success: false, error: 'Invalid category' });
+    }
+
+    const request = await Request.findOne({ _id: req.params.id, videoId: req.params.videoId });
+    if (!request) return res.status(404).json({ success: false, error: 'Request not found' });
+
+    const expert = isExpert(username);
+    if (request.categoryVerified && !expert) {
+        return res.status(403).json({ success: false, error: 'Only experts can change a verified category' });
+    }
+
+    request.category = category;
+    if (expert) {
+        request.categoryVerified = true;
+        request.verifiedBy = username;
+        request.verifiedAt = new Date();
+    } else {
+        request.categoryVerified = false;
+        request.verifiedBy = null;
+        request.verifiedAt = null;
+    }
+    await request.save();
+
+    sseEmitter.emit(req.params.videoId, {
+        type:             'requestCategoryUpdated',
+        videoId:          req.params.videoId,
+        requestId:        req.params.id,
+        category:         request.category,
+        categoryVerified: request.categoryVerified,
+    });
+
+    res.json({
+        success: true,
+        category: request.category,
+        categoryVerified: request.categoryVerified,
+        verifiedBy: request.verifiedBy,
+    });
+}));
 
 module.exports = router;
