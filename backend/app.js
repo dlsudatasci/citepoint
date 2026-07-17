@@ -61,20 +61,31 @@ const mutationLimiter = rateLimit({
     message:         { success: false, error: 'Too many requests — please slow down.' },
 });
 
+// mutationLimiter is mounted on the whole router below, but a router mount applies
+// to every method on that path — without this guard, GET/HEAD/OPTIONS requests (list
+// views, detail lookups) would count against the tighter 120/15min write budget
+// instead of just the 400/15min general one every request already gets.
+function writesOnly(limiter) {
+    return (req, res, next) => {
+        if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return next();
+        return limiter(req, res, next);
+    };
+}
+
 app.use(generalLimiter);
 
 // ── Routes ────────────────────────────────────
-app.use('/api/citations', mutationLimiter, require('./routes/citations'));
-app.use('/api/requests',  mutationLimiter, require('./routes/requests'));
-app.use('/api/reports',   mutationLimiter, require('./routes/reports'));
+app.use('/api/citations', writesOnly(mutationLimiter), require('./routes/citations'));
+app.use('/api/requests',  writesOnly(mutationLimiter), require('./routes/requests'));
+app.use('/api/reports',   writesOnly(mutationLimiter), require('./routes/reports'));
 app.use('/api/events',    require('./routes/events'));
-app.use('/api/experts',   mutationLimiter, require('./routes/experts'));
-app.use('/api/profile',   mutationLimiter, require('./routes/profile'));
+app.use('/api/experts',   writesOnly(mutationLimiter), require('./routes/experts'));
+app.use('/api/profile',   writesOnly(mutationLimiter), require('./routes/profile'));
 app.use('/api/notifications', require('./routes/notifications'));
-app.use('/api/discussion',    mutationLimiter, require('./routes/discussion'));
+app.use('/api/discussion',    writesOnly(mutationLimiter), require('./routes/discussion'));
 app.use('/api/discussions',   require('./routes/discussions'));
 app.use('/api/dashboard', require('./routes/dashboard'));
-app.use('/api/videos', mutationLimiter, require('./routes/videos'));
+app.use('/api/videos', writesOnly(mutationLimiter), require('./routes/videos'));
 app.use('/api/feeds', require('./routes/feeds'));
 
 app.get('/health', (req, res) => {

@@ -1068,21 +1068,11 @@ h3 {
     gap: 4px;
 }
 
+/* Base .vote-btn reset (background/border/radius/color/cursor/transition/display)
+   and :hover come from styles/components.css, loaded earlier in manifest.json's
+   content_scripts.css array — only the panel-specific padding lives here. */
 .vote-btn {
-    background: none;
-    border: none;
-    border-radius: var(--cp-radius-pill);
-    color: var(--cp-text-secondary);
-    cursor: pointer;
     padding: 6px 8px;
-    transition: all var(--cp-transition);
-    display: flex;
-    align-items: center;
-}
-
-.vote-btn:hover {
-    background-color: var(--cp-bg-hover);
-    color: var(--cp-text-primary);
 }
 
 .vote-btn.active {

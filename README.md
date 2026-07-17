@@ -97,7 +97,7 @@ Treat this as the single most important constraint when evaluating this project 
 | `src/dashboard/` | React dashboard source (Vite) |
 | `discussion/` | Extension page for nested threaded discussion + voting |
 | `forms/` | Standalone HTML forms for adding a citation/request |
-| `config/config.js` | Shared category/topic list (its `API_BASE_URL` constant is legacy/unused — see Architecture) |
+| `config/config.js` | Shared category/topic list and category badge colors |
 | `utils/utils.js` | Shared DOM helpers: `showToast`, `showConfirm`, `escapeHtml` |
 | `lib/browser-polyfill.js` | Mozilla's `webextension-polyfill` |
 | `styles/` | `tokens.css` (design tokens), `components.css` (shared `cp-*` component classes), `extension.css` (panel-specific styles) |

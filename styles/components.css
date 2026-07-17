@@ -347,3 +347,25 @@
     text-align: center;
     padding: var(--cp-space-16) 0;
 }
+
+/* ── Vote button base ─────────────────────────────────
+   Shared reset between the YouTube panel (styles/extension.css) and the
+   dashboard thread view (src/dashboard/styles/discussion.css) — this file loads
+   before both, so each only needs to declare its own padding/gap/font-size and
+   active-state coloring on top of this instead of redeclaring the whole reset. */
+
+.vote-btn {
+    background: none;
+    border: none;
+    border-radius: var(--cp-radius-pill);
+    color: var(--cp-text-secondary);
+    cursor: pointer;
+    transition: all var(--cp-transition);
+    display: flex;
+    align-items: center;
+}
+
+.vote-btn:hover {
+    background: var(--cp-bg-hover);
+    color: var(--cp-text-primary);
+}

@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/categories');
+const { ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/constants');
 
 const citationSchema = new mongoose.Schema({
     videoId:        { type: String, required: true },

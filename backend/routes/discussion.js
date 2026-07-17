@@ -1,7 +1,7 @@
 const router   = require('express').Router();
 const Citation = require('../models/Citation');
 const Request  = require('../models/Request');
-const { ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/categories');
+const { ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/constants');
 const sseEmitter = require('../lib/sseEmitter');
 const { resolveRootId, notifyOnReply } = require('../lib/threads');
 const asyncHandler = require('../middleware/asyncHandler');
@@ -9,16 +9,34 @@ const asyncHandler = require('../middleware/asyncHandler');
 const MAX_TREE_DEPTH = 6;
 const MAX_DESC_LEN   = 5000;
 
-async function buildTree(rootId, maxDepth = MAX_TREE_DEPTH, currentDepth = 0) {
-    if (currentDepth >= maxDepth) return [];
-    const children = await Citation.find({ parentCitationId: rootId })
+// Fetches the entire reply thread in a single query — every node in a thread shares
+// the same rootId (see backend/models/Citation.js) — then assembles the subtree
+// descending from `citation` in memory, instead of one DB round trip per tree node
+// (previously up to MAX_TREE_DEPTH round trips deep).
+async function buildTree(citation, maxDepth = MAX_TREE_DEPTH) {
+    const threadRootId = citation.rootId || citation._id.toString();
+    const nodes = await Citation.find({ rootId: threadRootId })
         .sort({ dateAdded: 1 })
         .lean();
-    for (const child of children) {
-        child.id = child._id.toString();
-        child.children = await buildTree(child._id.toString(), maxDepth, currentDepth + 1);
+
+    const childrenByParent = new Map();
+    for (const node of nodes) {
+        node.id = node._id.toString();
+        if (!node.parentCitationId) continue;
+        if (!childrenByParent.has(node.parentCitationId)) {
+            childrenByParent.set(node.parentCitationId, []);
+        }
+        childrenByParent.get(node.parentCitationId).push(node);
     }
-    return children;
+
+    function attach(nodeId, depth) {
+        if (depth >= maxDepth) return [];
+        const kids = childrenByParent.get(nodeId) || [];
+        kids.forEach(kid => { kid.children = attach(kid.id, depth + 1); });
+        return kids;
+    }
+
+    return attach(citation._id.toString(), 0);
 }
 
 // GET /api/discussion/citation/:id — thread for a citation
@@ -30,7 +48,7 @@ router.get('/citation/:id', asyncHandler(async (req, res) => {
 
     let replies;
     if (req.query.tree === 'true') {
-        replies = await buildTree(req.params.id);
+        replies = await buildTree(citation);
     } else {
         replies = await Citation.find({ parentCitationId: req.params.id })
             .sort({ dateAdded: -1 })

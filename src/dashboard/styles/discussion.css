@@ -351,22 +351,12 @@
     gap: 2px;
 }
 
+/* Base .vote-btn reset and :hover come from styles/components.css (imported by
+   dashboard.css, which always loads alongside this file) — only the thread-view-
+   specific padding/font-size and the up/down active-state coloring live here. */
 .vote-btn {
-    background: none;
-    border: none;
-    border-radius: var(--cp-radius-pill);
-    color: var(--cp-text-secondary);
-    cursor: pointer;
     padding: 4px 6px;
     font-size: var(--cp-text-md);
-    transition: all var(--cp-transition);
-    display: flex;
-    align-items: center;
-}
-
-.vote-btn:hover {
-    background: var(--cp-bg-hover);
-    color: var(--cp-text-primary);
 }
 
 .upvote-btn.voted {
