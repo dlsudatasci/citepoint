@@ -1,6 +1,8 @@
-const request  = require('supertest');
-const app      = require('../app');
-const Citation = require('../models/Citation');
+const request      = require('supertest');
+const app          = require('../app');
+const Citation     = require('../models/Citation');
+const Notification = require('../models/Notification');
+const sseEmitter   = require('../lib/sseEmitter');
 
 const VIDEO = 'dQw4w9WgXcQ';
 
@@ -116,5 +118,69 @@ describe('POST /api/discussion/reply', () => {
         expect(stored.category).toBe('Historical Claim');
         expect(stored.timestampStart).toBe('1:00');
         expect(stored.parentCitationId).toBe(rootId);
+    });
+
+    it('sets rootId to the top-level citation, even for a nested reply-to-a-reply', async () => {
+        const rootId   = await createCitation({ username: 'alice' });
+        const level1Res = await request(app).post('/api/discussion/reply').send({
+            parentCitationId: rootId, description: 'Level 1', username: 'bob',
+        });
+
+        const level2Res = await request(app).post('/api/discussion/reply').send({
+            parentCitationId: level1Res.body.id, description: 'Level 2', username: 'carol',
+        });
+
+        const rootDoc   = await Citation.findById(rootId).lean();
+        const level1Doc  = await Citation.findById(level1Res.body.id).lean();
+        const level2Doc  = await Citation.findById(level2Res.body.id).lean();
+
+        expect(rootDoc.rootId).toBe(rootId);
+        expect(level1Doc.rootId).toBe(rootId);
+        expect(level2Doc.rootId).toBe(rootId);
+    });
+
+    it('emits an SSE citationAdded event for the parent citation\'s video', async () => {
+        const rootId = await createCitation();
+        const fakeRes = { write: jest.fn() };
+        sseEmitter.addClient(VIDEO, fakeRes);
+
+        try {
+            await request(app).post('/api/discussion/reply').send({
+                parentCitationId: rootId, description: 'A reply', username: 'bob',
+            });
+
+            expect(fakeRes.write).toHaveBeenCalledTimes(1);
+            const payload = JSON.parse(fakeRes.write.mock.calls[0][0].replace(/^data: /, ''));
+            expect(payload.type).toBe('citationAdded');
+            expect(payload.videoId).toBe(VIDEO);
+        } finally {
+            sseEmitter.removeClient(VIDEO, fakeRes);
+        }
+    });
+
+    it('notifies the parent citation\'s author', async () => {
+        const rootId = await createCitation({ username: 'alice', citationTitle: 'Original claim' });
+
+        await request(app).post('/api/discussion/reply').send({
+            parentCitationId: rootId, description: 'A reply', username: 'bob',
+        });
+
+        const notifications = await Notification.find({ username: 'alice', type: 'reply' }).lean();
+        expect(notifications).toHaveLength(1);
+        expect(notifications[0].fromUsername).toBe('bob');
+        expect(notifications[0].rootItemId).toBe(rootId);
+        expect(notifications[0].rootItemType).toBe('citation');
+        expect(notifications[0].title).toBe('Original claim');
+    });
+
+    it('does not notify when replying to your own citation', async () => {
+        const rootId = await createCitation({ username: 'alice' });
+
+        await request(app).post('/api/discussion/reply').send({
+            parentCitationId: rootId, description: 'Self reply', username: 'alice',
+        });
+
+        const notifications = await Notification.find({ username: 'alice', type: 'reply' }).lean();
+        expect(notifications).toHaveLength(0);
     });
 });

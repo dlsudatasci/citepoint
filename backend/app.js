@@ -72,6 +72,7 @@ app.use('/api/experts',   mutationLimiter, require('./routes/experts'));
 app.use('/api/profile',   mutationLimiter, require('./routes/profile'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/discussion',    mutationLimiter, require('./routes/discussion'));
+app.use('/api/discussions',   require('./routes/discussions'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/videos', mutationLimiter, require('./routes/videos'));
 app.use('/api/feeds', require('./routes/feeds'));

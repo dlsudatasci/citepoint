@@ -1,5 +1,7 @@
-const request = require('supertest');
-const app     = require('../app');
+const request      = require('supertest');
+const app          = require('../app');
+const Citation     = require('../models/Citation');
+const Notification = require('../models/Notification');
 
 const VIDEO = 'dQw4w9WgXcQ';
 const BASE  = `/api/citations/${VIDEO}`;
@@ -132,6 +134,61 @@ describe('POST /api/citations/:videoId', () => {
         const res = await request(app).get(BASE);
         const created = res.body.citations.find(c => c._id === id);
         expect(new Date(created.dateAdded).getFullYear()).toBeGreaterThan(2000);
+    });
+
+    describe('reply-to-citation (parentCitationId)', () => {
+        it('returns 404 when the parent citation does not exist', async () => {
+            const res = await request(app).post(BASE).send({
+                citationTitle: 'Reply', username: 'bob', parentCitationId: '000000000000000000000000',
+            });
+            expect(res.status).toBe(404);
+        });
+
+        it('inherits rootId from the parent and notifies its author', async () => {
+            const rootId = await createCitation({ username: 'alice', citationTitle: 'Original' });
+
+            const res = await request(app).post(BASE).send({
+                citationTitle: 'Original', username: 'bob', parentCitationId: rootId,
+            });
+            expect(res.status).toBe(201);
+
+            const stored = await Citation.findById(res.body.id).lean();
+            expect(stored.rootId).toBe(rootId);
+
+            const notifications = await Notification.find({ username: 'alice', type: 'reply' }).lean();
+            expect(notifications).toHaveLength(1);
+            expect(notifications[0].fromUsername).toBe('bob');
+            expect(notifications[0].rootItemType).toBe('citation');
+        });
+    });
+
+    describe('respond-to-request (requestId)', () => {
+        it('returns 404 when the request does not exist', async () => {
+            const res = await request(app).post(BASE).send({
+                citationTitle: 'Response', username: 'bob', requestId: '000000000000000000000000',
+            });
+            expect(res.status).toBe(404);
+        });
+
+        it('self-roots (rootId = own id) and notifies the request\'s author', async () => {
+            const reqRes = await request(app).post('/api/requests/' + VIDEO).send({
+                title: 'Please cite this', username: 'alice',
+            });
+            const requestId = reqRes.body.id;
+
+            const res = await request(app).post(BASE).send({
+                citationTitle: 'Response', username: 'bob', requestId,
+            });
+            expect(res.status).toBe(201);
+
+            const stored = await Citation.findById(res.body.id).lean();
+            expect(stored.rootId).toBe(res.body.id.toString());
+
+            const notifications = await Notification.find({ username: 'alice', type: 'reply' }).lean();
+            expect(notifications).toHaveLength(1);
+            expect(notifications[0].rootItemId).toBe(requestId);
+            expect(notifications[0].rootItemType).toBe('request');
+        });
     });
 });
 

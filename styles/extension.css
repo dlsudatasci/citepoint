@@ -18,13 +18,14 @@ body {
 /* ── Panel Root ─────────────────────────────────────── */
 
 .citation-controls {
-    background-color: var(--cp-bg-page);
+    background-color: var(--cp-bg-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-lg);
     padding: var(--cp-space-10, 10px);
     margin-bottom: 10px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    border-radius: 5px;
+    gap: 0;
     width: 100%;
     box-sizing: border-box;
     font-family: var(--cp-font);
@@ -32,15 +33,15 @@ body {
 }
 
 /* ── Panel Header (always visible) ──────────────────── */
+/* Border/background live on .citation-controls above so the header and the
+   expanded content below it read as one continuous card, not a bordered
+   header with a disconnected, unstyled list floating under it. */
 
 .extension-header {
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 12px 16px 0;
-    background-color: var(--cp-bg-surface);
-    border: 1px solid var(--cp-border);
-    border-radius: var(--cp-radius-lg);
     width: 100%;
     box-sizing: border-box;
 }

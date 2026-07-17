@@ -2,11 +2,11 @@
    CitePoint Shared Components
    Canonical building blocks (buttons, cards, badges,
    inputs, menus, modals, toasts, states) used across
-   every surface: popup, YouTube panel, dashboard,
-   discussion page, and forms.
+   every surface: popup, YouTube panel, dashboard
+   (including the Discussions module), and forms.
 
    Consumed via a normal @import when a page is loaded
-   through HTML (dashboard.css, discussion.css, popup.html).
+   through HTML (dashboard.css, popup.html).
    For the YouTube-panel content-script context, Chrome does
    not resolve @import in manifest-injected CSS, so this file
    is instead listed as its own entry in manifest.json's

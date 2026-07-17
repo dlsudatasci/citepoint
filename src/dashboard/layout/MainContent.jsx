@@ -3,8 +3,10 @@ import GeneralFeed from '../components/GeneralFeed';
 import ExpertFeed from '../components/ExpertFeed';
 import Analytics from '../components/Analytics';
 import Profile from '../components/Profile';
+import MyDiscussions from '../components/MyDiscussions';
+import DiscussionThread from '../components/DiscussionThread';
 
-export default function MainContent({ activeView }) {
+export default function MainContent({ activeView, setActiveView, threadTarget, onOpenDiscussion }) {
 
     const renderContent = () => {
         switch (activeView) {
@@ -16,6 +18,17 @@ export default function MainContent({ activeView }) {
                 return <Analytics />;
             case 'profile':
                 return <Profile />;
+            case 'discussions':
+                return <MyDiscussions onOpenDiscussion={onOpenDiscussion} />;
+            case 'discussionThread':
+                return threadTarget ? (
+                    <DiscussionThread
+                        type={threadTarget.type}
+                        id={threadTarget.id}
+                        onOpenDiscussion={onOpenDiscussion}
+                        onBack={() => setActiveView('discussions')}
+                    />
+                ) : <MyDiscussions onOpenDiscussion={onOpenDiscussion} />;
             default:
                 return <GeneralFeed />;
         }

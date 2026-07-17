@@ -2,6 +2,8 @@ const router   = require('express').Router();
 const Citation = require('../models/Citation');
 const Request  = require('../models/Request');
 const { ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/categories');
+const sseEmitter = require('../lib/sseEmitter');
+const { resolveRootId, notifyOnReply } = require('../lib/threads');
 
 const MAX_TREE_DEPTH = 6;
 const MAX_DESC_LEN   = 5000;
@@ -79,6 +81,8 @@ router.post('/reply', async (req, res) => {
             return res.status(404).json({ success: false, error: 'Parent citation not found' });
         }
 
+        const rootId = await resolveRootId(parent);
+
         // videoId is always derived from the parent citation — never trust the client's
         // value here, or replies can be filed under an unrelated/bogus video (see audit F-4).
         const reply = await Citation.create({
@@ -90,10 +94,28 @@ router.post('/reply', async (req, res) => {
             source:           '',
             username,
             parentCitationId,
+            rootId,
             category:         parent.category || DEFAULT_CATEGORY,
             categoryVerified: false,
             dateAdded:        new Date(),
             voteScore:        0,
+        });
+
+        sseEmitter.emit(parent.videoId, {
+            type:       'citationAdded',
+            videoId:    parent.videoId,
+            citationId: reply._id.toString(),
+        });
+
+        await notifyOnReply({
+            toUsername:   parent.username,
+            fromUsername: username,
+            itemId:       reply._id.toString(),
+            itemType:     'citation',
+            rootItemId:   rootId,
+            rootItemType: 'citation',
+            videoId:      parent.videoId,
+            title:        parent.citationTitle,
         });
 
         res.status(201).json({ success: true, id: reply._id.toString() });

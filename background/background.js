@@ -252,6 +252,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         handleGetGeneralFeed(request.topic, request.page, request.limit).then(sendResponse);
         return true;
     }
+    if (request.type === 'getMyDiscussions') {
+        handleGetMyDiscussions(request.username, request.filter, request.page, request.search).then(sendResponse);
+        return true;
+    }
 });
 
 async function handleGetCitations(videoId, page = 1, limit = 20) {
@@ -640,6 +644,16 @@ async function handleGetGeneralFeed(topic, page = 1, limit = 20) {
         const query = new URLSearchParams({ topic: topic || 'All', page, limit }).toString();
         const result = await apiRequest(`/feeds/general?${query}`);
         return { success: true, data: result.data, pagination: result.pagination };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetMyDiscussions(username, filter = 'all', page = 1, search = '') {
+    try {
+        const query = new URLSearchParams({ username, filter, page, search: search || '' }).toString();
+        const result = await apiRequest(`/discussions/mine?${query}`);
+        return { success: true, discussions: result.discussions || [], pagination: result.pagination || null };
     } catch (error) {
         return { success: false, error: error.message };
     }
