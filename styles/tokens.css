@@ -124,3 +124,48 @@
     --cp-z-toast:              99999;
     --cp-z-confirm-box:        99999;
 }
+
+/* ── Theme: Dark ────────────────────────────── */
+[data-cp-theme="dark"] {
+    --cp-text-primary:   #f1f1f1;
+    --cp-text-secondary: #aaaaaa;
+    --cp-text-tertiary:  #888888;
+    --cp-text-on-accent: #ffffff;
+
+    --cp-bg-page:        #121212;
+    --cp-bg-surface:     #1e1e1e;
+    --cp-bg-card:        #2a2a2a;
+    --cp-bg-input:       rgba(255, 255, 255, 0.05);
+    --cp-bg-input-hover: rgba(255, 255, 255, 0.1);
+    --cp-bg-hover:       rgba(255, 255, 255, 0.08);
+    --cp-bg-active:      rgba(255, 255, 255, 0.12);
+
+    --cp-border:         rgba(255, 255, 255, 0.15);
+    --cp-border-strong:  rgba(255, 255, 255, 0.25);
+    --cp-border-input:   #444444;
+    --cp-divider:        rgba(255, 255, 255, 0.1);
+
+    --cp-accent:         #3ea6ff;
+    --cp-accent-hover:   #6ebcff;
+    --cp-accent-active:  #2d88ff;
+    --cp-accent-bg:      rgba(62, 166, 255, 0.15);
+    --cp-accent-bg-hover:rgba(62, 166, 255, 0.25);
+}
+
+/* ── Theme: DLSU Green ──────────────────────── */
+[data-cp-theme="dlsu"] {
+    --cp-accent:         #009639; /* Pantone 355U */
+    --cp-accent-hover:   #007a2d;
+    --cp-accent-active:  #006023;
+    --cp-accent-bg:      rgba(0, 150, 57, 0.08);
+    --cp-accent-bg-hover:rgba(0, 150, 57, 0.12);
+
+    --cp-success:        #009639;
+    --cp-success-hover:  #007a2d;
+
+    --cp-bg-page:        #f2f9f4; /* Very light green hint */
+    --cp-bg-surface:     #ffffff;
+    --cp-bg-card:        #ffffff;
+
+    --cp-focus-ring:     0 0 0 3px var(--cp-accent-bg-hover);
+}
