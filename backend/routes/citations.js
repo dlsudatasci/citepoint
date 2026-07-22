@@ -8,6 +8,8 @@ const { notifyExpertsForCategory } = require('../lib/notifyExperts');
 const { applyVote } = require('../lib/voting');
 const { isValidVideoId, isValidTimestamp, isSafeSourceUrl } = require('../lib/validators');
 const { resolveRootId, notifyOnReply } = require('../lib/threads');
+const { usernameMatches } = require('../lib/usernameMatches');
+const { notifyMentions } = require('../lib/mentions');
 const asyncHandler = require('../middleware/asyncHandler');
 
 // ── Validation helpers ────────────────────────
@@ -170,6 +172,17 @@ router.post('/:videoId', asyncHandler(async (req, res) => {
         });
     }
 
+    await notifyMentions({
+        text:         description,
+        fromUsername: username,
+        videoId:      req.params.videoId,
+        itemId:       citation._id.toString(),
+        itemType:     'citation',
+        rootItemId:   citation.rootId,
+        rootItemType: 'citation',
+        title:        citation.citationTitle,
+    });
+
     res.status(201).json({ success: true, id: citation._id });
 }));
 
@@ -289,6 +302,48 @@ router.patch('/:videoId/:id/category', asyncHandler(async (req, res) => {
         category: citation.category,
         categoryVerified: citation.categoryVerified,
         verifiedBy: citation.verifiedBy,
+    });
+}));
+
+// PATCH /api/citations/:videoId/:id/resolve  — body: { username, resolved }
+// Marks a citation (or a reply thread's root) resolved/unresolved. Restricted to the
+// citation's own author or an expert — mirrors the category-verification ownership
+// model, not the DELETE route's regex-based owner match, since this only ever
+// compares against the single already-fetched document, not a query filter.
+router.patch('/:videoId/:id/resolve', asyncHandler(async (req, res) => {
+    if (!isValidVideoId(req.params.videoId)) {
+        return res.status(400).json({ success: false, error: 'Invalid videoId' });
+    }
+
+    const { username, resolved } = req.body;
+    if (!username || typeof resolved !== 'boolean') {
+        return res.status(400).json({ success: false, error: 'username and a boolean resolved are required' });
+    }
+
+    const citation = await Citation.findOne({ _id: req.params.id, videoId: req.params.videoId });
+    if (!citation) return res.status(404).json({ success: false, error: 'Citation not found' });
+
+    if (!usernameMatches(citation.username, username) && !isExpert(username)) {
+        return res.status(403).json({ success: false, error: 'Only the author or an expert can change resolved status' });
+    }
+
+    citation.resolved   = resolved;
+    citation.resolvedBy = resolved ? username : null;
+    citation.resolvedAt = resolved ? new Date() : null;
+    await citation.save();
+
+    sseEmitter.emit(req.params.videoId, {
+        type:       'citationResolvedUpdated',
+        videoId:    req.params.videoId,
+        citationId: req.params.id,
+        resolved:   citation.resolved,
+    });
+
+    res.json({
+        success:     true,
+        resolved:    citation.resolved,
+        resolvedBy:  citation.resolvedBy,
+        resolvedAt:  citation.resolvedAt,
     });
 }));
 

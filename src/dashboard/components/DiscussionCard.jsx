@@ -29,6 +29,7 @@ export default function DiscussionCard({ item, onOpenDiscussion }) {
                     <h3 className="discussion-card__title">
                         {item.rootType === 'request' ? 'Request: ' : ''}{item.title || 'Untitled'}
                     </h3>
+                    {item.resolved && <span className="discussion-card__resolved-badge">Resolved</span>}
                 </div>
                 <div className="discussion-card__video-title">{videoTitle}</div>
 

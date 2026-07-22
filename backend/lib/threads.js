@@ -1,5 +1,6 @@
 const Citation     = require('../models/Citation');
 const Notification = require('../models/Notification');
+const { usernameMatches } = require('./usernameMatches');
 
 // Mirrors discussion.js's MAX_TREE_DEPTH — a bounded walk-up used only as a fallback
 // for legacy data that predates the rootId backfill (backend/scripts/backfill-root-ids.js).
@@ -25,13 +26,6 @@ async function resolveRootId(parentCitation) {
     return current._id.toString();
 }
 
-// Case-insensitive, '@'-prefix-tolerant match — same convention used for ownership
-// checks in citations.js/requests.js/notifications.js.
-function usernameMatches(a, b) {
-    if (typeof a !== 'string' || typeof b !== 'string') return false;
-    return a.replace(/^@/, '').toLowerCase() === b.replace(/^@/, '').toLowerCase();
-}
-
 /**
  * Create a 'reply' notification for the author being replied to, unless they're
  * replying to themselves.
@@ -51,4 +45,4 @@ async function notifyOnReply({ toUsername, fromUsername, itemId, itemType, rootI
     });
 }
 
-module.exports = { resolveRootId, notifyOnReply, usernameMatches };
+module.exports = { resolveRootId, notifyOnReply };

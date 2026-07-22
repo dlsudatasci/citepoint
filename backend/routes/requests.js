@@ -4,8 +4,10 @@ const sseEmitter = require('../lib/sseEmitter');
 const { ALL_CATEGORIES, DEFAULT_CATEGORY, TOPICS } = require('../config/constants');
 const { isExpert } = require('../config/experts');
 const { notifyExpertsForCategory } = require('../lib/notifyExperts');
+const { notifyMentions } = require('../lib/mentions');
 const { applyVote } = require('../lib/voting');
 const { isValidVideoId, isValidTimestamp } = require('../lib/validators');
+const { usernameMatches } = require('../lib/usernameMatches');
 const asyncHandler = require('../middleware/asyncHandler');
 
 // ── Validation helpers ────────────────────────
@@ -139,6 +141,17 @@ router.post('/:videoId', asyncHandler(async (req, res) => {
         excludeUsername: request.username,
     });
 
+    await notifyMentions({
+        text:         reason,
+        fromUsername: username,
+        videoId:      req.params.videoId,
+        itemId:       request._id.toString(),
+        itemType:     'request',
+        rootItemId:   request._id.toString(),
+        rootItemType: 'request',
+        title:        request.title,
+    });
+
     res.status(201).json({ success: true, id: request._id });
 }));
 
@@ -255,6 +268,45 @@ router.patch('/:videoId/:id/category', asyncHandler(async (req, res) => {
         category: request.category,
         categoryVerified: request.categoryVerified,
         verifiedBy: request.verifiedBy,
+    });
+}));
+
+// PATCH /api/requests/:videoId/:id/resolve  — body: { username, resolved }
+// Restricted to the request's own author or an expert.
+router.patch('/:videoId/:id/resolve', asyncHandler(async (req, res) => {
+    if (!isValidVideoId(req.params.videoId)) {
+        return res.status(400).json({ success: false, error: 'Invalid videoId' });
+    }
+
+    const { username, resolved } = req.body;
+    if (!username || typeof resolved !== 'boolean') {
+        return res.status(400).json({ success: false, error: 'username and a boolean resolved are required' });
+    }
+
+    const request = await Request.findOne({ _id: req.params.id, videoId: req.params.videoId });
+    if (!request) return res.status(404).json({ success: false, error: 'Request not found' });
+
+    if (!usernameMatches(request.username, username) && !isExpert(username)) {
+        return res.status(403).json({ success: false, error: 'Only the author or an expert can change resolved status' });
+    }
+
+    request.resolved   = resolved;
+    request.resolvedBy = resolved ? username : null;
+    request.resolvedAt = resolved ? new Date() : null;
+    await request.save();
+
+    sseEmitter.emit(req.params.videoId, {
+        type:      'requestResolvedUpdated',
+        videoId:   req.params.videoId,
+        requestId: req.params.id,
+        resolved:  request.resolved,
+    });
+
+    res.json({
+        success:    true,
+        resolved:   request.resolved,
+        resolvedBy: request.resolvedBy,
+        resolvedAt: request.resolvedAt,
     });
 }));
 

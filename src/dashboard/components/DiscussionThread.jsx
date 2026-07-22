@@ -87,7 +87,23 @@ function VoteControls({ itemId, itemType, score, vote, onVote }) {
 
 // ── Original item cards ──────────────────────────────────────
 
-function OriginalCitationCard({ citation, userVotes, onVote }) {
+// Shown on the original citation/request card when the current user owns it or is
+// an expert — the only two roles allowed to change resolved status server-side.
+function ResolvedControl({ resolved, canResolve, onToggleResolved }) {
+    if (!resolved && !canResolve) return null;
+    return (
+        <div className="original-resolved-row">
+            {resolved && <span className="resolved-badge">✓ Resolved</span>}
+            {canResolve && (
+                <button className="cp-btn cp-btn--secondary resolve-toggle-btn" onClick={onToggleResolved}>
+                    {resolved ? 'Mark unresolved' : 'Mark resolved'}
+                </button>
+            )}
+        </div>
+    );
+}
+
+function OriginalCitationCard({ citation, userVotes, onVote, canResolve, onToggleResolved }) {
     const itemId = citation.id || citation._id;
     return (
         <div className="original-card">
@@ -102,6 +118,7 @@ function OriginalCitationCard({ citation, userVotes, onVote }) {
             {safeUrl(citation.source) && (
                 <a className="original-source" href={safeUrl(citation.source)} target="_blank" rel="noopener noreferrer">Source ↗</a>
             )}
+            <ResolvedControl resolved={citation.resolved} canResolve={canResolve} onToggleResolved={onToggleResolved} />
             <VoteControls itemId={itemId} itemType="citation" score={citation.voteScore} vote={userVotes[itemId]} onVote={onVote} />
             {citation.videoId && (
                 <a
@@ -114,7 +131,7 @@ function OriginalCitationCard({ citation, userVotes, onVote }) {
     );
 }
 
-function OriginalRequestCard({ request, userVotes, onVote }) {
+function OriginalRequestCard({ request, userVotes, onVote, canResolve, onToggleResolved }) {
     const itemId = request.id || request._id;
     return (
         <div className="original-card original-request">
@@ -127,6 +144,7 @@ function OriginalRequestCard({ request, userVotes, onVote }) {
             </div>
             {request.category && <span className="original-category">{request.category}</span>}
             {request.reason && <p className="original-description">{request.reason}</p>}
+            <ResolvedControl resolved={request.resolved} canResolve={canResolve} onToggleResolved={onToggleResolved} />
             <VoteControls itemId={itemId} itemType="request" score={request.voteScore} vote={userVotes[itemId]} onVote={onVote} />
             {request.videoId && (
                 <a
@@ -360,6 +378,18 @@ export default function DiscussionThread({ type, id, onOpenDiscussion, onBack })
         }
     }
 
+    async function handleToggleResolved() {
+        if (!currentUser || !original) return;
+        const itemId = original.id || original._id;
+        const nextResolved = !original.resolved;
+        try {
+            await window.apiUpdateResolved(itemId, type, videoId, nextResolved, currentUser);
+            setOriginal(prev => prev && ({ ...prev, resolved: nextResolved }));
+        } catch (err) {
+            alert('Failed to update resolved status: ' + err.message);
+        }
+    }
+
     if (loading) return <p className="loading">Loading discussion...</p>;
     if (error) return <p className="error-message">Error loading discussion: {error}</p>;
     if (!original) return <p className="empty-message">Discussion not found.</p>;
@@ -369,6 +399,7 @@ export default function DiscussionThread({ type, id, onOpenDiscussion, onBack })
     const noun = type === 'citation'
         ? (totalCount === 1 ? 'reply' : 'replies')
         : (totalCount === 1 ? 'response' : 'responses');
+    const canResolve = !!currentUser && (currentUser === original.username || !!user.isExpert);
 
     return (
         <div className="discussion-thread-container">
@@ -377,8 +408,8 @@ export default function DiscussionThread({ type, id, onOpenDiscussion, onBack })
             )}
 
             {type === 'citation'
-                ? <OriginalCitationCard citation={original} userVotes={userVotes} onVote={handleVote} />
-                : <OriginalRequestCard request={original} userVotes={userVotes} onVote={handleVote} />}
+                ? <OriginalCitationCard citation={original} userVotes={userVotes} onVote={handleVote} canResolve={canResolve} onToggleResolved={handleToggleResolved} />
+                : <OriginalRequestCard request={original} userVotes={userVotes} onVote={handleVote} canResolve={canResolve} onToggleResolved={handleToggleResolved} />}
 
             <div className="thread-controls">
                 <span className="response-count">{totalCount} {noun}</span>

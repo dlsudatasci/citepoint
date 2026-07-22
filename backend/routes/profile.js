@@ -4,16 +4,10 @@ const Citation    = require('../models/Citation');
 const Request     = require('../models/Request');
 const Expert      = require('../models/Expert');
 const { TOPICS } = require('../config/constants');
+const { usernameMatches } = require('../lib/usernameMatches');
 
 const MAX_DISPLAY_NAME_LEN = 100;
 const MAX_FOLLOWED_TOPICS  = TOPICS.length;
-
-// Case-insensitive, '@'-prefix-tolerant username match — same convention used
-// for ownership checks elsewhere in the backend.
-function usernameMatches(a, b) {
-    if (typeof a !== 'string' || typeof b !== 'string') return false;
-    return a.replace(/^@/, '').toLowerCase() === b.replace(/^@/, '').toLowerCase();
-}
 
 // GET /api/profile/:username
 router.get('/:username', async (req, res) => {

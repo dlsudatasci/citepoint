@@ -244,4 +244,42 @@ describe('POST /api/discussion/reply', () => {
         const notifications = await Notification.find({ username: 'alice', type: 'reply' }).lean();
         expect(notifications).toHaveLength(0);
     });
+
+    describe('mentions (@handle notifications)', () => {
+        it('notifies a known, mentioned user', async () => {
+            const rootId = await createCitation({ username: 'alice' });
+            await createCitation({ username: 'carol' }); // makes 'carol' a known username
+
+            const res = await request(app).post('/api/discussion/reply').send({
+                parentCitationId: rootId, description: 'cc @carol take a look', username: 'bob',
+            });
+
+            const notifications = await Notification.find({ username: 'carol', type: 'mention' }).lean();
+            expect(notifications).toHaveLength(1);
+            expect(notifications[0].fromUsername).toBe('bob');
+            expect(notifications[0].itemId).toBe(res.body.id);
+        });
+
+        it('does not notify an unknown/typo\'d handle', async () => {
+            const rootId = await createCitation({ username: 'alice' });
+
+            await request(app).post('/api/discussion/reply').send({
+                parentCitationId: rootId, description: 'cc @nobody_here', username: 'bob',
+            });
+
+            const notifications = await Notification.find({ type: 'mention' }).lean();
+            expect(notifications).toHaveLength(0);
+        });
+
+        it('does not notify when mentioning yourself', async () => {
+            const rootId = await createCitation({ username: 'alice' });
+
+            await request(app).post('/api/discussion/reply').send({
+                parentCitationId: rootId, description: 'note to @bob', username: 'bob',
+            });
+
+            const notifications = await Notification.find({ type: 'mention' }).lean();
+            expect(notifications).toHaveLength(0);
+        });
+    });
 });

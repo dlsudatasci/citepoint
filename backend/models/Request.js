@@ -18,6 +18,10 @@ const requestSchema = new mongoose.Schema({
     
     verifiedBy:       { type: String, default: null },
     verifiedAt:       { type: Date, default: null },
+
+    resolved:         { type: Boolean, default: false },
+    resolvedBy:       { type: String, default: null },
+    resolvedAt:       { type: Date, default: null },
 });
 // ── Indexes ───────────────────────────────────
 

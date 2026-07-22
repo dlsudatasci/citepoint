@@ -7,6 +7,7 @@ const ICONS = {
     application_approved: '✅',
     application_rejected: '❌',
     reply: '💬',
+    mention: '📣',
 };
 
 export default function Notifications({ onOpenDiscussion }) {

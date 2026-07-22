@@ -176,6 +176,10 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         handleUpdateCategory(request.itemType, request.videoId, request.itemId, request.category, request.username).then(sendResponse);
         return true;
     }
+    if (request.type === 'updateResolved') {
+        handleUpdateResolved(request.itemType, request.videoId, request.itemId, request.resolved, request.username).then(sendResponse);
+        return true;
+    }
     if (request.type === 'checkExpert') {
         handleCheckExpert(request.username).then(sendResponse);
         return true;
@@ -438,6 +442,22 @@ async function handleUpdateCategory(itemType, videoId, itemId, category, usernam
             category: result.category,
             categoryVerified: result.categoryVerified,
             verifiedBy: result.verifiedBy,
+        };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleUpdateResolved(itemType, videoId, itemId, resolved, username) {
+    try {
+        const path = itemType === 'citation' ? 'citations' : 'requests';
+        const result = await apiRequest(`/${path}/${videoId}/${itemId}/resolve`, 'PATCH', { resolved, username });
+        _cacheInvalidate(videoId);
+        return {
+            success: true,
+            resolved: result.resolved,
+            resolvedBy: result.resolvedBy,
+            resolvedAt: result.resolvedAt,
         };
     } catch (error) {
         return { success: false, error: error.message };

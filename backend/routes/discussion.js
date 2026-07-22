@@ -4,6 +4,7 @@ const Request  = require('../models/Request');
 const { ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/constants');
 const sseEmitter = require('../lib/sseEmitter');
 const { resolveRootId, notifyOnReply } = require('../lib/threads');
+const { notifyMentions } = require('../lib/mentions');
 const asyncHandler = require('../middleware/asyncHandler');
 
 const MAX_TREE_DEPTH = 6;
@@ -125,6 +126,17 @@ router.post('/reply', asyncHandler(async (req, res) => {
         rootItemId:   rootId,
         rootItemType: 'citation',
         videoId:      parent.videoId,
+        title:        parent.citationTitle,
+    });
+
+    await notifyMentions({
+        text:         description,
+        fromUsername: username,
+        videoId:      parent.videoId,
+        itemId:       reply._id.toString(),
+        itemType:     'citation',
+        rootItemId:   rootId,
+        rootItemType: 'citation',
         title:        parent.citationTitle,
     });
 

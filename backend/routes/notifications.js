@@ -1,13 +1,7 @@
 const router       = require('express').Router();
 const Notification = require('../models/Notification');
 const asyncHandler = require('../middleware/asyncHandler');
-
-// Case-insensitive, '@'-prefix-tolerant username match — same convention used
-// for ownership checks in citations.js/requests.js.
-function usernameMatches(a, b) {
-    if (typeof a !== 'string' || typeof b !== 'string') return false;
-    return a.replace(/^@/, '').toLowerCase() === b.replace(/^@/, '').toLowerCase();
-}
+const { usernameMatches } = require('../lib/usernameMatches');
 
 // GET /api/notifications/:username
 router.get('/:username', asyncHandler(async (req, res) => {

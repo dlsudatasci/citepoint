@@ -9,6 +9,8 @@ const FILTERS = [
     { key: 'requests',    label: 'My Requests' },
     { key: 'participated', label: 'Participated' },
     { key: 'unread',      label: 'Unread' },
+    { key: 'unresolved',  label: 'Unresolved' },
+    { key: 'resolved',    label: 'Resolved' },
 ];
 
 const SEARCH_DEBOUNCE_MS = 400;

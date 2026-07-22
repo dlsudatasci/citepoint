@@ -5,13 +5,7 @@ const { isExpert: isHardcodedExpert } = require('../config/experts');
 const { isAdmin } = require('../config/admins');
 const { TOPICS } = require('../config/constants');
 const asyncHandler = require('../middleware/asyncHandler');
-
-// Case-insensitive, '@'-prefix-tolerant username match — same convention used
-// for ownership checks elsewhere in the backend.
-function usernameMatches(a, b) {
-    if (typeof a !== 'string' || typeof b !== 'string') return false;
-    return a.replace(/^@/, '').toLowerCase() === b.replace(/^@/, '').toLowerCase();
-}
+const { usernameMatches } = require('../lib/usernameMatches');
 
 // GET /api/experts/:username — check if user is an expert
 router.get('/:username', asyncHandler(async (req, res) => {

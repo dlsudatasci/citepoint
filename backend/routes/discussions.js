@@ -23,7 +23,7 @@ function trimReply(reply) {
     };
 }
 
-// GET /api/discussions/mine?username=&filter=all|mine|requests|participated|unread&search=&page=&limit=
+// GET /api/discussions/mine?username=&filter=all|mine|requests|participated|unread|resolved|unresolved&search=&page=&limit=
 //
 // Builds a small "anchor" set of {rootId, rootType} pairs from four cheap, indexed
 // queries (my root citations, my requests, threads I replied in, threads where someone
@@ -145,6 +145,7 @@ router.get('/mine', async (req, res) => {
                 lastActivity: stats?.lastReply?.dateAdded || root.dateAdded,
                 unreadCount: unreadById.get(root._id.toString()) || 0,
                 buckets:     [...(anchors.get(key)?.buckets || [])],
+                resolved:    !!root.resolved,
             });
         }
         for (const root of requestRoots) {
@@ -166,6 +167,7 @@ router.get('/mine', async (req, res) => {
                 lastActivity: stats?.lastReply?.dateAdded || root.dateAdded,
                 unreadCount: unreadById.get(root._id.toString()) || 0,
                 buckets:     [...(anchors.get(key)?.buckets || [])],
+                resolved:    !!root.resolved,
             });
         }
 
@@ -175,6 +177,8 @@ router.get('/mine', async (req, res) => {
         else if (filter === 'requests') filtered = filtered.filter(d => d.buckets.includes('requests'));
         else if (filter === 'participated') filtered = filtered.filter(d => d.buckets.includes('participated'));
         else if (filter === 'unread') filtered = filtered.filter(d => d.unreadCount > 0);
+        else if (filter === 'resolved') filtered = filtered.filter(d => d.resolved);
+        else if (filter === 'unresolved') filtered = filtered.filter(d => !d.resolved);
 
         if (search) {
             filtered = filtered.filter(d =>

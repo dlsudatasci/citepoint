@@ -185,6 +185,17 @@ async function apiUpdateCategory(itemId, itemType, videoId, category, username) 
     return _send({ type: 'updateCategory', itemId, itemType, videoId, category, username });
 }
 
+/**
+ * @param {string} itemId
+ * @param {'citation'|'request'} itemType
+ * @param {string} videoId
+ * @param {boolean} resolved
+ * @param {string} username  — must be the item's author or a recognized expert
+ */
+async function apiUpdateResolved(itemId, itemType, videoId, resolved, username) {
+    return _send({ type: 'updateResolved', itemId, itemType, videoId, resolved, username });
+}
+
 async function apiCheckExpert(username) {
     const res = await _send({ type: 'checkExpert', username });
     return {
