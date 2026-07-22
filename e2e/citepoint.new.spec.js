@@ -3,10 +3,7 @@ const path = require('path');
 const channel = require('./browserChannel');
 
 const EXTENSION_PATH = path.resolve(__dirname, '..');
-// Dedicated video id — see citepoint.delete.spec.js for why each e2e project
-// needs its own, rather than sharing one across the 5 parallel Playwright workers.
-const TEST_VIDEO_ID  = 'YQHsXMglC9A';
-const TEST_VIDEO     = `https://www.youtube.com/watch?v=${TEST_VIDEO_ID}`;
+const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
 
 let context;
 let page;
@@ -314,7 +311,7 @@ test('ADD-017: double-clicking submit only creates one citation', async () => {
     const mongoose = require('mongoose');
     await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test');
     const count = await mongoose.connection.collection('citations').countDocuments({
-        videoId: TEST_VIDEO_ID,
+        videoId: 'dQw4w9WgXcQ',
         citationTitle: 'ADD-017 Duplicate Test',
     });
     await mongoose.disconnect();
