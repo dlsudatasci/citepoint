@@ -3,7 +3,13 @@ const path = require('path');
 const channel = require('./browserChannel');
 
 const EXTENSION_PATH = path.resolve(__dirname, '..');
-const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+// Each e2e project gets its own dedicated video id so the 5 parallel Playwright
+// workers (playwright.config.js) never write concurrent test data to the same
+// video — sharing one id let another project's citations bleed into this
+// project's DOM queries (e.g. a stale .respond-btn match), causing flaky
+// visibility-timeout failures unrelated to any real regression.
+const TEST_VIDEO_ID  = 'CevxZvSJLk8';
+const TEST_VIDEO     = `https://www.youtube.com/watch?v=${TEST_VIDEO_ID}`;
 
 let context;
 let page;
@@ -19,11 +25,11 @@ test.beforeAll(async () => {
             process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test'
         );
         await mongoose.connection.collection('citations').deleteMany({
-            videoId: 'dQw4w9WgXcQ',
+            videoId: TEST_VIDEO_ID,
             citationTitle: { $regex: /^DEL-\d+ / },
         });
         await mongoose.connection.collection('requests').deleteMany({
-            videoId: 'dQw4w9WgXcQ',
+            videoId: TEST_VIDEO_ID,
             title: { $regex: /^DEL-\d+ / },
         });
         console.log('[delete spec] Cleaned up leftover DEL- test data');
@@ -323,7 +329,7 @@ test('DEL-007: delete button is not visible on citations by other users', async 
         process.env.MONGODB_URI || 'mongodb://localhost:27017/citepoint_test'
     );
     await mongoose.connection.collection('citations').insertOne({
-        videoId: 'dQw4w9WgXcQ',
+        videoId: TEST_VIDEO_ID,
         citationTitle: 'DEL-007 Other Citation',
         username: '@otheruserxyz',
         timestampStart: '00:01:00',
@@ -437,14 +443,14 @@ test('DEL-011: deleting another users citation via API returns 403', async () =>
     await expect(deleteBtn).toBeVisible({ timeout: 10000 });
     const citationId = await deleteBtn.getAttribute('data-id');
 
-    const status = await page.evaluate(async (id) => {
-        const res = await fetch(`http://localhost:3000/api/citations/dQw4w9WgXcQ/${id}`, {
+    const status = await page.evaluate(async ({ id, videoId }) => {
+        const res = await fetch(`http://localhost:3000/api/citations/${videoId}/${id}`, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ username: '@wronguser' }),
         });
         return res.status;
-    }, citationId);
+    }, { id: citationId, videoId: TEST_VIDEO_ID });
 
     expect(status).toBe(403);
 });

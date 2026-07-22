@@ -3,7 +3,10 @@ const path = require('path');
 const channel = require('./browserChannel');
 
 const EXTENSION_PATH = path.resolve(__dirname, '..');
-const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+// Dedicated video id — see citepoint.delete.spec.js for why each e2e project
+// needs its own, rather than sharing one across the 5 parallel Playwright workers.
+const TEST_VIDEO_ID  = 'kJQP7kiw5Fk';
+const TEST_VIDEO     = `https://www.youtube.com/watch?v=${TEST_VIDEO_ID}`;
 
 // ── Shared browser context with extension loaded ──────────────────────────
 

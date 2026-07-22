@@ -3,7 +3,10 @@ const path = require('path');
 const channel = require('./browserChannel');
 
 const EXTENSION_PATH  = path.resolve(__dirname, '..');
-const TEST_VIDEO      = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
+// Dedicated video id — see citepoint.delete.spec.js for why each e2e project
+// needs its own, rather than sharing one across the 5 parallel Playwright workers.
+const TEST_VIDEO_ID   = 'fJ9rUzIMcZQ';
+const TEST_VIDEO      = `https://www.youtube.com/watch?v=${TEST_VIDEO_ID}`;
 
 let context;
 let page;
@@ -152,7 +155,7 @@ async function seedRequestDirect({
         });
         const req = http.request({
             hostname: 'localhost', port: 3000,
-            path: '/api/requests/dQw4w9WgXcQ',
+            path: `/api/requests/${TEST_VIDEO_ID}`,
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) },
         }, (res) => {
