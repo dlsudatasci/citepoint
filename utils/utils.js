@@ -9,7 +9,7 @@
  * @returns {string}
  */
 function formatTime(seconds) {
-    const hrs  = Math.floor(seconds / 3600);
+    const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
     return [hrs, mins, secs].map(v => String(v).padStart(2, '0')).join(':');
@@ -44,7 +44,7 @@ function validateTimestamps(startTime, endTime, videoDuration) {
     }
 
     const startSeconds = parseTimestamp(startTime);
-    const endSeconds   = parseTimestamp(endTime);
+    const endSeconds = parseTimestamp(endTime);
 
     if (startSeconds >= endSeconds) {
         throw new Error('Start timestamp must be less than end timestamp');
@@ -154,7 +154,7 @@ function _trapFocus(container, { onEscape } = {}) {
         const focusable = getFocusable();
         if (focusable.length === 0) return;
         const first = focusable[0];
-        const last  = focusable[focusable.length - 1];
+        const last = focusable[focusable.length - 1];
 
         if (e.shiftKey && document.activeElement === first) {
             e.preventDefault();
@@ -232,4 +232,59 @@ function showConfirm(message) {
         cancelBtn.addEventListener('click', () => cleanup(false));
         overlay.addEventListener('click', () => cleanup(false));
     });
+}
+
+// ── Theming Utilities ─────────────────────────
+
+const AVAILABLE_THEMES = [
+    { id: 'light', label: 'Light (Default)' },
+    { id: 'dark', label: 'Dark Mode' },
+    { id: 'dlsu', label: 'Archer Green' }
+];
+
+let _currentTheme = 'light';
+
+/**
+ * Applies a given theme by setting the data-cp-theme attribute on the root HTML element.
+ * @param {string} themeName 
+ */
+function applyTheme(themeName) {
+    const isLight = !themeName || themeName === 'light';
+    _currentTheme = isLight ? 'light' : themeName;
+
+    if (isLight) {
+        document.documentElement.removeAttribute('data-cp-theme');
+    } else {
+        document.documentElement.setAttribute('data-cp-theme', themeName);
+    }
+
+    // Fallback: also apply to our injected panel explicitly if we are on YouTube
+    // to bypass any aggressive DOM/CSS scrubbing by the host SPA
+    const panel = document.getElementById('citation-controls');
+    if (panel) {
+        if (isLight) {
+            panel.removeAttribute('data-cp-theme');
+        } else {
+            panel.setAttribute('data-cp-theme', themeName);
+        }
+    }
+}
+
+/**
+ * Initializes the theme from storage and sets up a listener to sync changes.
+ */
+function initTheme() {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        // Initial load
+        chrome.storage.local.get('theme', (res) => {
+            applyTheme(res.theme || 'light');
+        });
+
+        // Listen for changes
+        chrome.storage.onChanged.addListener((changes, area) => {
+            if (area === 'local' && changes.theme) {
+                applyTheme(changes.theme.newValue || 'light');
+            }
+        });
+    }
 }

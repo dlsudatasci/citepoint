@@ -112,6 +112,11 @@
 
         <button id="open-dashboard" class="btn cp-btn cp-btn--primary">Open Dashboard</button>
 
+        <div class="theme-selector-container" style="margin-top: var(--cp-space-12); margin-bottom: var(--cp-space-12); display: flex; align-items: center;">
+            <label for="theme-selector" style="font-size: var(--cp-text-md); margin-right: var(--cp-space-8);">Theme:</label>
+            <select id="theme-selector" class="cp-input" style="padding: 4px 8px; font-size: var(--cp-text-sm); border-radius: var(--cp-radius-sm); border: 1px solid var(--cp-border-input); background: var(--cp-bg-surface); color: var(--cp-text-primary);">
+            </select>
+        </div>
         <div id="not-on-youtube">
             <p><strong>Notice:</strong> You're not currently on a YouTube video page.</p>
             <p>Go to a YouTube video to use the citation features.</p>
@@ -179,6 +184,7 @@
         </div>
     </div>
 
+    <script src="../utils/utils.js"></script>
     <script src="popup.js"></script>
 </body>
 </html>
