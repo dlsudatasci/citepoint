@@ -369,3 +369,14 @@
     background: var(--cp-bg-hover);
     color: var(--cp-text-primary);
 }
+
+/* ── Reduced Motion ──────────────────────────────────── */
+/* Shared across every surface this file styles — popup, panel, dashboard, forms. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

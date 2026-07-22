@@ -81,7 +81,7 @@ There is **no authentication system**. "Identity" is a free-text `username` stri
 
 - Anyone who knows (or guesses) a username can act as that user against the API directly (not just through the extension UI).
 - Expert/admin status checks (`isExpert`, `isAdmin`) trust the same spoofable field.
-- CORS currently allows *any* `chrome-extension://`/`moz-extension://` origin, not just this extension's ID — restrict `ALLOWED_ORIGINS` if you deploy this beyond local dev.
+- CORS accepts any `chrome-extension://`/`moz-extension://` origin only when `ALLOWED_ORIGINS` is explicitly set to the `*` wildcard (the local-dev/CI escape hatch) — otherwise only origins you've explicitly listed in `ALLOWED_ORIGIN`/`ALLOWED_ORIGINS` are accepted.
 
 Treat this as the single most important constraint when evaluating this project for anything beyond a trusted, small-group deployment. A real identity/session layer is the top item on the [Roadmap](#roadmap).
 
@@ -142,7 +142,7 @@ Copy `backend/.env.example` to `backend/.env` and fill in what you need:
 | `EXPERT_CONFIG` | No | Grants expert status without going through the application flow. Format is **`username:topic1,topic2\|username2:topic3`** (pipe-separated entries, colon before the topic list, comma-separated topics) — e.g. `EXPERT_CONFIG=alice:History,Science\|bob:Economics` |
 | `ADMIN_USERNAMES` | Yes, to review applications | Comma-separated usernames allowed to list and approve/reject pending expert applications. Without this set, **nobody** can review applications. |
 
-> The API allows any `chrome-extension://`/`moz-extension://` origin by default, regardless of `ALLOWED_ORIGIN(S)` — those variables add *additional* allowed web origins, they don't restrict extension origins. See [Identity model](#identity-model).
+> Extension origins are **only** allowed automatically when `ALLOWED_ORIGINS` includes the literal wildcard `*` — the documented local-dev/CI escape hatch (see `.github/workflows/playwright.yml`). Without it, `ALLOWED_ORIGIN`/`ALLOWED_ORIGINS` is a strict allowlist: only the extension origins you list there (plus the hardcoded `youtube.com`/`m.youtube.com`) are accepted. See [Identity model](#identity-model).
 
 **Rate limiting:** all endpoints are rate-limited — 400 requests/15 min general, 120 requests/15 min on the mutation-heavy routers (citations, requests, reports, experts, profile, discussion, videos). You'll get a `429` if you exceed it. Limits are effectively disabled when `NODE_ENV=test`.
 
@@ -254,6 +254,16 @@ npm run test:e2e:all        # both, sequentially
 
 E2E tests navigate to a real YouTube video and interact with the actual injected extension UI — they're slower and more flake-prone than unit tests by nature (see [Troubleshooting](#troubleshooting)).
 
+### E2E-only environment variables
+
+These only matter for `test:e2e`/`test:e2e:firefox` — none of them affect `npm start`/`npm run dev`.
+
+| Variable | Required | Purpose |
+|----------|----------|---------|
+| `PW_BROWSER_CHANNEL` | No | Set to `msedge` (or another installed Chromium channel) to run Playwright against a system browser instead of the bundled Chromium — see `e2e/browserChannel.js`. |
+| `FIREFOX_EXT_DIR` | No | Points the Selenium suite at a pre-built, clean extension directory instead of the repo root — used by CI to avoid rebuilding per test. See `selenium/firefox.test.js`. |
+| `_BACKEND_PID` | Internal — don't set manually | Set by `e2e/global-setup.js` to pass the spawned test backend's PID to `e2e/global-teardown.js` so it can be killed after the run. Leading underscore signals internal state, not a configuration knob. |
+
 ## Development workflow
 
 1. Branch off `dev` for new work; PRs merge back into `dev`.
@@ -261,8 +271,7 @@ E2E tests navigate to a real YouTube video and interact with the actual injected
 3. Extension changes: if you touch `content_scripts` order, permissions, or `web_accessible_resources` in `manifest.json`, re-check both Chrome and Firefox loading.
 4. Dashboard changes: `npm run watch` from the root while iterating, then a final `npm run build` before committing the bundle output (gitignored — not committed; rebuilt by whoever pulls your branch).
 5. Run the relevant e2e slice locally before opening a PR if you touched a user-facing flow (see [Testing](#testing)).
-
-There is currently no linter or formatter configured in this repo — match the surrounding file's style by hand.
+6. `npm run lint` / `npm run format:check` before committing — ESLint + Prettier are configured at the repo root (`eslint.config.js`, `.prettierrc.json`) covering the content scripts, backend, and dashboard.
 
 ## Deployment
 
@@ -299,13 +308,12 @@ See [`DEPLOYMENT_MANUAL.md`](DEPLOYMENT_MANUAL.md) for the full deployment walkt
 
 ## Roadmap
 
-See [`COMPLETE_CODEBASE_AUDIT.md`](COMPLETE_CODEBASE_AUDIT.md) for the current prioritized list. Highest-level items:
+`COMPLETE_CODEBASE_AUDIT.md` (2026-07-01) is superseded — see the repository's GitHub Issues for the current, actively-maintained backlog. Highest-level items still open as of this writing:
 
-- A real identity/session layer, replacing the free-text `username` field
+- A real identity/session layer, replacing the free-text `username` field (tracked in issue #2)
 - HTTPS for the production API
-- Extending the design-token/component system's remaining gaps (dialog/toast accessibility, contrast fixes)
 - Broader Firefox e2e coverage (currently smoke-test only)
-- Pagination in the React dashboard's feeds
+- Mobile/PWA support, an admin/moderation panel for reports, and anonymous posting are all filed as feature requests, not yet built
 
 ## License
 

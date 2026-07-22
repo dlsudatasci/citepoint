@@ -186,7 +186,7 @@ body {
 }
 
 .tab-counter {
-    background-color: #e0e0e0;
+    background-color: var(--cp-bg-active, #e0e0e0);
     color: var(--cp-text-secondary);
     font-size: 12px;
     padding: 2px 6px;
@@ -443,7 +443,7 @@ body {
     top: 100%;
     right: 0;
     margin-top: 4px;
-    background: white;
+    background: var(--cp-bg-card, white);
     border-radius: var(--cp-radius-lg);
     box-shadow: var(--cp-shadow-md);
     min-width: 180px;
@@ -525,7 +525,7 @@ body {
     top: 100%;
     left: 0;
     margin-top: 4px;
-    background: white;
+    background: var(--cp-bg-card, white);
     border-radius: var(--cp-radius-lg);
     box-shadow: var(--cp-shadow-md);
     min-width: 200px;
@@ -594,7 +594,7 @@ h3 {
 }
 
 .form-container {
-    background-color: white;
+    background-color: var(--cp-bg-card, white);
     border: 1px solid var(--cp-border);
     border-radius: var(--cp-radius-lg);
     margin-top: 16px;
@@ -657,7 +657,7 @@ h3 {
 .form-group input[type="url"]:focus,
 .form-group input[type="date"]:focus,
 .form-group select:focus {
-    background-color: white;
+    background-color: var(--cp-bg-card, white);
     border-color: var(--cp-accent);
     outline: none;
     box-shadow: var(--cp-focus-ring);
@@ -684,7 +684,7 @@ h3 {
 }
 
 .form-group textarea:focus {
-    background-color: white;
+    background-color: var(--cp-bg-card, white);
     border-color: var(--cp-accent);
     outline: none;
     box-shadow: var(--cp-focus-ring);
@@ -706,7 +706,7 @@ h3 {
     padding: 8px 16px;
     border: 1px solid var(--cp-border-input);
     border-radius: var(--cp-radius-pill);
-    background: white;
+    background: var(--cp-bg-card, white);
     color: var(--cp-text-secondary);
     font-family: var(--cp-font);
     font-size: 14px;
@@ -716,11 +716,11 @@ h3 {
 }
 
 .cancel-btn:hover {
-    background: #f1f3f4;
+    background: var(--cp-bg-hover, #f1f3f4);
 }
 
 #add-form-container {
-    background-color: white;
+    background-color: var(--cp-bg-card, white);
     padding: 15px;
     border-radius: var(--cp-radius-md);
     border: 1px solid var(--cp-border);
@@ -878,7 +878,7 @@ h3 {
 
 .citation-item:hover,
 .citation-request:hover {
-    background-color: #eef1f5;
+    background-color: var(--cp-bg-hover, #eef1f5);
 }
 
 .citation-item.active-citation,
@@ -1120,7 +1120,7 @@ h3 {
     font-family: var(--cp-font);
     font-size: 12px;
     color: var(--cp-text-secondary);
-    background-color: white;
+    background-color: var(--cp-bg-card, white);
     border: 1px solid var(--cp-border-input);
     border-radius: var(--cp-radius-lg);
     padding: 3px 8px;
@@ -1392,7 +1392,7 @@ h3 {
     align-items: center;
     justify-content: space-between;
     padding: 14px 16px;
-    background: white;
+    background: var(--cp-bg-card, white);
     border-bottom: 1px solid var(--cp-border);
 }
 
@@ -1407,7 +1407,8 @@ h3 {
     border: none;
     color: var(--cp-text-secondary);
     cursor: pointer;
-    padding: 4px 6px;
+    /* 24px+ touch target (WCAG 2.5.8). */
+    padding: 6px 8px;
     border-radius: 6px;
     display: flex;
     align-items: center;
@@ -1429,7 +1430,7 @@ h3 {
     border: 1px solid var(--cp-border);
     border-radius: var(--cp-radius-lg);
     margin-bottom: 8px;
-    background-color: white;
+    background-color: var(--cp-bg-card, white);
     border-left: 4px solid var(--cp-accent);
 }
 
@@ -1472,7 +1473,8 @@ h3 {
     border: none;
     color: #bbb;
     cursor: pointer;
-    padding: 4px;
+    /* 24px+ touch target (WCAG 2.5.8): 14px icon + 5px padding = 24px. */
+    padding: 5px;
     border-radius: 6px;
     display: flex;
     align-items: center;
@@ -1695,7 +1697,7 @@ h3 {
     position: relative;
     top: auto;
     z-index: var(--cp-z-theater);
-    background-color: white;
+    background-color: var(--cp-bg-card, white);
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
 }
 
@@ -1782,7 +1784,7 @@ ytd-watch-flexy[theater] div#secondary {
     width: 90%;
     max-width: 800px;
     margin: 20px auto;
-    background-color: white;
+    background-color: var(--cp-bg-card, white);
     padding: 20px;
     border-radius: var(--cp-radius-md);
     box-shadow: var(--cp-shadow-md);
@@ -1823,4 +1825,39 @@ ytd-watch-flexy[theater] div#secondary {
 #custom-extension-element,
 .custom-extension-element {
     display: none;
+}
+
+/* ── Reduced Motion ──────────────────────────────────── */
+/* Applies globally within the panel — every transition/animation in this file
+   collapses to effectively-instant instead of being individually disabled. */
+@media (prefers-reduced-motion: reduce) {
+    .citation-controls,
+    .citation-controls *,
+    .citation-controls *::before,
+    .citation-controls *::after,
+    .recorded-segments-panel,
+    .recorded-segments-panel * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ── Dark Mode: the handful of colors that don't route through
+   styles/tokens.css's @media (prefers-color-scheme: dark) block ─── */
+@media (prefers-color-scheme: dark) {
+    #citation-requests-container::-webkit-scrollbar-thumb,
+    #citations-container::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.22);
+    }
+
+    #citation-requests-container::-webkit-scrollbar-thumb:hover,
+    #citations-container::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.34);
+    }
+
+    .segment-delete-btn {
+        color: rgba(255, 255, 255, 0.45);
+    }
 }

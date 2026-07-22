@@ -24,7 +24,10 @@ async function handleVote(itemId, voteType, itemType = 'citation') {
         }
 
         // ── Find the vote controls element for this item ─────────────
-        const voteControls = document.querySelector(`[data-${itemType}-id="${itemId}"]`);
+        // itemId comes from a data attribute round-tripped through the DOM, but
+        // CSS.escape() defensively guards the attribute selector against any value
+        // that isn't a plain Mongo ObjectId (quotes, backslashes, etc.).
+        const voteControls = document.querySelector(`[data-${itemType}-id="${CSS.escape(itemId)}"]`);
         if (!voteControls) return;
 
         const upvoteBtn    = voteControls.querySelector('.upvote-btn');
@@ -123,7 +126,7 @@ async function handleVote(itemId, voteType, itemType = 'citation') {
             loadCitationRequests(1, true);
         }
     } finally {
-        const voteControls = document.querySelector(`[data-${itemType}-id="${itemId}"]`);
+        const voteControls = document.querySelector(`[data-${itemType}-id="${CSS.escape(itemId)}"]`);
         const upvoteBtn     = voteControls?.querySelector('.upvote-btn');
         const downvoteBtn   = voteControls?.querySelector('.downvote-btn');
         if (upvoteBtn)   upvoteBtn.disabled   = false;

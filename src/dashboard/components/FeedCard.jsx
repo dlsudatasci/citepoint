@@ -35,7 +35,7 @@ export default function FeedCard({ item }) {
         <div className="feed-card">
             <div className="feed-thumb-container">
                 <a href={videoUrl} target="_blank" rel="noopener noreferrer">
-                    <img src={thumbUrl} alt="Video Thumbnail" className="feed-thumbnail" />
+                    <img src={thumbUrl} alt={videoTitle} className="feed-thumbnail" />
                 </a>
             </div>
             
@@ -45,11 +45,11 @@ export default function FeedCard({ item }) {
                 
                 <div className="feed-meta-row">
                     {/* primary: Topic */}
-                    {topics.map((topic, idx) => {
+                    {topics.map((topic) => {
                         const colors = TOPIC_COLORS[topic] || TOPIC_COLORS['Other'];
                         return (
-                            <span 
-                                key={idx} 
+                            <span
+                                key={topic}
                                 className="feed-category-badge" 
                                 style={{ background: colors.bg, color: colors.color, marginRight: '6px' }}
                             >
@@ -65,7 +65,7 @@ export default function FeedCard({ item }) {
                 </div>
                 
                 <div className="feed-footer">
-                    <span className="feed-score">▲ {item.voteScore || 0}</span>
+                    <span className="feed-score" aria-label={`${item.voteScore || 0} votes`}><span aria-hidden="true">▲ {item.voteScore || 0}</span></span>
                     <span className="feed-date">{new Date(item.dateAdded).toLocaleDateString()}</span>
                 </div>
             </div>

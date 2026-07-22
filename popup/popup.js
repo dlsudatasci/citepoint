@@ -1,17 +1,22 @@
+// browser-polyfill.js (loaded before this file) makes `browser` available with a
+// Promise-based API in both Chrome and Firefox — prefer it, falling back to the
+// native `chrome` callback API only if the polyfill somehow didn't load.
+const _ext = (typeof browser !== 'undefined' && browser.tabs) ? browser : chrome;
+
 // Add event listener for when the popup DOM is fully loaded
 document.addEventListener('DOMContentLoaded', function() {
     // Add click event to open YouTube in a new tab
     const openYouTubeBtn = document.getElementById('open-youtube');
     if (openYouTubeBtn) {
         openYouTubeBtn.addEventListener('click', function() {
-            chrome.tabs.create({ url: 'https://www.youtube.com' });
+            _ext.tabs.create({ url: 'https://www.youtube.com' });
         });
     }
 
     const openDashboardBtn = document.getElementById('open-dashboard');
     if (openDashboardBtn) {
         openDashboardBtn.addEventListener('click', function() {
-            chrome.tabs.create({ url: chrome.runtime.getURL('dashboard/dashboard.html') });
+            _ext.tabs.create({ url: _ext.runtime.getURL('dashboard/dashboard.html') });
         });
     }
 
@@ -40,10 +45,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // Check if extension is being used on YouTube
-    chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+    _ext.tabs.query({ active: true, currentWindow: true }).then(function(tabs) {
         const activeTab = tabs[0];
-        const isYouTube = activeTab.url.includes('youtube.com/watch');
-        
+        const isYouTube = !!activeTab?.url?.includes('youtube.com/watch');
+
         // Show a message if not on YouTube video page
         const notOnYouTubeMsg = document.getElementById('not-on-youtube');
         if (notOnYouTubeMsg) {

@@ -19,7 +19,9 @@ export default function DiscussionCard({ item, onOpenDiscussion }) {
 
     return (
         <div className="discussion-card">
-            <img src={thumbUrl} alt="Video thumbnail" className="discussion-card__thumb" />
+            {/* alt="" — the video title is already shown as visible text below (line ~31);
+                a real alt here would just make screen readers announce it twice. */}
+            <img src={thumbUrl} alt="" className="discussion-card__thumb" />
 
             <div className="discussion-card__body">
                 <div className="discussion-card__title-row">
@@ -38,7 +40,7 @@ export default function DiscussionCard({ item, onOpenDiscussion }) {
 
                 <div className="discussion-card__meta-row">
                     <span>{item.replyCount} {item.replyCount === 1 ? 'reply' : 'replies'}</span>
-                    <span>▲ {item.voteScore || 0}</span>
+                    <span aria-label={`${item.voteScore || 0} votes`}><span aria-hidden="true">▲ {item.voteScore || 0}</span></span>
                     <span>{new Date(item.lastActivity).toLocaleDateString()}</span>
                     {item.unreadCount > 0 && (
                         <span className="discussion-card__unread-badge">{item.unreadCount} new</span>

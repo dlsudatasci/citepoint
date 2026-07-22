@@ -51,7 +51,7 @@ function ProfileStats({ username }) {
                 <div className="stat-card"><span className="stat-number">{stats.upvotes}</span><span className="stat-label">Upvotes</span></div>
                 {expert && (
                     <div className="stat-card stat-expert">
-                        <span className="stat-number">✓</span>
+                        <span className="stat-number" aria-hidden="true">✓</span>
                         <span className="stat-label">Expert: {(expert.topics || []).join(', ')}</span>
                     </div>
                 )}
@@ -86,8 +86,8 @@ function ProfileHistory({ username }) {
         window.apiGetProfileHistory(username, 1).then(history => {
             if (!isMounted) return;
             const combined = [
-                ...(history.citations || []).map(c => ({ type: 'Citation', title: c.citationTitle, date: c.dateAdded, score: c.voteScore })),
-                ...(history.requests || []).map(r => ({ type: 'Request', title: r.title, date: r.dateAdded, score: r.voteScore })),
+                ...(history.citations || []).map(c => ({ id: `citation:${c._id}`, type: 'Citation', title: c.citationTitle, date: c.dateAdded, score: c.voteScore })),
+                ...(history.requests || []).map(r => ({ id: `request:${r._id}`, type: 'Request', title: r.title, date: r.dateAdded, score: r.voteScore })),
             ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
             setItems(combined);
         }).catch(() => {});
@@ -99,11 +99,11 @@ function ProfileHistory({ username }) {
     return (
         <div id="profile-history">
             <h3>Recent Activity</h3>
-            {items.map((item, idx) => (
-                <div className="history-item" key={idx}>
+            {items.map((item) => (
+                <div className="history-item" key={item.id}>
                     <span className={`history-type ${item.type === 'Citation' ? 'type-citation' : 'type-request'}`}>{item.type}</span>
                     <span className="history-title">{item.title || 'Untitled'}</span>
-                    <span className="history-score">▲ {item.score ?? 0}</span>
+                    <span className="history-score" aria-label={`${item.score ?? 0} votes`}><span aria-hidden="true">▲ {item.score ?? 0}</span></span>
                     <span className="history-date">{new Date(item.date).toLocaleDateString()}</span>
                 </div>
             ))}
@@ -284,7 +284,7 @@ export default function Profile() {
                 <h2>Expert Verification</h2>
                 {user.isExpert ? (
                     <div className="expert-badge-banner">
-                        <span className="expert-check">✓</span> Verified Expert — {(user.expertTopics || []).join(', ') || 'No topics assigned'}
+                        <span className="expert-check" aria-hidden="true">✓</span> Verified Expert — {(user.expertTopics || []).join(', ') || 'No topics assigned'}
                     </div>
                 ) : justApplied ? (
                     <p className="success-message">Application submitted! You will be notified when reviewed.</p>

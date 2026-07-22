@@ -405,7 +405,9 @@
     font-family: var(--cp-font);
     font-size: var(--cp-text-sm);
     font-weight: var(--cp-weight-semi);
-    padding: 2px 0;
+    /* 24px+ touch target (WCAG 2.5.8) — was 2px 0, effectively text-height only. */
+    padding: 6px 8px;
+    margin: -6px -8px;
 }
 
 .thread-reply-btn {
@@ -431,7 +433,9 @@
     color: var(--cp-text-tertiary);
     font-family: monospace;
     font-size: var(--cp-text-sm);
-    padding: 0 4px;
+    /* 24px+ touch target (WCAG 2.5.8) — was 0 4px, effectively text-height only. */
+    padding: 6px 8px;
+    margin: -6px -4px;
     flex-shrink: 0;
 }
 

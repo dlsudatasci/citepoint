@@ -43,7 +43,7 @@ function insertCitationButtons() {
             </div>
             <hr class="minimized-divider">
             <button id="toggle-extension" class="minimized-expand-btn" title="Expand CitePoint">
-                <span class="toggle-icon" id="toggle-icon">▼</span>
+                <span class="toggle-icon" id="toggle-icon" aria-hidden="true">▼</span>
             </button>
         </div>
         <div id="extension-content" class="extension-content" style="display:none;">
@@ -61,7 +61,7 @@ function insertCitationButtons() {
                     <div class="category-filter-menu" id="category-filter-menu" role="menu" style="display:none;">
                         <button class="category-filter-item" role="menuitem" data-value="">
                             <span class="category-filter-item-text">All categories</span>
-                            <span class="category-filter-check">✓</span>
+                            <span class="category-filter-check" aria-hidden="true">✓</span>
                         </button>
                         ${CATEGORIES.map(c => `
                         <button class="category-filter-item" role="menuitem" data-value="${_escapeHtml(c)}">
@@ -89,7 +89,7 @@ function insertCitationButtons() {
                     <div class="sort-menu" id="sort-menu" role="menu" style="display:none;">
                         <button class="sort-menu-item" role="menuitem" data-value="upvotes">
                             <span class="sort-menu-text">Most Upvoted</span>
-                            <span class="sort-check">✓</span>
+                            <span class="sort-check" aria-hidden="true">✓</span>
                         </button>
                         <button class="sort-menu-item" role="menuitem" data-value="recent">
                             <span class="sort-menu-text">Newest first</span>
@@ -327,7 +327,7 @@ function _wireSortMenu() {
         sortMenu.querySelectorAll('.sort-menu-item').forEach(el => {
             el.innerHTML = `
                 <span class="sort-menu-text">${el.dataset.value === 'upvotes' ? 'Most Upvoted' : 'Newest first'}</span>
-                ${el.dataset.value === currentSortOption ? '<span class="sort-check">✓</span>' : ''}
+                ${el.dataset.value === currentSortOption ? '<span class="sort-check" aria-hidden="true">✓</span>' : ''}
             `;
         });
 
@@ -375,7 +375,7 @@ function _wireCategoryFilter() {
             if (check) check.remove();
             if (el.dataset.value === _currentCategoryFilter) {
                 el.querySelector('.category-filter-item-text').insertAdjacentHTML(
-                    'afterend', '<span class="category-filter-check">✓</span>'
+                    'afterend', '<span class="category-filter-check" aria-hidden="true">✓</span>'
                 );
             }
         });

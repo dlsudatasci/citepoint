@@ -97,7 +97,7 @@ export default function Notifications({ onOpenDiscussion }) {
                                 }
                             }}
                         >
-                            <span className="notif-icon">{ICONS[n.type] || '❌'}</span>
+                            <span className="notif-icon" aria-hidden="true">{ICONS[n.type] || '❌'}</span>
                             <div className="notif-body">
                                 <span className="notif-title">{n.title}</span>
                                 {n.category && <span className="notif-category">{n.category}</span>}
