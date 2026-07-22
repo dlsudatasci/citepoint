@@ -157,6 +157,19 @@ function OriginalRequestCard({ request, userVotes, onVote, canResolve, onToggleR
     );
 }
 
+function FollowButton({ following, onToggle, disabled }) {
+    return (
+        <button
+            className={`cp-btn cp-btn--secondary follow-toggle-btn ${following ? 'following' : ''}`}
+            onClick={onToggle}
+            disabled={disabled}
+            aria-pressed={following}
+        >
+            <span aria-hidden="true">{following ? '★' : '☆'}</span> {following ? 'Following' : 'Follow thread'}
+        </button>
+    );
+}
+
 // ── Inline reply form ─────────────────────────────────────────
 
 function ReplyForm({ onCancel, onSubmit }) {
@@ -305,6 +318,8 @@ export default function DiscussionThread({ type, id, onOpenDiscussion, onBack })
     const [flatList, setFlatList] = useState([]);
     const [sort, setSort]         = useState('top');
     const [userVotes, setUserVotes] = useState({});
+    const [following, setFollowing] = useState(false);
+    const [followBusy, setFollowBusy] = useState(false);
 
     const videoId = original?.videoId || null;
 
@@ -329,6 +344,16 @@ export default function DiscussionThread({ type, id, onOpenDiscussion, onBack })
     }, [type, id]);
 
     useEffect(() => { load(); }, [load]);
+
+    useEffect(() => {
+        if (!currentUser || !original) return;
+        const itemId = original.id || original._id;
+        let cancelled = false;
+        window.apiGetFollowStatus(itemId, type, currentUser)
+            .then(f => { if (!cancelled) setFollowing(f); })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [currentUser, original, type]);
 
     useEffect(() => {
         if (!videoId) return;
@@ -390,6 +415,21 @@ export default function DiscussionThread({ type, id, onOpenDiscussion, onBack })
         }
     }
 
+    async function handleToggleFollow() {
+        if (!currentUser || !original) return;
+        const itemId = original.id || original._id;
+        const next = !following;
+        setFollowBusy(true);
+        try {
+            const result = await window.apiUpdateFollow(itemId, type, next, currentUser);
+            setFollowing(result);
+        } catch (err) {
+            alert('Failed to update follow status: ' + err.message);
+        } finally {
+            setFollowBusy(false);
+        }
+    }
+
     if (loading) return <p className="loading">Loading discussion...</p>;
     if (error) return <p className="error-message">Error loading discussion: {error}</p>;
     if (!original) return <p className="empty-message">Discussion not found.</p>;
@@ -412,7 +452,12 @@ export default function DiscussionThread({ type, id, onOpenDiscussion, onBack })
                 : <OriginalRequestCard request={original} userVotes={userVotes} onVote={handleVote} canResolve={canResolve} onToggleResolved={handleToggleResolved} />}
 
             <div className="thread-controls">
-                <span className="response-count">{totalCount} {noun}</span>
+                <div className="thread-controls-left">
+                    <span className="response-count">{totalCount} {noun}</span>
+                    {currentUser && (
+                        <FollowButton following={following} onToggle={handleToggleFollow} disabled={followBusy} />
+                    )}
+                </div>
                 <select className="thread-sort-select" value={sort} onChange={e => setSort(e.target.value)} aria-label="Sort replies">
                     <option value="top">Top</option>
                     <option value="new">Newest</option>

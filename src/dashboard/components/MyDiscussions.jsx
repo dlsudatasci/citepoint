@@ -8,6 +8,7 @@ const FILTERS = [
     { key: 'mine',        label: 'My Citations' },
     { key: 'requests',    label: 'My Requests' },
     { key: 'participated', label: 'Participated' },
+    { key: 'following',   label: 'Following' },
     { key: 'unread',      label: 'Unread' },
     { key: 'unresolved',  label: 'Unresolved' },
     { key: 'resolved',    label: 'Resolved' },

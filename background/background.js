@@ -180,6 +180,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         handleUpdateResolved(request.itemType, request.videoId, request.itemId, request.resolved, request.username).then(sendResponse);
         return true;
     }
+    if (request.type === 'getFollowStatus') {
+        handleGetFollowStatus(request.itemType, request.itemId, request.username).then(sendResponse);
+        return true;
+    }
+    if (request.type === 'updateFollow') {
+        handleUpdateFollow(request.itemType, request.itemId, request.following, request.username).then(sendResponse);
+        return true;
+    }
     if (request.type === 'checkExpert') {
         handleCheckExpert(request.username).then(sendResponse);
         return true;
@@ -459,6 +467,24 @@ async function handleUpdateResolved(itemType, videoId, itemId, resolved, usernam
             resolvedBy: result.resolvedBy,
             resolvedAt: result.resolvedAt,
         };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleGetFollowStatus(itemType, itemId, username) {
+    try {
+        const result = await apiRequest(`/follows/${itemType}/${itemId}?username=${encodeURIComponent(username)}`);
+        return { success: true, following: result.following };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}
+
+async function handleUpdateFollow(itemType, itemId, following, username) {
+    try {
+        const result = await apiRequest(`/follows/${itemType}/${itemId}`, 'PATCH', { following, username });
+        return { success: true, following: result.following };
     } catch (error) {
         return { success: false, error: error.message };
     }

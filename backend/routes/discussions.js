@@ -3,6 +3,7 @@ const mongoose    = require('mongoose');
 const Citation    = require('../models/Citation');
 const Request     = require('../models/Request');
 const Notification = require('../models/Notification');
+const Follow       = require('../models/Follow');
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT      = 50;
@@ -23,7 +24,7 @@ function trimReply(reply) {
     };
 }
 
-// GET /api/discussions/mine?username=&filter=all|mine|requests|participated|unread|resolved|unresolved&search=&page=&limit=
+// GET /api/discussions/mine?username=&filter=all|mine|requests|participated|unread|resolved|unresolved|following&search=&page=&limit=
 //
 // Builds a small "anchor" set of {rootId, rootType} pairs from four cheap, indexed
 // queries (my root citations, my requests, threads I replied in, threads where someone
@@ -53,17 +54,19 @@ router.get('/mine', async (req, res) => {
         // ── Step 1: gather anchor {rootId, rootType} pairs, tagged by bucket ──
         const anchors = new Map();
 
-        const [myCitations, myRequests, myReplies, repliedToMe] = await Promise.all([
+        const [myCitations, myRequests, myReplies, repliedToMe, followed] = await Promise.all([
             Citation.find({ username, parentCitationId: null }, { _id: 1 }).lean(),
             Request.find({ username }, { _id: 1 }).lean(),
             Citation.find({ username, parentCitationId: { $ne: null } }, { rootId: 1 }).lean(),
             Notification.find({ username, type: 'reply' }, { rootItemId: 1, rootItemType: 1 }).lean(),
+            Follow.find({ username }, { itemId: 1, itemType: 1 }).lean(),
         ]);
 
         myCitations.forEach(d => addAnchor(anchors, d._id.toString(), 'citation', 'mine'));
         myRequests.forEach(d => addAnchor(anchors, d._id.toString(), 'request', 'requests'));
         myReplies.forEach(d => addAnchor(anchors, d.rootId, 'citation', 'participated'));
         repliedToMe.forEach(d => addAnchor(anchors, d.rootItemId, d.rootItemType, 'participated'));
+        followed.forEach(d => addAnchor(anchors, d.itemId, d.itemType, 'following'));
 
         const citationRootIds = [];
         const requestRootIds  = [];
@@ -179,6 +182,7 @@ router.get('/mine', async (req, res) => {
         else if (filter === 'unread') filtered = filtered.filter(d => d.unreadCount > 0);
         else if (filter === 'resolved') filtered = filtered.filter(d => d.resolved);
         else if (filter === 'unresolved') filtered = filtered.filter(d => !d.resolved);
+        else if (filter === 'following') filtered = filtered.filter(d => d.buckets.includes('following'));
 
         if (search) {
             filtered = filtered.filter(d =>

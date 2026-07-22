@@ -87,6 +87,7 @@ app.use('/api/discussions',   require('./routes/discussions'));
 app.use('/api/dashboard', require('./routes/dashboard'));
 app.use('/api/videos', writesOnly(mutationLimiter), require('./routes/videos'));
 app.use('/api/feeds', require('./routes/feeds'));
+app.use('/api/follows', writesOnly(mutationLimiter), require('./routes/follows'));
 
 app.get('/health', (req, res) => {
     const { clientCount } = require('./lib/sseEmitter');

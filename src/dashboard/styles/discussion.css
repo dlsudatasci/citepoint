@@ -266,6 +266,22 @@
     margin-bottom: var(--cp-space-16);
 }
 
+.thread-controls-left {
+    display: flex;
+    align-items: center;
+    gap: var(--cp-space-12);
+}
+
+.follow-toggle-btn {
+    font-size: var(--cp-text-sm);
+    padding: 4px 12px;
+}
+
+.follow-toggle-btn.following {
+    background: var(--cp-accent-bg);
+    color: var(--cp-accent);
+}
+
 .response-count {
     font-size: var(--cp-text-md);
     font-weight: var(--cp-weight-semi);
