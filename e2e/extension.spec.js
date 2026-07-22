@@ -3,10 +3,10 @@ const path = require('path');
 const channel = require('./browserChannel');
 
 const EXTENSION_PATH = path.resolve(__dirname, '..');
-// Dedicated video id — see citepoint.delete.spec.js for why each e2e project
-// needs its own, rather than sharing one across the 5 parallel Playwright workers.
-const TEST_VIDEO_ID  = 'kJQP7kiw5Fk';
-const TEST_VIDEO     = `https://www.youtube.com/watch?v=${TEST_VIDEO_ID}`;
+// Shares citepoint.voting.spec.js's video id rather than getting its own — this
+// pairing was never part of the parallel-worker collision pattern (see
+// citepoint.delete.spec.js), so there's no need to introduce another unverified id.
+const TEST_VIDEO     = 'https://www.youtube.com/watch?v=dQw4w9WgXcQ';
 
 // ── Shared browser context with extension loaded ──────────────────────────
 
