@@ -8,7 +8,7 @@ const EXTENSION_PATH = path.resolve(__dirname, '..');
 // video — sharing one id let another project's citations bleed into this
 // project's DOM queries (e.g. a stale .respond-btn match), causing flaky
 // visibility-timeout failures unrelated to any real regression.
-const TEST_VIDEO_ID  = 'aqz-KE-bpKQ';
+const TEST_VIDEO_ID  = 'CevxZvSJLk8';
 const TEST_VIDEO     = `https://www.youtube.com/watch?v=${TEST_VIDEO_ID}`;
 
 let context;

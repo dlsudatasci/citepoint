@@ -5,7 +5,7 @@ const channel = require('./browserChannel');
 const EXTENSION_PATH  = path.resolve(__dirname, '..');
 // Dedicated video id — see citepoint.delete.spec.js for why each e2e project
 // needs its own, rather than sharing one across the 5 parallel Playwright workers.
-const TEST_VIDEO_ID   = 'TLkA0RELQ1g';
+const TEST_VIDEO_ID   = 'fJ9rUzIMcZQ';
 const TEST_VIDEO      = `https://www.youtube.com/watch?v=${TEST_VIDEO_ID}`;
 
 let context;
