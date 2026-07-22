@@ -1845,19 +1845,17 @@ ytd-watch-flexy[theater] div#secondary {
 }
 
 /* ── Dark Mode: the handful of colors that don't route through
-   styles/tokens.css's @media (prefers-color-scheme: dark) block ─── */
-@media (prefers-color-scheme: dark) {
-    #citation-requests-container::-webkit-scrollbar-thumb,
-    #citations-container::-webkit-scrollbar-thumb {
-        background: rgba(255, 255, 255, 0.22);
-    }
+   styles/tokens.css's [data-cp-theme="dark"] block ─── */
+[data-cp-theme="dark"] #citation-requests-container::-webkit-scrollbar-thumb,
+[data-cp-theme="dark"] #citations-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22);
+}
 
-    #citation-requests-container::-webkit-scrollbar-thumb:hover,
-    #citations-container::-webkit-scrollbar-thumb:hover {
-        background: rgba(255, 255, 255, 0.34);
-    }
+[data-cp-theme="dark"] #citation-requests-container::-webkit-scrollbar-thumb:hover,
+[data-cp-theme="dark"] #citations-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.34);
+}
 
-    .segment-delete-btn {
-        color: rgba(255, 255, 255, 0.45);
-    }
+[data-cp-theme="dark"] .segment-delete-btn {
+    color: rgba(255, 255, 255, 0.45);
 }

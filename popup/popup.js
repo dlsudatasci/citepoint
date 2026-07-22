@@ -20,6 +20,33 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Theme Selector Logic
+    if (typeof initTheme === 'function') initTheme();
+    
+    const themeSelector = document.getElementById('theme-selector');
+    if (themeSelector && typeof AVAILABLE_THEMES !== 'undefined') {
+        AVAILABLE_THEMES.forEach(theme => {
+            const option = document.createElement('option');
+            option.value = theme.id;
+            option.textContent = theme.label;
+            themeSelector.appendChild(option);
+        });
+
+        chrome.storage.local.get('theme', (res) => {
+            themeSelector.value = res.theme || 'light';
+        });
+
+        themeSelector.addEventListener('change', (e) => {
+            chrome.storage.local.set({ theme: e.target.value });
+        });
+        
+        chrome.storage.onChanged.addListener((changes, area) => {
+            if (area === 'local' && changes.theme) {
+                themeSelector.value = changes.theme.newValue || 'light';
+            }
+        });
+    }
+
     // Collapse/expand sections if needed
     const featureHeadings = document.querySelectorAll('.feature h2');
     featureHeadings.forEach(heading => {

@@ -1,5 +1,6 @@
 import React, { useContext } from 'react';
 import { UserContext } from '../context/UserContext';
+import ThemeSelector from '../components/ThemeSelector';
 
 export default function SidebarLeft({ activeView, setActiveView }) {
     const { user } = useContext(UserContext);
@@ -58,6 +59,8 @@ export default function SidebarLeft({ activeView, setActiveView }) {
                  {user.username || 'Log In'}
                 </button>
             </nav>
+
+            <ThemeSelector />
         </aside>
     );
 }

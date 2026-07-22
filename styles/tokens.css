@@ -125,73 +125,85 @@
     --cp-z-confirm-box:        99999;
 }
 
-/* ══════════════════════════════════════════════
-   Dark mode — follows the OS/browser preference.
-   Only color tokens are redefined; typography, spacing,
-   radii, and z-index stay identical in both themes.
-   Every text/accent color below is verified >= 5:1 contrast
-   against both --cp-bg-card and --cp-bg-page (WCAG AA is 4.5:1).
-   ══════════════════════════════════════════════ */
-@media (prefers-color-scheme: dark) {
-    :root {
-        /* ── Colors: Brand ──────────────────────────── */
-        --cp-accent:         #7ba7f0;
-        --cp-accent-hover:   #93b8f3;
-        --cp-accent-active:  #5c8fe0;
-        --cp-accent-bg:      rgba(123, 167, 240, 0.14);
-        --cp-accent-bg-hover:rgba(123, 167, 240, 0.20);
+/* ── Theme: Dark ────────────────────────────── */
+/* text/bg/border/accent values are the theme picker's own choices; the
+   semantic/category/shadow/overlay tokens below (not covered by the picker's
+   original palette) are carried over from the old prefers-color-scheme dark
+   mode work, each verified >= 5:1 contrast against --cp-bg-card/--cp-bg-page. */
+[data-cp-theme="dark"] {
+    --cp-text-primary:   #f1f1f1;
+    --cp-text-secondary: #aaaaaa;
+    --cp-text-tertiary:  #888888;
+    --cp-text-on-accent: #ffffff;
 
-        /* ── Colors: Semantic ───────────────────────── */
-        --cp-success:        #5fd489;
-        --cp-success-hover:  #7ade9c;
-        --cp-success-bg:     rgba(95, 212, 137, 0.14);
-        --cp-success-border: rgba(95, 212, 137, 0.35);
+    --cp-bg-page:        #121212;
+    --cp-bg-surface:     #1e1e1e;
+    --cp-bg-card:        #2a2a2a;
+    --cp-bg-input:       rgba(255, 255, 255, 0.05);
+    --cp-bg-input-hover: rgba(255, 255, 255, 0.1);
+    --cp-bg-hover:       rgba(255, 255, 255, 0.08);
+    --cp-bg-active:      rgba(255, 255, 255, 0.12);
 
-        --cp-error:          #f27070;
-        --cp-error-hover:    #f58888;
-        --cp-error-bg:       rgba(242, 112, 112, 0.14);
+    --cp-border:         rgba(255, 255, 255, 0.15);
+    --cp-border-strong:  rgba(255, 255, 255, 0.25);
+    --cp-border-input:   #444444;
+    --cp-divider:        rgba(255, 255, 255, 0.1);
 
-        --cp-warning:        #e8a154;
-        --cp-warning-bg:     rgba(232, 161, 84, 0.16);
+    --cp-accent:         #3ea6ff;
+    --cp-accent-hover:   #6ebcff;
+    --cp-accent-active:  #2d88ff;
+    --cp-accent-bg:      rgba(62, 166, 255, 0.15);
+    --cp-accent-bg-hover:rgba(62, 166, 255, 0.25);
 
-        --cp-record:         #ff5f5f;
-        --cp-record-hover:   #ff7a7a;
-        --cp-record-bg:      rgba(255, 95, 95, 0.10);
-        --cp-record-bg-hover:rgba(255, 95, 95, 0.18);
+    /* ── Colors: Semantic ───────────────────────── */
+    --cp-success:        #5fd489;
+    --cp-success-hover:  #7ade9c;
+    --cp-success-bg:     rgba(95, 212, 137, 0.14);
+    --cp-success-border: rgba(95, 212, 137, 0.35);
 
-        /* ── Colors: Neutral ────────────────────────── */
-        --cp-text-primary:   #eef0f2;
-        --cp-text-secondary: #b7bcc2;
-        --cp-text-tertiary:  #9aa0a8;
-        --cp-text-on-accent: #10131a;
+    --cp-error:          #f27070;
+    --cp-error-hover:    #f58888;
+    --cp-error-bg:       rgba(242, 112, 112, 0.14);
 
-        --cp-bg-page:        #14171c;
-        --cp-bg-surface:     #1a1e24;
-        --cp-bg-card:        #20242b;
-        --cp-bg-input:       rgba(255, 255, 255, 0.06);
-        --cp-bg-input-hover: rgba(255, 255, 255, 0.09);
-        --cp-bg-hover:       rgba(255, 255, 255, 0.05);
-        --cp-bg-active:      rgba(255, 255, 255, 0.08);
+    --cp-warning:        #e8a154;
+    --cp-warning-bg:     rgba(232, 161, 84, 0.16);
 
-        --cp-border:         rgba(255, 255, 255, 0.12);
-        --cp-border-strong:  rgba(255, 255, 255, 0.18);
-        --cp-border-input:   #3a3f47;
-        --cp-divider:        rgba(255, 255, 255, 0.09);
+    --cp-record:         #ff5f5f;
+    --cp-record-hover:   #ff7a7a;
+    --cp-record-bg:      rgba(255, 95, 95, 0.10);
+    --cp-record-bg-hover:rgba(255, 95, 95, 0.18);
 
-        /* ── Category Colors ────────────────────────── */
-        --cp-cat-statistics: #a07bff;
-        --cp-cat-quote:      #e8a154;
-        --cp-cat-historical: #4fd6c0;
-        --cp-cat-scientific: #7ba7f0;
-        --cp-cat-context:    #e878ab;
-        --cp-cat-other:      #b7bcc2;
+    /* ── Category Colors ────────────────────────── */
+    --cp-cat-statistics: #a07bff;
+    --cp-cat-quote:      #e8a154;
+    --cp-cat-historical: #4fd6c0;
+    --cp-cat-scientific: #7ba7f0;
+    --cp-cat-context:    #e878ab;
+    --cp-cat-other:      #b7bcc2;
 
-        /* ── Shadows ────────────────────────────────── */
-        --cp-shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.4);
-        --cp-shadow-md:      0 2px 10px rgba(0, 0, 0, 0.5);
-        --cp-shadow-lg:      0 6px 28px rgba(0, 0, 0, 0.6);
+    /* ── Shadows ────────────────────────────────── */
+    --cp-shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.4);
+    --cp-shadow-md:      0 2px 10px rgba(0, 0, 0, 0.5);
+    --cp-shadow-lg:      0 6px 28px rgba(0, 0, 0, 0.6);
 
-        /* ── Overlay ────────────────────────────────── */
-        --cp-overlay-scrim:  rgba(0, 0, 0, 0.65);
-    }
+    /* ── Overlay ────────────────────────────────── */
+    --cp-overlay-scrim:  rgba(0, 0, 0, 0.65);
+}
+
+/* ── Theme: DLSU Green ──────────────────────── */
+[data-cp-theme="dlsu"] {
+    --cp-accent:         #009639; /* Pantone 355U */
+    --cp-accent-hover:   #007a2d;
+    --cp-accent-active:  #006023;
+    --cp-accent-bg:      rgba(0, 150, 57, 0.08);
+    --cp-accent-bg-hover:rgba(0, 150, 57, 0.12);
+
+    --cp-success:        #009639;
+    --cp-success-hover:  #007a2d;
+
+    --cp-bg-page:        #f2f9f4; /* Very light green hint */
+    --cp-bg-surface:     #ffffff;
+    --cp-bg-card:        #ffffff;
+
+    --cp-focus-ring:     0 0 0 3px var(--cp-accent-bg-hover);
 }

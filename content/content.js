@@ -122,6 +122,8 @@ window.addEventListener('yt-navigate-finish', () => {
 
 // ── Start ─────────────────────────────────────
 
+initTheme();
+
 if (location.href.includes('youtube.com/watch')) {
     waitForDependencies();
 }

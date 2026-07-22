@@ -27,6 +27,10 @@ function insertCitationButtons() {
     panel.id        = 'citation-controls';
     panel.className = 'citation-controls';
     panel.style.width = storedSecondaryWidth + 'px';
+    
+    if (typeof _currentTheme !== 'undefined' && _currentTheme !== 'light') {
+        panel.setAttribute('data-cp-theme', _currentTheme);
+    }
 
     panel.innerHTML = `
         <div class="extension-header" id="extension-header">
