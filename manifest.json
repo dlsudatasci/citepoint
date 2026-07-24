@@ -1,14 +1,20 @@
 {
     "manifest_version": 3,
-    "name": "YouTube Citation Extension",
+    "name": "CitePoint - Youtube Citation Extension",
     "version": "1.1",
-    "description": "Add and manage citations for YouTube videos",
+    "description": "Attach timestamped citations, citation requests, and threaded discussion to claims made in YouTube videos.",
     "action": {
         "default_popup": "popup/popup.html",
         "default_icon": {
             "16": "icons/icon16.png",
-            "48": "icons/icon48.png"
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
         }
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
     },
     "permissions": [
         "activeTab",
