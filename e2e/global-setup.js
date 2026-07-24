@@ -29,7 +29,6 @@ module.exports = async () => {
                 PORT: '3000',
                 ALLOWED_ORIGINS: '*',
                 ALLOWED_ORIGIN: '*',
-                DISABLE_RATE_LIMIT: 'true',
                 NODE_ENV: 'test',
             },
             stdio: ['ignore', 'pipe', 'pipe'],

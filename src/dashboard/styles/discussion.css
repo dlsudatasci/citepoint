@@ -146,6 +146,18 @@
     font-weight: var(--cp-weight-semi);
 }
 
+.discussion-card__resolved-badge {
+    display: inline-block;
+    background: var(--cp-success-bg);
+    color: var(--cp-success);
+    border-radius: var(--cp-radius-pill);
+    padding: 1px 8px;
+    font-size: var(--cp-text-xs);
+    font-weight: var(--cp-weight-semi);
+    margin-left: var(--cp-space-6);
+    white-space: nowrap;
+}
+
 .discussion-card__actions {
     flex-shrink: 0;
     display: flex;
@@ -254,6 +266,22 @@
     margin-bottom: var(--cp-space-16);
 }
 
+.thread-controls-left {
+    display: flex;
+    align-items: center;
+    gap: var(--cp-space-12);
+}
+
+.follow-toggle-btn {
+    font-size: var(--cp-text-sm);
+    padding: 4px 12px;
+}
+
+.follow-toggle-btn.following {
+    background: var(--cp-accent-bg);
+    color: var(--cp-accent);
+}
+
 .response-count {
     font-size: var(--cp-text-md);
     font-weight: var(--cp-weight-semi);
@@ -274,6 +302,7 @@
 .thread-sort-select:focus {
     outline: none;
     border-color: var(--cp-accent);
+    box-shadow: var(--cp-focus-ring);
 }
 
 .thread-node {
@@ -351,22 +380,12 @@
     gap: 2px;
 }
 
+/* Base .vote-btn reset and :hover come from styles/components.css (imported by
+   dashboard.css, which always loads alongside this file) — only the thread-view-
+   specific padding/font-size and the up/down active-state coloring live here. */
 .vote-btn {
-    background: none;
-    border: none;
-    border-radius: var(--cp-radius-pill);
-    color: var(--cp-text-secondary);
-    cursor: pointer;
     padding: 4px 6px;
     font-size: var(--cp-text-md);
-    transition: all var(--cp-transition);
-    display: flex;
-    align-items: center;
-}
-
-.vote-btn:hover {
-    background: var(--cp-bg-hover);
-    color: var(--cp-text-primary);
 }
 
 .upvote-btn.voted {
@@ -399,6 +418,30 @@
     margin-top: var(--cp-space-8);
 }
 
+.original-resolved-row {
+    display: flex;
+    align-items: center;
+    gap: var(--cp-space-10);
+    margin: var(--cp-space-10) 0;
+}
+
+.resolved-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cp-space-4);
+    font-size: var(--cp-text-sm);
+    font-weight: var(--cp-weight-semi);
+    padding: 2px 10px;
+    border-radius: var(--cp-radius-lg);
+    background: var(--cp-success-bg);
+    color: var(--cp-success);
+}
+
+.resolve-toggle-btn {
+    font-size: var(--cp-text-sm);
+    padding: 4px 12px;
+}
+
 .thread-item-actions {
     display: flex;
     align-items: center;
@@ -414,7 +457,9 @@
     font-family: var(--cp-font);
     font-size: var(--cp-text-sm);
     font-weight: var(--cp-weight-semi);
-    padding: 2px 0;
+    /* 24px+ touch target (WCAG 2.5.8) — was 2px 0, effectively text-height only. */
+    padding: 6px 8px;
+    margin: -6px -8px;
 }
 
 .thread-reply-btn {
@@ -440,7 +485,9 @@
     color: var(--cp-text-tertiary);
     font-family: monospace;
     font-size: var(--cp-text-sm);
-    padding: 0 4px;
+    /* 24px+ touch target (WCAG 2.5.8) — was 0 4px, effectively text-height only. */
+    padding: 6px 8px;
+    margin: -6px -4px;
     flex-shrink: 0;
 }
 

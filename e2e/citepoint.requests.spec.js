@@ -378,7 +378,17 @@ test('REQ-010: clicking Respond opens citation form pre-filled with request time
     await openRequestsTab();
     await page.waitForTimeout(2000);
 
-    const respondBtn = page.locator('.respond-btn').first();
+    // Scope to this test's own seeded card by title, rather than `.respond-btn`
+    // .first() on the page — the shared test video can have other spec files'
+    // concurrently-seeded requests present, and .first() isn't guaranteed to
+    // resolve to this test's own element (see citepoint.delete.spec.js's
+    // DEL-007 for an example of the kind of stray card that can appear).
+    const ownTitle = page.locator('#citation-requests-container .citation-title')
+        .filter({ hasText: 'REQ-010 Respond Test' }).first();
+    await expect(ownTitle).toBeVisible({ timeout: 15000 });
+    const ownCard = ownTitle.locator('xpath=ancestor::div[2]');
+
+    const respondBtn = ownCard.locator('.respond-btn');
     await expect(respondBtn).toBeVisible({ timeout: 15000 });
     await respondBtn.click();
 
@@ -407,7 +417,14 @@ test('REQ-012: title and timestamp fields are read-only in the response form', a
     await openRequestsTab();
     await page.waitForTimeout(2000);
 
-    const respondBtn = page.locator('.respond-btn').first();
+    // Scope to this test's own seeded card — see REQ-010's comment for why
+    // `.respond-btn` .first() on the whole page isn't reliable here.
+    const ownTitle = page.locator('#citation-requests-container .citation-title')
+        .filter({ hasText: 'REQ-012 Lock Test' }).first();
+    await expect(ownTitle).toBeVisible({ timeout: 15000 });
+    const ownCard = ownTitle.locator('xpath=ancestor::div[2]');
+
+    const respondBtn = ownCard.locator('.respond-btn');
     await expect(respondBtn).toBeVisible({ timeout: 15000 });
     await respondBtn.click();
 

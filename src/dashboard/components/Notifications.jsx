@@ -7,6 +7,7 @@ const ICONS = {
     application_approved: '✅',
     application_rejected: '❌',
     reply: '💬',
+    mention: '📣',
 };
 
 export default function Notifications({ onOpenDiscussion }) {
@@ -51,6 +52,13 @@ export default function Notifications({ onOpenDiscussion }) {
         } catch (_) {}
     }
 
+    function activateNotification(n) {
+        if (!n.read) markRead(n._id);
+        if (n.type === 'reply' && n.rootItemId && n.rootItemType && onOpenDiscussion) {
+            onOpenDiscussion(n.rootItemType, n.rootItemId);
+        }
+    }
+
     if (!user.username) {
         return <p className="empty-message">Log in to YouTube to see notifications.</p>;
     }
@@ -80,14 +88,17 @@ export default function Notifications({ onOpenDiscussion }) {
                         <div
                             key={n._id}
                             className={`notif-item ${n.read ? '' : 'unread'}`}
-                            onClick={() => {
-                                if (!n.read) markRead(n._id);
-                                if (n.type === 'reply' && n.rootItemId && n.rootItemType && onOpenDiscussion) {
-                                    onOpenDiscussion(n.rootItemType, n.rootItemId);
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => activateNotification(n)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Enter' || e.key === ' ') {
+                                    e.preventDefault();
+                                    activateNotification(n);
                                 }
                             }}
                         >
-                            <span className="notif-icon">{ICONS[n.type] || '❌'}</span>
+                            <span className="notif-icon" aria-hidden="true">{ICONS[n.type] || '❌'}</span>
                             <div className="notif-body">
                                 <span className="notif-title">{n.title}</span>
                                 {n.category && <span className="notif-category">{n.category}</span>}

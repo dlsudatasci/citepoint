@@ -127,4 +127,32 @@ describe('GET /api/discussions/mine', () => {
         expect(page1.body.pagination.total).toBe(5);
         expect(page1.body.pagination.pages).toBe(3);
     });
+
+    it('reports resolved status and filters by resolved/unresolved', async () => {
+        const resolvedId   = await createCitation({ username: 'alice', citationTitle: 'Resolved one' });
+        const unresolvedId = await createCitation({ username: 'alice', citationTitle: 'Unresolved one' });
+        await request(app).patch(`/api/citations/${VIDEO}/${resolvedId}/resolve`).send({ username: 'alice', resolved: true });
+
+        const all = await request(app).get('/api/discussions/mine?username=alice');
+        const resolvedEntry = all.body.discussions.find(d => d.rootId === resolvedId);
+        const unresolvedEntry = all.body.discussions.find(d => d.rootId === unresolvedId);
+        expect(resolvedEntry.resolved).toBe(true);
+        expect(unresolvedEntry.resolved).toBe(false);
+
+        const resolvedOnly = await request(app).get('/api/discussions/mine?username=alice&filter=resolved');
+        expect(resolvedOnly.body.discussions.map(d => d.rootId)).toEqual([resolvedId]);
+
+        const unresolvedOnly = await request(app).get('/api/discussions/mine?username=alice&filter=unresolved');
+        expect(unresolvedOnly.body.discussions.map(d => d.rootId)).toEqual([unresolvedId]);
+    });
+
+    it('includes threads the caller follows and supports the following filter', async () => {
+        const followedId    = await createCitation({ username: 'carol', citationTitle: 'Followed thread' });
+        const unfollowedId  = await createCitation({ username: 'carol', citationTitle: 'Unfollowed thread' });
+        await request(app).patch(`/api/follows/citation/${followedId}`).send({ username: 'alice', following: true });
+
+        const following = await request(app).get('/api/discussions/mine?username=alice&filter=following');
+        expect(following.body.discussions.map(d => d.rootId)).toEqual([followedId]);
+        expect(following.body.discussions.map(d => d.rootId)).not.toContain(unfollowedId);
+    });
 });

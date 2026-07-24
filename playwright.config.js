@@ -21,7 +21,6 @@ module.exports = defineConfig({
     retries: 1,
     use: {
         headless: false,
-        viewport: { width: 1280, height: 720 },
     },
 
     projects: [

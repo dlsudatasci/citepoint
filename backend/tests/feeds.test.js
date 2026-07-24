@@ -37,6 +37,32 @@ describe('GET /api/feeds/general', () => {
         const res = await request(app).get('/api/feeds/general?topic[$ne]=nope');
         expect(res.status).toBe(400);
     });
+
+    it('returns pagination reflecting the total match count, not just the current page', async () => {
+        for (let i = 0; i < 5; i++) {
+            await seedRequestWithTopic('History');
+        }
+
+        const res = await request(app).get('/api/feeds/general?topic=History&page=1&limit=2');
+        expect(res.status).toBe(200);
+        expect(res.body.data).toHaveLength(2);
+        expect(res.body.pagination).toEqual({ page: 1, limit: 2, total: 5, pages: 3 });
+    });
+
+    it('paginates to a second page with different items than the first', async () => {
+        for (let i = 0; i < 3; i++) {
+            await seedRequestWithTopic('History', { title: `Request ${i}`, dateAdded: new Date(2026, 0, i + 1) });
+        }
+
+        const page1 = await request(app).get('/api/feeds/general?topic=History&page=1&limit=2');
+        const page2 = await request(app).get('/api/feeds/general?topic=History&page=2&limit=2');
+
+        expect(page1.body.data).toHaveLength(2);
+        expect(page2.body.data).toHaveLength(1);
+        const page1Ids = page1.body.data.map(d => d._id);
+        const page2Ids = page2.body.data.map(d => d._id);
+        expect(page1Ids.some(id => page2Ids.includes(id))).toBe(false);
+    });
 });
 
 describe('GET /api/feeds/expert', () => {

@@ -12,8 +12,7 @@
     },
     "permissions": [
         "activeTab",
-        "storage",
-        "tabs"
+        "storage"
     ],
     "host_permissions": [
         "http://altdsidccf.dlsu.edu.ph:15020/*",
@@ -63,8 +62,6 @@
             "styles/tokens.css",
             "styles/components.css",
             "config/config.js",
-            "popup/popup.js",
-            "popup/popup.html",
             "dashboard/dashboard.html",
             "dashboard/dashboard.css",
             "dashboard/dist/dashboard.bundle.js",

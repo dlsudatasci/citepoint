@@ -55,15 +55,7 @@ let _reportedItems     = {}; // itemId → true
 let _isExpertUser      = null;  // cached result of apiCheckExpert, null = not yet checked
 let _currentCategoryFilter = ''; // '' = all categories
 
-const CATEGORY_COLORS = {
-    'Statistics & Data':      { bg: 'rgba(101, 31, 255, 0.12)', color: '#651fff' },
-    'Quote / Misattribution': { bg: 'rgba(230, 81, 0, 0.12)',   color: '#e65100' },
-    'Historical Claim':       { bg: 'rgba(0, 137, 123, 0.12)',  color: '#00897b' },
-    'Scientific Claim':       { bg: 'rgba(6, 95, 212, 0.12)',   color: '#065fd4' },
-    'Context / Methodology':  { bg: 'rgba(194, 24, 91, 0.12)',  color: '#c2185b' },
-    'Other':                  { bg: 'rgba(0, 0, 0, 0.07)',      color: '#606060' },
-    'Uncategorized':          { bg: 'rgba(0, 0, 0, 0.05)',      color: '#9e9e9e' },
-};
+// CATEGORY_COLORS is a global from config/config.js (loaded before this file).
 
 /**
  * Check (once, cached) whether the current user is a recognized expert.
@@ -86,7 +78,7 @@ function _buildCategoryBadge(category, categoryVerified) {
     const cat = category || DEFAULT_CATEGORY;
     const colors = CATEGORY_COLORS[cat] || CATEGORY_COLORS[DEFAULT_CATEGORY];
     const verifiedMark = categoryVerified
-        ? ' <span class="category-verified" title="Verified by an expert">✓</span>'
+        ? ' <span class="category-verified" title="Verified by an expert"><span aria-hidden="true">✓</span></span>'
         : '';
     return `<span class="category-badge" style="background-color:${colors.bg};color:${colors.color}">${_escapeHtml(cat)}${verifiedMark}</span>`;
 }
@@ -304,7 +296,7 @@ async function loadCitations(page = 1, silent = false) {
     } catch (err) {
         console.error('[citations] Error loading citations:', err);
         if (container.style.display !== 'none') {
-            container.innerHTML = `<p class="error-message">Error loading citations: ${err.message}</p>`;
+            container.innerHTML = `<p class="error-message">Error loading citations: ${_escapeHtml(err.message)}</p>`;
         }
         _updateCounter('citations-counter', 0);
     } finally {
@@ -377,7 +369,7 @@ async function loadCitationRequests(page = 1, silent = false) {
     } catch (err) {
         console.error('[citations] Error loading requests:', err);
         if (container.style.display !== 'none') {
-            container.innerHTML = `<p class="error-message">Error loading requests: ${err.message}</p>`;
+            container.innerHTML = `<p class="error-message">Error loading requests: ${_escapeHtml(err.message)}</p>`;
         }
         _updateCounter('requests-counter', 0);
     } finally {
@@ -557,9 +549,9 @@ async function createCitationElement(citation, userVote, currentUsername = null)
             ${_safeSourceLink(citation.source)}
             <div class="citation-actions-right">
                 <div class="vote-controls" data-citation-id="${citation.id}">
-                    <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}">▲</button>
+                    <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}" aria-label="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}"><span aria-hidden="true">▲</span></button>
                     <span class="vote-score">${citation.voteScore ?? 0}</span>
-                    <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
+                    <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}" aria-label="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}"><span aria-hidden="true">▼</span></button>
                 </div>
                 <div class="action-buttons">
                     ${!canDelete ? `
@@ -753,9 +745,9 @@ async function createCitationReplyGroupElement(parentCitation, replies, votes, c
             ${_safeSourceLink(parentCitation.source)}
             <div class="citation-actions-right">
                 <div class="vote-controls" data-citation-id="${parentCitation.id}">
-                    <button class="vote-btn upvote-btn ${parentVote === 'up' ? 'voted' : ''}" title="${parentVote === 'up' ? 'Remove upvote' : 'Upvote'}">▲</button>
+                    <button class="vote-btn upvote-btn ${parentVote === 'up' ? 'voted' : ''}" title="${parentVote === 'up' ? 'Remove upvote' : 'Upvote'}" aria-label="${parentVote === 'up' ? 'Remove upvote' : 'Upvote'}"><span aria-hidden="true">▲</span></button>
                     <span class="vote-score">${parentCitation.voteScore ?? 0}</span>
-                    <button class="vote-btn downvote-btn ${parentVote === 'down' ? 'voted' : ''}" title="${parentVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
+                    <button class="vote-btn downvote-btn ${parentVote === 'down' ? 'voted' : ''}" title="${parentVote === 'down' ? 'Remove downvote' : 'Downvote'}" aria-label="${parentVote === 'down' ? 'Remove downvote' : 'Downvote'}"><span aria-hidden="true">▼</span></button>
                 </div>
                 <div class="action-buttons">
                     ${!canDeleteParent ? `
@@ -894,9 +886,9 @@ function createRequestElement(request, userVote, currentUsername = null) {
         <div class="citation-actions">
             <div class="citation-actions-right">
                 <div class="vote-controls" data-request-id="${request.id}">
-                    <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}">▲</button>
+                    <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}" aria-label="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}"><span aria-hidden="true">▲</span></button>
                     <span class="vote-score">${request.voteScore ?? 0}</span>
-                    <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
+                    <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}" aria-label="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}"><span aria-hidden="true">▼</span></button>
                 </div>
                 <div class="action-buttons">
                     ${!canDelete ? `
@@ -1457,9 +1449,9 @@ async function _buildResponseEntry(citation, votes, currentUsername) {
             ${_safeSourceLink(citation.source)}
             <div class="citation-actions-right">
                 <div class="vote-controls" data-citation-id="${citation.id}">
-                    <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}">▲</button>
+                    <button class="vote-btn upvote-btn ${userVote === 'up' ? 'voted' : ''}" title="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}" aria-label="${userVote === 'up' ? 'Remove upvote' : 'Upvote'}"><span aria-hidden="true">▲</span></button>
                     <span class="vote-score">${citation.voteScore ?? 0}</span>
-                    <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}">▼</button>
+                    <button class="vote-btn downvote-btn ${userVote === 'down' ? 'voted' : ''}" title="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}" aria-label="${userVote === 'down' ? 'Remove downvote' : 'Downvote'}"><span aria-hidden="true">▼</span></button>
                 </div>
                 <div class="action-buttons">
                     ${!canDelete ? `<button class="action-btn respond-btn inline-reply-btn" data-id="${citation.id}">Reply</button>` : ''}

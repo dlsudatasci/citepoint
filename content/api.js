@@ -185,6 +185,38 @@ async function apiUpdateCategory(itemId, itemType, videoId, category, username) 
     return _send({ type: 'updateCategory', itemId, itemType, videoId, category, username });
 }
 
+/**
+ * @param {string} itemId
+ * @param {'citation'|'request'} itemType
+ * @param {string} videoId
+ * @param {boolean} resolved
+ * @param {string} username  — must be the item's author or a recognized expert
+ */
+async function apiUpdateResolved(itemId, itemType, videoId, resolved, username) {
+    return _send({ type: 'updateResolved', itemId, itemType, videoId, resolved, username });
+}
+
+/**
+ * @param {string} itemId
+ * @param {'citation'|'request'} itemType
+ * @param {string} username
+ */
+async function apiGetFollowStatus(itemId, itemType, username) {
+    const res = await _send({ type: 'getFollowStatus', itemId, itemType, username });
+    return !!res.following;
+}
+
+/**
+ * @param {string} itemId
+ * @param {'citation'|'request'} itemType
+ * @param {boolean} following
+ * @param {string} username
+ */
+async function apiUpdateFollow(itemId, itemType, following, username) {
+    const res = await _send({ type: 'updateFollow', itemId, itemType, following, username });
+    return !!res.following;
+}
+
 async function apiCheckExpert(username) {
     const res = await _send({ type: 'checkExpert', username });
     return {

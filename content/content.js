@@ -15,6 +15,10 @@
 
 // ── Initialization ────────────────────────────
 
+// Tracks the health-check interval across re-inits (see init() below) so SPA
+// navigation clears the previous one instead of stacking a new one on top of it.
+let _healthCheckInterval = null;
+
 function init() {
     // Remove any stale panel from a previous navigation
     document.getElementById('citation-controls')?.remove();
@@ -23,8 +27,10 @@ function init() {
     observeTheaterMode();     // panel.js
     setupRecordedSegmentsPanel(); // recording.js
 
-    // Periodic health check — corrects any missed theater mode transition
-    setInterval(() => {
+    // Periodic health check — corrects any missed theater mode transition.
+    // Cleared first so re-running init() on SPA navigation doesn't stack intervals.
+    if (_healthCheckInterval) clearInterval(_healthCheckInterval);
+    _healthCheckInterval = setInterval(() => {
         const ccDiv = document.getElementById('citation-controls');
         if (!ccDiv) return;
 

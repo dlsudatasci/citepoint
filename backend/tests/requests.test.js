@@ -1,5 +1,6 @@
-const request = require('supertest');
-const app     = require('../app');
+const request      = require('supertest');
+const app          = require('../app');
+const Notification = require('../models/Notification');
 
 const VIDEO = 'dQw4w9WgXcQ';
 const BASE  = `/api/requests/${VIDEO}`;
@@ -69,6 +70,33 @@ describe('POST /api/requests/:videoId', () => {
         const res = await request(app).get(BASE);
         const created = res.body.requests.find(r => r._id === id);
         expect(created.voteScore).toBe(0);
+    });
+
+    describe('mentions (@handle notifications)', () => {
+        it('notifies a known, mentioned user', async () => {
+            await createRequest({ username: 'bob' }); // makes 'bob' a known username
+
+            const id = await createRequest({ username: 'alice', reason: 'cc @bob take a look' });
+
+            const notifications = await Notification.find({ username: 'bob', type: 'mention' }).lean();
+            expect(notifications).toHaveLength(1);
+            expect(notifications[0].fromUsername).toBe('alice');
+            expect(notifications[0].itemId).toBe(id);
+        });
+
+        it('does not notify an unknown/typo\'d handle', async () => {
+            await createRequest({ username: 'alice', reason: 'cc @nobody_here' });
+
+            const notifications = await Notification.find({ type: 'mention' }).lean();
+            expect(notifications).toHaveLength(0);
+        });
+
+        it('does not notify when mentioning yourself', async () => {
+            await createRequest({ username: 'alice', reason: 'note to @alice' });
+
+            const notifications = await Notification.find({ type: 'mention' }).lean();
+            expect(notifications).toHaveLength(0);
+        });
     });
 });
 
@@ -233,6 +261,50 @@ describe('Categories', () => {
             const res = await request(app)
                 .patch(`${BASE}/000000000000000000000000/category`)
                 .send({ category: 'Other', username: 'alice' });
+            expect(res.status).toBe(404);
+        });
+    });
+
+    describe('PATCH /:videoId/:id/resolve', () => {
+        it('lets the author mark their own request resolved', async () => {
+            const id = await createRequest({ username: 'alice' });
+            const res = await request(app)
+                .patch(`${BASE}/${id}/resolve`)
+                .send({ username: 'alice', resolved: true });
+            expect(res.status).toBe(200);
+            expect(res.body.resolved).toBe(true);
+            expect(res.body.resolvedBy).toBe('alice');
+        });
+
+        it('lets an expert resolve someone else\'s request', async () => {
+            const id = await createRequest({ username: 'alice' });
+            const res = await request(app)
+                .patch(`${BASE}/${id}/resolve`)
+                .send({ username: 'expert_bob', resolved: true });
+            expect(res.status).toBe(200);
+            expect(res.body.resolvedBy).toBe('expert_bob');
+        });
+
+        it('rejects a non-owner, non-expert', async () => {
+            const id = await createRequest({ username: 'alice' });
+            const res = await request(app)
+                .patch(`${BASE}/${id}/resolve`)
+                .send({ username: 'mallory', resolved: true });
+            expect(res.status).toBe(403);
+        });
+
+        it('requires a boolean resolved value', async () => {
+            const id = await createRequest();
+            const res = await request(app)
+                .patch(`${BASE}/${id}/resolve`)
+                .send({ username: 'alice', resolved: 'yes' });
+            expect(res.status).toBe(400);
+        });
+
+        it('returns 404 for a non-existent request', async () => {
+            const res = await request(app)
+                .patch(`${BASE}/000000000000000000000000/resolve`)
+                .send({ username: 'alice', resolved: true });
             expect(res.status).toBe(404);
         });
     });

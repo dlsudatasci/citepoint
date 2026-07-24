@@ -7,6 +7,14 @@
 
 let storedSecondaryWidth = 0;
 
+// Named so insertCitationButtons() can remove the previous navigation's listener
+// before adding a new one — document itself persists across YouTube's SPA
+// navigations, so without this every navigation stacks another listener.
+function _onVisibilityChange() {
+    if (document.hidden) stopPolling();
+    else startPolling();
+}
+
 // ── Panel construction ────────────────────────
 
 function insertCitationButtons() {
@@ -39,14 +47,14 @@ function insertCitationButtons() {
             </div>
             <hr class="minimized-divider">
             <button id="toggle-extension" class="minimized-expand-btn" title="Expand CitePoint">
-                <span class="toggle-icon" id="toggle-icon">▼</span>
+                <span class="toggle-icon" id="toggle-icon" aria-hidden="true">▼</span>
             </button>
         </div>
         <div id="extension-content" class="extension-content" style="display:none;">
             <div class="header-actions">
                 <button id="add-item-btn" class="add-btn">+ Add Citation</button>
                 <div class="category-filter-container">
-                    <button class="category-filter-button">
+                    <button class="category-filter-button" aria-haspopup="true" aria-expanded="false" aria-controls="category-filter-menu">
                         <span class="category-filter-text">All categories</span>
                         <span class="category-filter-caret">
                             <svg viewBox="0 0 24 24" width="18" height="18">
@@ -54,22 +62,22 @@ function insertCitationButtons() {
                             </svg>
                         </span>
                     </button>
-                    <div class="category-filter-menu" style="display:none;">
-                        <button class="category-filter-item" data-value="">
+                    <div class="category-filter-menu" id="category-filter-menu" role="menu" style="display:none;">
+                        <button class="category-filter-item" role="menuitem" data-value="">
                             <span class="category-filter-item-text">All categories</span>
-                            <span class="category-filter-check">✓</span>
+                            <span class="category-filter-check" aria-hidden="true">✓</span>
                         </button>
                         ${CATEGORIES.map(c => `
-                        <button class="category-filter-item" data-value="${_escapeHtml(c)}">
+                        <button class="category-filter-item" role="menuitem" data-value="${_escapeHtml(c)}">
                             <span class="category-filter-item-text">${_escapeHtml(c)}</span>
                         </button>`).join('')}
-                        <button class="category-filter-item" data-value="${DEFAULT_CATEGORY}">
+                        <button class="category-filter-item" role="menuitem" data-value="${DEFAULT_CATEGORY}">
                             <span class="category-filter-item-text">${DEFAULT_CATEGORY}</span>
                         </button>
                     </div>
                 </div>
                 <div class="sort-container">
-                    <button class="sort-button">
+                    <button class="sort-button" aria-haspopup="true" aria-expanded="false" aria-controls="sort-menu">
                         <span class="sort-icon">
                             <svg viewBox="0 0 24 24" width="18" height="18">
                                 <path d="M21,6H3V5h18V6z M15,11H3v1h12V11z M9,17H3v1h6V17z" fill="currentColor"/>
@@ -82,12 +90,12 @@ function insertCitationButtons() {
                             </svg>
                         </span>
                     </button>
-                    <div class="sort-menu" style="display:none;">
-                        <button class="sort-menu-item" data-value="upvotes">
+                    <div class="sort-menu" id="sort-menu" role="menu" style="display:none;">
+                        <button class="sort-menu-item" role="menuitem" data-value="upvotes">
                             <span class="sort-menu-text">Most Upvoted</span>
-                            <span class="sort-check">✓</span>
+                            <span class="sort-check" aria-hidden="true">✓</span>
                         </button>
-                        <button class="sort-menu-item" data-value="recent">
+                        <button class="sort-menu-item" role="menuitem" data-value="recent">
                             <span class="sort-menu-text">Newest first</span>
                         </button>
                     </div>
@@ -127,10 +135,8 @@ function insertCitationButtons() {
     loadCitations();
     startPolling();
 
-    document.addEventListener('visibilitychange', () => {
-        if (document.hidden) stopPolling();
-        else startPolling();
-    });
+    document.removeEventListener('visibilitychange', _onVisibilityChange);
+    document.addEventListener('visibilitychange', _onVisibilityChange);
 }
 
 // ── Theater mode ──────────────────────────────
@@ -313,6 +319,7 @@ function _wireSortMenu() {
         const visible = sortMenu.style.display === 'block';
         sortMenu.style.display = visible ? 'none' : 'block';
         sortBtn.classList.toggle('active', !visible);
+        sortBtn.setAttribute('aria-expanded', String(!visible));
     });
 
     sortMenu.addEventListener('click', e => {
@@ -324,12 +331,13 @@ function _wireSortMenu() {
         sortMenu.querySelectorAll('.sort-menu-item').forEach(el => {
             el.innerHTML = `
                 <span class="sort-menu-text">${el.dataset.value === 'upvotes' ? 'Most Upvoted' : 'Newest first'}</span>
-                ${el.dataset.value === currentSortOption ? '<span class="sort-check">✓</span>' : ''}
+                ${el.dataset.value === currentSortOption ? '<span class="sort-check" aria-hidden="true">✓</span>' : ''}
             `;
         });
 
         sortMenu.style.display = 'none';
         sortBtn.classList.remove('active');
+        sortBtn.setAttribute('aria-expanded', 'false');
 
         // Re-sort in-memory — no network call, no skeleton flash
         debouncedSortAndUpdate();
@@ -339,6 +347,7 @@ function _wireSortMenu() {
         if (!e.target.closest('.sort-container')) {
             sortMenu.style.display = 'none';
             sortBtn.classList.remove('active');
+            sortBtn.setAttribute('aria-expanded', 'false');
         }
     });
 }
@@ -355,6 +364,7 @@ function _wireCategoryFilter() {
         const visible = filterMenu.style.display === 'block';
         filterMenu.style.display = visible ? 'none' : 'block';
         filterBtn.classList.toggle('active', !visible);
+        filterBtn.setAttribute('aria-expanded', String(!visible));
     });
 
     filterMenu.addEventListener('click', e => {
@@ -369,13 +379,14 @@ function _wireCategoryFilter() {
             if (check) check.remove();
             if (el.dataset.value === _currentCategoryFilter) {
                 el.querySelector('.category-filter-item-text').insertAdjacentHTML(
-                    'afterend', '<span class="category-filter-check">✓</span>'
+                    'afterend', '<span class="category-filter-check" aria-hidden="true">✓</span>'
                 );
             }
         });
 
         filterMenu.style.display = 'none';
         filterBtn.classList.remove('active');
+        filterBtn.setAttribute('aria-expanded', 'false');
 
         _applyCategoryFilter();
     });
@@ -384,6 +395,7 @@ function _wireCategoryFilter() {
         if (!e.target.closest('.category-filter-container')) {
             filterMenu.style.display = 'none';
             filterBtn.classList.remove('active');
+            filterBtn.setAttribute('aria-expanded', 'false');
         }
     });
 }

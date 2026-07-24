@@ -52,6 +52,7 @@ body {
 .dashboard-scope select:focus {
     outline: none;
     border-color: var(--cp-accent);
+    box-shadow: var(--cp-focus-ring);
 }
 
 /* ── Sections (cards) ───────────────────────────────── */
@@ -462,7 +463,7 @@ body {
 #expert-apply-form textarea:focus {
     outline: none;
     border-color: var(--cp-accent);
-    box-shadow: 0 0 0 2px rgba(6, 95, 212, 0.1);
+    box-shadow: var(--cp-focus-ring);
 }
 
 /* ── Shared Submit Button (dashboard + profile) ────── */
@@ -515,7 +516,7 @@ body {
 #profile-form textarea:focus {
     outline: none;
     border-color: var(--cp-accent);
-    box-shadow: 0 0 0 2px rgba(6, 95, 212, 0.1);
+    box-shadow: var(--cp-focus-ring);
 }
 
 /* ── Responsive ─────────────────────────────────────── */

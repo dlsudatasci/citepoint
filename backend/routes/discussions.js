@@ -3,6 +3,7 @@ const mongoose    = require('mongoose');
 const Citation    = require('../models/Citation');
 const Request     = require('../models/Request');
 const Notification = require('../models/Notification');
+const Follow       = require('../models/Follow');
 
 const DEFAULT_LIMIT = 20;
 const MAX_LIMIT      = 50;
@@ -23,7 +24,7 @@ function trimReply(reply) {
     };
 }
 
-// GET /api/discussions/mine?username=&filter=all|mine|requests|participated|unread&search=&page=&limit=
+// GET /api/discussions/mine?username=&filter=all|mine|requests|participated|unread|resolved|unresolved|following&search=&page=&limit=
 //
 // Builds a small "anchor" set of {rootId, rootType} pairs from four cheap, indexed
 // queries (my root citations, my requests, threads I replied in, threads where someone
@@ -31,6 +32,13 @@ function trimReply(reply) {
 // count in a constant number of aggregation queries — regardless of how many threads
 // the user is in. See backend/models/Citation.js's rootId field and
 // backend/lib/threads.js for how rootId is populated at write time.
+//
+// No ownership check on `username` is intentional, not an oversight: it's the same
+// trust model as GET /api/notifications/:username and GET /api/profile/:username —
+// there's no real authentication anywhere in this app (a username is a free-text
+// client-supplied claim, tracked under issue #72), so gating this one read endpoint
+// wouldn't close any actual risk while every sibling read endpoint stays open.
+// Revisit together if/when #72 lands real auth.
 router.get('/mine', async (req, res) => {
     try {
         const username = req.query.username;
@@ -46,17 +54,19 @@ router.get('/mine', async (req, res) => {
         // ── Step 1: gather anchor {rootId, rootType} pairs, tagged by bucket ──
         const anchors = new Map();
 
-        const [myCitations, myRequests, myReplies, repliedToMe] = await Promise.all([
+        const [myCitations, myRequests, myReplies, repliedToMe, followed] = await Promise.all([
             Citation.find({ username, parentCitationId: null }, { _id: 1 }).lean(),
             Request.find({ username }, { _id: 1 }).lean(),
             Citation.find({ username, parentCitationId: { $ne: null } }, { rootId: 1 }).lean(),
             Notification.find({ username, type: 'reply' }, { rootItemId: 1, rootItemType: 1 }).lean(),
+            Follow.find({ username }, { itemId: 1, itemType: 1 }).lean(),
         ]);
 
         myCitations.forEach(d => addAnchor(anchors, d._id.toString(), 'citation', 'mine'));
         myRequests.forEach(d => addAnchor(anchors, d._id.toString(), 'request', 'requests'));
         myReplies.forEach(d => addAnchor(anchors, d.rootId, 'citation', 'participated'));
         repliedToMe.forEach(d => addAnchor(anchors, d.rootItemId, d.rootItemType, 'participated'));
+        followed.forEach(d => addAnchor(anchors, d.itemId, d.itemType, 'following'));
 
         const citationRootIds = [];
         const requestRootIds  = [];
@@ -138,6 +148,7 @@ router.get('/mine', async (req, res) => {
                 lastActivity: stats?.lastReply?.dateAdded || root.dateAdded,
                 unreadCount: unreadById.get(root._id.toString()) || 0,
                 buckets:     [...(anchors.get(key)?.buckets || [])],
+                resolved:    !!root.resolved,
             });
         }
         for (const root of requestRoots) {
@@ -159,6 +170,7 @@ router.get('/mine', async (req, res) => {
                 lastActivity: stats?.lastReply?.dateAdded || root.dateAdded,
                 unreadCount: unreadById.get(root._id.toString()) || 0,
                 buckets:     [...(anchors.get(key)?.buckets || [])],
+                resolved:    !!root.resolved,
             });
         }
 
@@ -168,6 +180,9 @@ router.get('/mine', async (req, res) => {
         else if (filter === 'requests') filtered = filtered.filter(d => d.buckets.includes('requests'));
         else if (filter === 'participated') filtered = filtered.filter(d => d.buckets.includes('participated'));
         else if (filter === 'unread') filtered = filtered.filter(d => d.unreadCount > 0);
+        else if (filter === 'resolved') filtered = filtered.filter(d => d.resolved);
+        else if (filter === 'unresolved') filtered = filtered.filter(d => !d.resolved);
+        else if (filter === 'following') filtered = filtered.filter(d => d.buckets.includes('following'));
 
         if (search) {
             filtered = filtered.filter(d =>

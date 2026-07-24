@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/categories');
+const { ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/constants');
 
 const requestSchema = new mongoose.Schema({
     videoId:        { type: String, required: true },
@@ -18,6 +18,10 @@ const requestSchema = new mongoose.Schema({
     
     verifiedBy:       { type: String, default: null },
     verifiedAt:       { type: Date, default: null },
+
+    resolved:         { type: Boolean, default: false },
+    resolvedBy:       { type: String, default: null },
+    resolvedAt:       { type: Date, default: null },
 });
 // ── Indexes ───────────────────────────────────
 

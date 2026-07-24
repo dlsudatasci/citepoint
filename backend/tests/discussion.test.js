@@ -47,6 +47,67 @@ describe('GET /api/discussion/citation/:id', () => {
         expect(res.body.replies[0].children).toHaveLength(1);
         expect(res.body.replies[0].children[0].description).toBe('Level 2');
     });
+
+    it('includes every sibling at each level, not just the first', async () => {
+        const rootId = await createCitation();
+        await request(app).post('/api/discussion/reply').send({
+            parentCitationId: rootId, description: 'Reply A', username: 'bob',
+        });
+        await request(app).post('/api/discussion/reply').send({
+            parentCitationId: rootId, description: 'Reply B', username: 'carol',
+        });
+
+        const res = await request(app).get(`/api/discussion/citation/${rootId}?tree=true`);
+        expect(res.body.replies).toHaveLength(2);
+        const descriptions = res.body.replies.map(r => r.description).sort();
+        expect(descriptions).toEqual(['Reply A', 'Reply B']);
+    });
+
+    it('builds a tree "continued" from a nested node, excluding its ancestors and siblings', async () => {
+        const rootId    = await createCitation();
+        const level1Res = await request(app).post('/api/discussion/reply').send({
+            parentCitationId: rootId, description: 'Level 1 (target)', username: 'bob',
+        });
+        // A sibling branch off the root that should NOT appear when re-rooted at level1.
+        await request(app).post('/api/discussion/reply').send({
+            parentCitationId: rootId, description: 'Sibling branch', username: 'dave',
+        });
+        await request(app).post('/api/discussion/reply').send({
+            parentCitationId: level1Res.body.id, description: 'Level 2', username: 'carol',
+        });
+
+        const res = await request(app).get(`/api/discussion/citation/${level1Res.body.id}?tree=true`);
+        expect(res.status).toBe(200);
+        expect(res.body.citation.id).toBe(level1Res.body.id);
+        expect(res.body.replies).toHaveLength(1);
+        expect(res.body.replies[0].description).toBe('Level 2');
+    });
+
+    it('caps nesting at MAX_TREE_DEPTH (6) even though every node is fetched in one query', async () => {
+        const rootId = await createCitation();
+        let parentId = rootId;
+        for (let i = 0; i < 8; i++) {
+            const res = await request(app).post('/api/discussion/reply').send({
+                parentCitationId: parentId, description: `Depth ${i + 1}`, username: 'bob',
+            });
+            parentId = res.body.id;
+        }
+
+        const res = await request(app).get(`/api/discussion/citation/${rootId}?tree=true`);
+
+        const descriptions = [];
+        function walk(nodes) {
+            for (const n of nodes) {
+                descriptions.push(n.description);
+                if (n.children) walk(n.children);
+            }
+        }
+        walk(res.body.replies);
+
+        // Depth 1..6 are within the cap; Depth 7 and 8 are cut off even though
+        // they exist in the DB and were fetched by the single rootId query.
+        expect(descriptions).toEqual(['Depth 1', 'Depth 2', 'Depth 3', 'Depth 4', 'Depth 5', 'Depth 6']);
+    });
 });
 
 describe('GET /api/discussion/request/:id', () => {
@@ -182,5 +243,43 @@ describe('POST /api/discussion/reply', () => {
 
         const notifications = await Notification.find({ username: 'alice', type: 'reply' }).lean();
         expect(notifications).toHaveLength(0);
+    });
+
+    describe('mentions (@handle notifications)', () => {
+        it('notifies a known, mentioned user', async () => {
+            const rootId = await createCitation({ username: 'alice' });
+            await createCitation({ username: 'carol' }); // makes 'carol' a known username
+
+            const res = await request(app).post('/api/discussion/reply').send({
+                parentCitationId: rootId, description: 'cc @carol take a look', username: 'bob',
+            });
+
+            const notifications = await Notification.find({ username: 'carol', type: 'mention' }).lean();
+            expect(notifications).toHaveLength(1);
+            expect(notifications[0].fromUsername).toBe('bob');
+            expect(notifications[0].itemId).toBe(res.body.id);
+        });
+
+        it('does not notify an unknown/typo\'d handle', async () => {
+            const rootId = await createCitation({ username: 'alice' });
+
+            await request(app).post('/api/discussion/reply').send({
+                parentCitationId: rootId, description: 'cc @nobody_here', username: 'bob',
+            });
+
+            const notifications = await Notification.find({ type: 'mention' }).lean();
+            expect(notifications).toHaveLength(0);
+        });
+
+        it('does not notify when mentioning yourself', async () => {
+            const rootId = await createCitation({ username: 'alice' });
+
+            await request(app).post('/api/discussion/reply').send({
+                parentCitationId: rootId, description: 'note to @bob', username: 'bob',
+            });
+
+            const notifications = await Notification.find({ type: 'mention' }).lean();
+            expect(notifications).toHaveLength(0);
+        });
     });
 });
