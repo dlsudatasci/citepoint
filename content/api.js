@@ -79,19 +79,20 @@ function _setVotes(key, data) {
     return new Promise(resolve => _voteStore.set({ [key]: data }, resolve));
 }
 
-// ── HTTP helper ───────────────────────────────
-// Firefox extension pages (moz-extension://) have a hardcoded upgrade-insecure-requests
-// CSP that forces HTTP → HTTPS, breaking the HTTP backend. Route those fetches through
-// a YouTube content script (https://www.youtube.com context) where the about:config flag
-// actually applies. Requires a YouTube tab to be open.
-const _isFirefoxExtensionPage = (() => {
+// ── Browser / context detection ───────────────
+const _isFirefox = typeof browser !== 'undefined';
+const _isExtensionPage = (() => {
     try {
-        return typeof browser !== 'undefined' &&
-               typeof location !== 'undefined' &&
-               location.protocol === 'moz-extension:';
+        const p = location.protocol;
+        return p === 'moz-extension:' || p === 'chrome-extension:';
     } catch (_) { return false; }
 })();
 
+// ── Proxy helpers (Firefox dashboard → YouTube content script) ────────────
+// Firefox extension pages have a hardcoded upgrade-insecure-requests CSP that
+// forces HTTP → HTTPS. Route those fetches through a YouTube content script
+// (https://www.youtube.com context) where the about:config flag applies.
+// Requires a YouTube tab to be open.
 async function _proxyFetchViaContentScript(url, method, body) {
     return new Promise((resolve, reject) => {
         const rt = typeof browser !== 'undefined' ? browser.runtime : chrome.runtime;
@@ -105,9 +106,30 @@ async function _proxyFetchViaContentScript(url, method, body) {
     });
 }
 
+// Chrome content scripts run in the youtube.com (HTTPS) context, so Chrome
+// blocks direct HTTP fetch as mixed content. Route through background.js which
+// runs in the chrome-extension:// context where Chrome allows HTTP.
+async function _sendToBackground(path, method, body) {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({ type: '_genericFetch', path, method, body }, response => {
+            if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+            if (!response || !response.success) return reject(new Error(response?.error || 'Background fetch failed'));
+            resolve(response.data);
+        });
+    });
+}
+
+// ── HTTP helper ───────────────────────────────
 async function _apiRequest(path, method = 'GET', body = null) {
     const url = `${_CP_API_BASE}/api${path}`;
-    if (_isFirefoxExtensionPage) return _proxyFetchViaContentScript(url, method, body);
+
+    // Firefox dashboard (moz-extension://): proxy through YouTube content script
+    if (_isFirefox && _isExtensionPage) return _proxyFetchViaContentScript(url, method, body);
+
+    // Chrome content script (youtube.com): route through background.js
+    if (!_isFirefox && !_isExtensionPage) return _sendToBackground(path, method, body);
+
+    // Firefox content script OR Chrome extension page: direct fetch works
     const options = { method, headers: { 'Content-Type': 'application/json' } };
     if (body) options.body = JSON.stringify(body);
     const response = await fetch(url, options);

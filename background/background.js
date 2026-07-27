@@ -124,6 +124,12 @@ async function apiRequest(path, method = 'GET', body = null) {
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.type === '_genericFetch') {
+        apiRequest(request.path, request.method || 'GET', request.body || null)
+            .then(data => sendResponse({ success: true, data }))
+            .catch(err => sendResponse({ success: false, error: err.message }));
+        return true;
+    }
     if (request.type === '_cpProxyFetch') {
         chrome.tabs.query({ url: ['*://www.youtube.com/*', '*://m.youtube.com/*'] }, tabs => {
             if (!tabs || tabs.length === 0) {
