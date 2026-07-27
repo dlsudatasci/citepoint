@@ -21,7 +21,7 @@
         "storage"
     ],
     "host_permissions": [
-        "https://altdsidccf.dlsu.edu.ph:15020/*",
+        "http://altdsidccf.dlsu.edu.ph:15020/*",
         "http://localhost:3000/*",
         "*://www.youtube.com/*",
         "*://m.youtube.com/*"
