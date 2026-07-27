@@ -99,16 +99,31 @@ const _isExtensionPage = (() => {
 // (https://www.youtube.com context) where the about:config flag applies.
 // Requires a YouTube tab to be open.
 async function _proxyFetchViaContentScript(url, method, body) {
-    return new Promise((resolve, reject) => {
-        const rt = _isFirefox ? browser.runtime : chrome.runtime;
+    const rt = _isFirefox ? browser.runtime : chrome.runtime;
+    const attempt = () => new Promise((resolve, reject) => {
         rt.sendMessage({ type: '_cpProxyFetch', url, method, body }, response => {
             const err = rt.lastError;
             if (err) return reject(new Error(err.message));
-            if (!response) return reject(new Error('No response from proxy — is a YouTube tab open?'));
+            if (!response) return reject(new Error('no-response'));
             if (!response.success) return reject(new Error(response.error || 'Proxy fetch failed'));
             resolve(response.data);
         });
     });
+    // Retry up to 3 times with 600ms gap — content script may still be initializing
+    for (let i = 0; i < 3; i++) {
+        try {
+            return await attempt();
+        } catch (err) {
+            const retryable = err.message === 'no-response' ||
+                err.message.includes('Could not establish connection') ||
+                err.message.includes('No YouTube tab');
+            if (!retryable || i === 2) {
+                if (err.message === 'no-response') throw new Error('No response from proxy — open YouTube in a tab first');
+                throw err;
+            }
+            await new Promise(r => setTimeout(r, 600));
+        }
+    }
 }
 
 // Chrome content scripts run in the youtube.com (HTTPS) context, so Chrome
