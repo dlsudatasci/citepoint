@@ -18,7 +18,8 @@
     },
     "permissions": [
         "activeTab",
-        "storage"
+        "storage",
+        "tabs"
     ],
     "host_permissions": [
         "http://altdsidccf.dlsu.edu.ph:13020/*",

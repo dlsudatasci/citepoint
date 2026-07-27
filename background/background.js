@@ -124,6 +124,22 @@ async function apiRequest(path, method = 'GET', body = null) {
 }
 
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.type === '_cpProxyFetch') {
+        chrome.tabs.query({ url: ['*://www.youtube.com/*', '*://m.youtube.com/*'] }, tabs => {
+            if (!tabs || tabs.length === 0) {
+                sendResponse({ success: false, error: 'No YouTube tab open — open YouTube first' });
+                return;
+            }
+            chrome.tabs.sendMessage(tabs[0].id, request, response => {
+                if (chrome.runtime.lastError) {
+                    sendResponse({ success: false, error: chrome.runtime.lastError.message });
+                    return;
+                }
+                sendResponse(response || { success: false, error: 'No response from content script' });
+            });
+        });
+        return true;
+    }
     if (request.type === 'getCitations') {
         handleGetCitations(request.videoId, request.page, request.limit).then(sendResponse);
         return true;

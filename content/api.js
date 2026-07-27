@@ -80,10 +80,37 @@ function _setVotes(key, data) {
 }
 
 // ── HTTP helper ───────────────────────────────
+// Firefox extension pages (moz-extension://) have a hardcoded upgrade-insecure-requests
+// CSP that forces HTTP → HTTPS, breaking the HTTP backend. Route those fetches through
+// a YouTube content script (https://www.youtube.com context) where the about:config flag
+// actually applies. Requires a YouTube tab to be open.
+const _isFirefoxExtensionPage = (() => {
+    try {
+        return typeof browser !== 'undefined' &&
+               typeof location !== 'undefined' &&
+               location.protocol === 'moz-extension:';
+    } catch (_) { return false; }
+})();
+
+async function _proxyFetchViaContentScript(url, method, body) {
+    return new Promise((resolve, reject) => {
+        const rt = typeof browser !== 'undefined' ? browser.runtime : chrome.runtime;
+        rt.sendMessage({ type: '_cpProxyFetch', url, method, body }, response => {
+            const err = rt.lastError;
+            if (err) return reject(new Error(err.message));
+            if (!response) return reject(new Error('No response from proxy — is a YouTube tab open?'));
+            if (!response.success) return reject(new Error(response.error || 'Proxy fetch failed'));
+            resolve(response.data);
+        });
+    });
+}
+
 async function _apiRequest(path, method = 'GET', body = null) {
+    const url = `${_CP_API_BASE}/api${path}`;
+    if (_isFirefoxExtensionPage) return _proxyFetchViaContentScript(url, method, body);
     const options = { method, headers: { 'Content-Type': 'application/json' } };
     if (body) options.body = JSON.stringify(body);
-    const response = await fetch(`${_CP_API_BASE}/api${path}`, options);
+    const response = await fetch(url, options);
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Request failed');
     return data;
@@ -348,4 +375,23 @@ async function apiGetGeneralFeed(topic = 'All', page = 1, limit = 20) {
     const query = new URLSearchParams({ topic, page, limit }).toString();
     const result = await _apiRequest(`/feeds/general?${query}`);
     return { feed: result.data || [], pagination: result.pagination || null };
+}
+
+// ── Proxy fetch listener (content script side) ─
+// Handles _cpProxyFetch messages forwarded by background.js on behalf of the
+// Firefox dashboard, which cannot make HTTP requests from moz-extension:// context.
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.type !== '_cpProxyFetch') return false;
+        const options = {
+            method: request.method || 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        };
+        if (request.body) options.body = JSON.stringify(request.body);
+        fetch(request.url, options)
+            .then(r => r.json())
+            .then(data => sendResponse({ success: true, data }))
+            .catch(err => sendResponse({ success: false, error: err.message }));
+        return true; // keep message channel open for async response
+    });
 }
