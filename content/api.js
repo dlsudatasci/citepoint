@@ -80,7 +80,12 @@ function _setVotes(key, data) {
 }
 
 // ── Browser / context detection ───────────────
-const _isFirefox = typeof browser !== 'undefined';
+// browser-polyfill defines `browser` in Chrome too, so typeof browser is not
+// a reliable Firefox check. Use the extension URL scheme instead.
+const _isFirefox = (() => {
+    try { return chrome.runtime.getURL('').startsWith('moz-extension://'); }
+    catch (_) { return false; }
+})();
 const _isExtensionPage = (() => {
     try {
         const p = location.protocol;
@@ -95,7 +100,7 @@ const _isExtensionPage = (() => {
 // Requires a YouTube tab to be open.
 async function _proxyFetchViaContentScript(url, method, body) {
     return new Promise((resolve, reject) => {
-        const rt = typeof browser !== 'undefined' ? browser.runtime : chrome.runtime;
+        const rt = _isFirefox ? browser.runtime : chrome.runtime;
         rt.sendMessage({ type: '_cpProxyFetch', url, method, body }, response => {
             const err = rt.lastError;
             if (err) return reject(new Error(err.message));
