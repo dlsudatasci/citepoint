@@ -1,8 +1,9 @@
 const router            = require('express').Router();
 const Expert            = require('../models/Expert');
 const ExpertApplication = require('../models/ExpertApplication');
+const Notification      = require('../models/Notification');
 const { isExpert: isHardcodedExpert } = require('../config/experts');
-const { isAdmin } = require('../config/admins');
+const { isAdmin, ADMIN_USERNAMES_CANONICAL } = require('../config/admins');
 const { TOPICS } = require('../config/constants');
 const asyncHandler = require('../middleware/asyncHandler');
 const { usernameMatches } = require('../lib/usernameMatches');
@@ -39,6 +40,19 @@ router.post('/apply', asyncHandler(async (req, res) => {
     }
 
     const app = await ExpertApplication.create({ username, topics, credentials });
+
+    // Notify all admins of the new application
+    if (ADMIN_USERNAMES_CANONICAL.length > 0) {
+        await Notification.insertMany(
+            ADMIN_USERNAMES_CANONICAL.map(adminUsername => ({
+                username: adminUsername,
+                type: 'expert_application',
+                title: `${username} submitted an expert application for: ${topics.join(', ')}.`,
+                fromUsername: username,
+            }))
+        );
+    }
+
     res.status(201).json({ success: true, id: app._id });
 }));
 
