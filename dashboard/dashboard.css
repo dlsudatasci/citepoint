@@ -72,6 +72,26 @@ body {
     text-align: left;
 }
 
+/* ── Analytics video indicator ─────────────────────── */
+
+.analytics-video-label {
+    font-size: var(--cp-text-sm);
+    color: var(--cp-text-secondary);
+    margin: calc(-1 * var(--cp-space-8)) 0 var(--cp-space-12);
+    padding: var(--cp-space-6) var(--cp-space-10);
+    background: var(--cp-bg-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-md);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.analytics-video-none {
+    color: var(--cp-text-muted, var(--cp-text-secondary));
+    font-style: italic;
+}
+
 /* ── Admin analytics group heading ─────────────────── */
 
 .analytics-group-title {
