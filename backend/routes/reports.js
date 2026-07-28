@@ -3,6 +3,8 @@ const Report       = require('../models/Report');
 const Citation     = require('../models/Citation');
 const Request      = require('../models/Request');
 const Notification = require('../models/Notification');
+const Vote         = require('../models/Vote');
+const Follow       = require('../models/Follow');
 const asyncHandler = require('../middleware/asyncHandler');
 const { isAdmin }  = require('../config/admins');
 
@@ -112,22 +114,29 @@ router.post('/:id/takedown', asyncHandler(async (req, res) => {
         // Cascade-delete nested content before removing the item itself
         if (report.itemType === 'citation') {
             const nestedReplies = await Citation.find({ rootId: report.itemId }).select('_id').lean();
-            if (nestedReplies.length) {
-                const nestedIds = nestedReplies.map(r => r._id.toString());
+            const nestedIds = nestedReplies.map(r => r._id.toString());
+            if (nestedIds.length) {
                 await Citation.deleteMany({ _id: { $in: nestedIds } });
                 await Notification.deleteMany({ itemId: { $in: nestedIds } });
             }
             await Citation.findByIdAndDelete(report.itemId);
+            const allIds = [report.itemId, ...nestedIds];
+            await Vote.deleteMany({ itemId: { $in: allIds } });
+            await Follow.deleteMany({ itemId: { $in: allIds } });
         } else {
             const responses = await Citation.find({ requestId: report.itemId }).select('_id').lean();
-            if (responses.length) {
-                const responseIds = responses.map(r => r._id.toString());
+            const responseIds = responses.map(r => r._id.toString());
+            if (responseIds.length) {
                 const nestedReplies = await Citation.find({ rootId: { $in: responseIds } }).select('_id').lean();
-                const allIds = [...responseIds, ...nestedReplies.map(r => r._id.toString())];
-                await Citation.deleteMany({ _id: { $in: allIds } });
-                await Notification.deleteMany({ itemId: { $in: allIds } });
+                const allCitationIds = [...responseIds, ...nestedReplies.map(r => r._id.toString())];
+                await Citation.deleteMany({ _id: { $in: allCitationIds } });
+                await Notification.deleteMany({ itemId: { $in: allCitationIds } });
+                await Vote.deleteMany({ itemId: { $in: allCitationIds } });
+                await Follow.deleteMany({ itemId: { $in: allCitationIds } });
             }
             await Request.findByIdAndDelete(report.itemId);
+            await Vote.deleteMany({ itemId: report.itemId });
+            await Follow.deleteMany({ itemId: report.itemId });
         }
 
         // Notify the content owner

@@ -2,6 +2,8 @@ const router       = require('express').Router();
 const Request      = require('../models/Request');
 const Citation     = require('../models/Citation');
 const Notification = require('../models/Notification');
+const Vote         = require('../models/Vote');
+const Follow       = require('../models/Follow');
 const sseEmitter = require('../lib/sseEmitter');
 const { ALL_CATEGORIES, DEFAULT_CATEGORY, TOPICS } = require('../config/constants');
 const { isExpert } = require('../config/experts');
@@ -180,15 +182,20 @@ router.delete('/:videoId/:id', asyncHandler(async (req, res) => {
 
     // Cascade-delete all citation responses + their nested replies
     const responses = await Citation.find({ requestId: req.params.id }).select('_id').lean();
+    const allCitationIds = [];
     if (responses.length) {
         const responseIds = responses.map(r => r._id.toString());
-        // rootId on a direct response = its own _id; nested replies share that same rootId
         const nestedReplies = await Citation.find({ rootId: { $in: responseIds } }).select('_id').lean();
-        const allCitationIds = [...responseIds, ...nestedReplies.map(r => r._id.toString())];
+        allCitationIds.push(...responseIds, ...nestedReplies.map(r => r._id.toString()));
 
         await Citation.deleteMany({ _id: { $in: allCitationIds } });
         await Notification.deleteMany({ itemId: { $in: allCitationIds } });
     }
+
+    // Clean up votes and follows for the request and all cascade-deleted citations
+    const allDeletedIds = [req.params.id, ...allCitationIds];
+    await Vote.deleteMany({ itemId: { $in: allDeletedIds } });
+    await Follow.deleteMany({ itemId: { $in: allDeletedIds } });
 
     // Remove all notifications tied to this request (direct item notifications + thread notifications)
     await Notification.deleteMany({

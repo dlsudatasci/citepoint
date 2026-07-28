@@ -110,6 +110,14 @@ router.patch('/applications/:id/review', asyncHandler(async (req, res) => {
         );
     }
 
+    await Notification.create({
+        username: app.username,
+        type:     status === 'approved' ? 'application_approved' : 'application_rejected',
+        title:    status === 'approved'
+            ? `Your expert application for ${app.topics.join(', ')} was approved!`
+            : `Your expert application for ${app.topics.join(', ')} was rejected.${reason ? ` Reason: ${reason}` : ''}`,
+    });
+
     res.json({ success: true, application: app });
 }));
 

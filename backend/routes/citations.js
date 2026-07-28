@@ -2,6 +2,8 @@ const router       = require('express').Router();
 const Citation     = require('../models/Citation');
 const Request      = require('../models/Request');
 const Notification = require('../models/Notification');
+const Vote         = require('../models/Vote');
+const Follow       = require('../models/Follow');
 const sseEmitter   = require('../lib/sseEmitter');
 const { ALL_CATEGORIES, DEFAULT_CATEGORY, TOPICS } = require('../config/constants');
 const { isExpert } = require('../config/experts');
@@ -210,10 +212,10 @@ router.delete('/:videoId/:id', asyncHandler(async (req, res) => {
 
     // Cascade-delete all nested replies to this citation (they share rootId = this citation's _id)
     const nestedReplies = await Citation.find({ rootId: req.params.id }).select('_id').lean();
+    const allIds = [req.params.id, ...nestedReplies.map(r => r._id.toString())];
     if (nestedReplies.length) {
-        const nestedIds = nestedReplies.map(r => r._id.toString());
-        await Citation.deleteMany({ _id: { $in: nestedIds } });
-        await Notification.deleteMany({ itemId: { $in: nestedIds } });
+        await Citation.deleteMany({ _id: { $in: nestedReplies.map(r => r._id) } });
+        await Notification.deleteMany({ itemId: { $in: nestedReplies.map(r => r._id.toString()) } });
     }
 
     // Remove all notifications tied to this citation (direct item + thread notifications)
@@ -223,6 +225,10 @@ router.delete('/:videoId/:id', asyncHandler(async (req, res) => {
             { rootItemId: req.params.id, rootItemType: 'citation' },
         ],
     });
+
+    // Clean up votes and follows for this citation and all nested replies
+    await Vote.deleteMany({ itemId: { $in: allIds } });
+    await Follow.deleteMany({ itemId: { $in: allIds } });
 
     sseEmitter.emit(req.params.videoId, {
         type:       'citationDeleted',
