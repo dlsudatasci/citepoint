@@ -9,14 +9,12 @@ export default function Reports() {
 
     const load = useCallback(async () => {
         setLoading(true);
-        try {
-            const [reps, apps] = await Promise.all([
-                window.apiGetPendingReports(user.username),
-                window.apiGetPendingApplications(user.username),
-            ]);
-            setReports(reps || []);
-            setPendingApplications(apps || []);
-        } catch (_) {}
+        const [reps, apps] = await Promise.all([
+            window.apiGetPendingReports(user.username).catch(err => { console.error('[Reports] pending reports error:', err); return []; }),
+            window.apiGetPendingApplications(user.username).catch(err => { console.error('[Reports] pending apps error:', err); return []; }),
+        ]);
+        setReports(reps);
+        setPendingApplications(apps);
         setLoading(false);
     }, [user.username]);
 
