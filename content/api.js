@@ -348,6 +348,19 @@ async function apiGetPendingApplications(adminUsername) {
     return data.applications || [];
 }
 
+async function apiGetPendingReports(adminUsername) {
+    const data = await _apiRequest(`/reports/pending?adminUsername=${encodeURIComponent(adminUsername || '')}`);
+    return data.reports || [];
+}
+
+async function apiResolveReport(reportId, status, adminUsername) {
+    return _apiRequest(`/reports/${reportId}`, 'PATCH', { status, adminUsername });
+}
+
+async function apiTakedownReport(reportId, adminUsername) {
+    return _apiRequest(`/reports/${reportId}/takedown`, 'POST', { adminUsername });
+}
+
 async function apiReviewApplication(id, status, reviewedBy, reason) {
     return _apiRequest(`/experts/applications/${id}/review`, 'PATCH', { status, reviewedBy, reason });
 }

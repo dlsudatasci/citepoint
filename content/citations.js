@@ -596,16 +596,12 @@ async function createCitationElement(citation, userVote, currentUsername = null)
         el.querySelector('.delete-btn').addEventListener('click', async () => {
             const confirmed = await showConfirm('Delete this citation?');
             if (!confirmed) return;
-
-            // Optimistic: remove from DOM and memory immediately
             el.remove();
             currentCitations = currentCitations.filter(c => c.id !== citation.id);
             try {
                 await apiDeleteCitation(citation.id, getCurrentVideoId(), currentUsername);
-                // Success — DOM already updated, no reload needed
             } catch (err) {
                 showToast('Failed to delete citation. Please try again.', 'error');
-                // Restore list on failure
                 _votesLoaded = false;
                 _votesVideoId = null;
                 _citationsLoading = false;
