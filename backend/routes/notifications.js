@@ -1,10 +1,47 @@
 const router       = require('express').Router();
 const Notification = require('../models/Notification');
+const Citation     = require('../models/Citation');
+const Request      = require('../models/Request');
 const asyncHandler = require('../middleware/asyncHandler');
 const { usernameMatches } = require('../lib/usernameMatches');
 
 // GET /api/notifications/:username
 router.get('/:username', asyncHandler(async (req, res) => {
+    // Lazy cleanup: remove notifications whose referenced item was deleted
+    const candidates = await Notification.find({
+        username: req.params.username,
+        itemId:   { $ne: null },
+        itemType: { $in: ['citation', 'request'] },
+    }).select('_id itemId itemType').lean();
+
+    if (candidates.length) {
+        const citationCandidates = candidates.filter(n => n.itemType === 'citation');
+        const requestCandidates  = candidates.filter(n => n.itemType === 'request');
+
+        const [existingCitationIds, existingRequestIds] = await Promise.all([
+            citationCandidates.length
+                ? Citation.find({ _id: { $in: citationCandidates.map(n => n.itemId) } }).distinct('_id')
+                : Promise.resolve([]),
+            requestCandidates.length
+                ? Request.find({ _id: { $in: requestCandidates.map(n => n.itemId) } }).distinct('_id')
+                : Promise.resolve([]),
+        ]);
+
+        const existingCitations = new Set(existingCitationIds.map(id => id.toString()));
+        const existingRequests  = new Set(existingRequestIds.map(id => id.toString()));
+
+        const staleIds = candidates
+            .filter(n =>
+                (n.itemType === 'citation' && !existingCitations.has(n.itemId)) ||
+                (n.itemType === 'request'  && !existingRequests.has(n.itemId))
+            )
+            .map(n => n._id);
+
+        if (staleIds.length) {
+            await Notification.deleteMany({ _id: { $in: staleIds } });
+        }
+    }
+
     const page  = Math.max(1, parseInt(req.query.page)  || 1);
     const limit = Math.min(50, parseInt(req.query.limit) || 20);
     const skip  = (page - 1) * limit;

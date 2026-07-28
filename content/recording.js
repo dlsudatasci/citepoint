@@ -445,13 +445,13 @@ function addRecordedSegment(startTime, endTime) {
             </button>
         </div>
         <div class="segment-actions">
-            <button class="cite-btn">
-                <svg viewBox="0 0 24 24" width="14" height="14"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 9H7v-2h6v2zm2-4H7V5h8v2z" fill="currentColor"/></svg>
-                Citation
-            </button>
             <button class="request-btn">
                 <svg viewBox="0 0 24 24" width="14" height="14"><path d="M11 18h2v-2h-2v2zm1-16C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-2.21 0-4 1.79-4 4h2c0-1.1.9-2 2-2s2 .9 2 2c0 2-3 1.75-3 5h2c0-2.25 3-2.5 3-5 0-2.21-1.79-4-4-4z" fill="currentColor"/></svg>
                 Request
+            </button>
+            <button class="cite-btn">
+                <svg viewBox="0 0 24 24" width="14" height="14"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 9H7v-2h6v2zm2-4H7V5h8v2z" fill="currentColor"/></svg>
+                Citation
             </button>
         </div>
     `;
@@ -469,8 +469,9 @@ function addRecordedSegment(startTime, endTime) {
             const citationsBtn = document.getElementById('citations-btn');
             if (citationsBtn && !citationsBtn.classList.contains('active')) citationsBtn.click();
 
-            const addItemBtn = document.getElementById('add-item-btn');
-            if (addItemBtn) addItemBtn.click();
+            const addItemBtn    = document.getElementById('add-item-btn');
+            const formContainer = document.getElementById('add-form-container');
+            if (addItemBtn && formContainer && formContainer.style.display === 'none') addItemBtn.click();
 
             setTimeout(() => {
                 const form = document.getElementById('citation-form');
@@ -498,8 +499,9 @@ function addRecordedSegment(startTime, endTime) {
             const requestsBtn = document.getElementById('citation-requests-btn');
             if (requestsBtn && !requestsBtn.classList.contains('active')) requestsBtn.click();
 
-            const addItemBtn = document.getElementById('add-item-btn');
-            if (addItemBtn) addItemBtn.click();
+            const addItemBtn    = document.getElementById('add-item-btn');
+            const formContainer = document.getElementById('add-form-container');
+            if (addItemBtn && formContainer && formContainer.style.display === 'none') addItemBtn.click();
 
             setTimeout(() => {
                 const form = document.getElementById('request-form');
