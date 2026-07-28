@@ -32,10 +32,17 @@ async function showReportDialog(itemId, itemType) {
     }
 
     // Fallback: check storage in case _reportedItems is out of sync
-    const storedData = await new Promise(r => chrome.storage.local.get(reportedKey, r));
-    const storedReported = storedData[reportedKey] || {};
+    let storedReported = {};
+    try {
+        // Use chrome.storage.local if available, fallback to localStorage
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            const storedData = await new Promise(r => chrome.storage.local.get(reportedKey, r));
+            storedReported = storedData[reportedKey] || {};
+        } else {
+            storedReported = JSON.parse(localStorage.getItem(reportedKey) || '{}');
+        }
+    } catch (_) {}
     if (storedReported[itemId]) {
-        // Sync in-memory cache while we're here
         if (typeof _reportedItems !== 'undefined') _reportedItems[itemId] = true;
         showToast('You have already reported this item.');
         return;
@@ -102,13 +109,16 @@ async function showReportDialog(itemId, itemType) {
                 username,
             });
 
-            // ── Persist to storage so the guard survives page reloads ──
-            const fresh = await new Promise(r => chrome.storage.local.get(reportedKey, r));
-            const updated = { ...(fresh[reportedKey] || {}), [itemId]: true };
-            await new Promise(r => chrome.storage.local.set({ [reportedKey]: updated }, r));
-
-            // Sync in-memory cache immediately
+            // Sync in-memory cache, then persist so the guard survives page reloads
             if (typeof _reportedItems !== 'undefined') _reportedItems[itemId] = true;
+            // Use chrome.storage.local if available, fallback to localStorage
+            try {
+                if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                    chrome.storage.local.set({ [reportedKey]: _reportedItems });
+                } else {
+                    localStorage.setItem(reportedKey, JSON.stringify(_reportedItems));
+                }
+            } catch (_) {}
 
             // Disable the Report button in the rendered list without a full reload
             document.querySelectorAll(`.report-btn[data-id="${itemId}"]`).forEach(btn => {
@@ -125,9 +135,14 @@ async function showReportDialog(itemId, itemType) {
             // a client-side duplicate (store locally so we don't ask again)
             if (err.message?.includes('already reported') || err.message?.includes('409')) {
                 if (typeof _reportedItems !== 'undefined') _reportedItems[itemId] = true;
-                const fresh   = await new Promise(r => chrome.storage.local.get(reportedKey, r));
-                const updated = { ...(fresh[reportedKey] || {}), [itemId]: true };
-                chrome.storage.local.set({ [reportedKey]: updated });
+                // Use chrome.storage.local if available, fallback to localStorage
+                try {
+                    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+                        chrome.storage.local.set({ [reportedKey]: _reportedItems });
+                    } else {
+                        localStorage.setItem(reportedKey, JSON.stringify(_reportedItems));
+                    }
+                } catch (_) {}
                 showToast('You have already reported this item.');
                 close();
             } else {
