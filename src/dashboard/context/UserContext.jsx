@@ -19,12 +19,16 @@ export const UserProvider = ({ children }) => {
             });
 
             if (storedUsername) {
-                const expertData = await window.apiCheckExpert(storedUsername);
+                const [expertData, adminCheck] = await Promise.all([
+                    window.apiCheckExpert(storedUsername),
+                    window.apiGetPendingReports(storedUsername).then(() => true).catch(() => false),
+                ]);
 
                 setUser({
                     username: storedUsername,
                     isExpert: expertData.isExpert,
                     expertTopics: expertData.topics || [],
+                    isAdmin: adminCheck,
                     loading: false
                 });
             } else {

@@ -57,6 +57,14 @@ router.post('/', asyncHandler(async (req, res) => {
     }
 }));
 
+// GET /api/reports/locked?videoId=... — returns itemIds with pending reports (used to lock delete buttons)
+router.get('/locked', asyncHandler(async (req, res) => {
+    const { videoId } = req.query;
+    if (!videoId) return res.status(400).json({ success: false, error: 'videoId required' });
+    const lockedIds = await Report.find({ videoId, status: 'pending' }).distinct('itemId');
+    res.json({ success: true, lockedIds });
+}));
+
 // GET /api/reports/pending?adminUsername=... — admin: list pending reports
 router.get('/pending', asyncHandler(async (req, res) => {
     if (!isAdmin(req.query.adminUsername)) {

@@ -348,6 +348,11 @@ async function apiGetPendingApplications(adminUsername) {
     return data.applications || [];
 }
 
+async function apiGetLockedItems(videoId) {
+    const data = await _apiRequest(`/reports/locked?videoId=${encodeURIComponent(videoId)}`);
+    return data.lockedIds || [];
+}
+
 async function apiGetPendingReports(adminUsername) {
     const data = await _apiRequest(`/reports/pending?adminUsername=${encodeURIComponent(adminUsername || '')}`);
     return data.reports || [];

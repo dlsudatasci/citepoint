@@ -46,6 +46,16 @@ export default function SidebarLeft({ activeView, setActiveView }) {
                 >
                  Analytics
                 </button>
+
+                {user.isAdmin && (
+                    <button
+                        className={`nav-item ${activeView === 'reports' ? 'active' : ''}`}
+                        aria-current={activeView === 'reports' ? 'page' : undefined}
+                        onClick={() => setActiveView('reports')}
+                    >
+                     Reports
+                    </button>
+                )}
             </nav>
 
             <div className="sidebar-spacer"></div>

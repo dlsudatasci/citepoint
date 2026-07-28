@@ -5,6 +5,7 @@ import Analytics from '../components/Analytics';
 import Profile from '../components/Profile';
 import MyDiscussions from '../components/MyDiscussions';
 import DiscussionThread from '../components/DiscussionThread';
+import Reports from '../components/Reports';
 
 export default function MainContent({ activeView, setActiveView, threadTarget, onOpenDiscussion }) {
 
@@ -16,6 +17,8 @@ export default function MainContent({ activeView, setActiveView, threadTarget, o
                 return <ExpertFeed />;
             case 'analytics':
                 return <Analytics />;
+            case 'reports':
+                return <Reports />;
             case 'profile':
                 return <Profile />;
             case 'discussions':
