@@ -215,7 +215,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return true;
     }
     if (request.type === 'getDashboardStats') {
-        handleGetDashboardStats(request.videoId).then(sendResponse);
+        handleGetDashboardStats(request.videoId, request.username).then(sendResponse);
         return true;
     }
     if (request.type === 'applyExpert') {
@@ -525,9 +525,12 @@ async function handleCheckExpert(username) {
     }
 }
 
-async function handleGetDashboardStats(videoId) {
+async function handleGetDashboardStats(videoId, username) {
     try {
-        const query = videoId ? `?videoId=${encodeURIComponent(videoId)}` : '';
+        const params = new URLSearchParams();
+        if (videoId) params.set('videoId', videoId);
+        if (username) params.set('username', username);
+        const query = params.toString() ? `?${params.toString()}` : '';
         const result = await apiRequest(`/dashboard/trending${query}`);
         return {
             success: true,

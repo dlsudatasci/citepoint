@@ -51,6 +51,10 @@ let _votesVideoId      = null; // videoId for which votes were last loaded
 // Loaded once per video session; updated after each successful report submission.
 let _reportedItems     = {}; // itemId → true
 
+// ── Locked items ──────────────────────────────
+// Items with pending reports — owners cannot delete these; only admin can take them down.
+let _lockedItems       = new Set();
+
 // ── Categories / expert state ─────────────────
 let _isExpertUser      = null;  // cached result of apiCheckExpert, null = not yet checked
 let _currentCategoryFilter = ''; // '' = all categories
@@ -264,7 +268,7 @@ async function loadCitations(page = 1, silent = false) {
             }
         }
 
-        // ── Load reported items once per video for button state (#10) ─────
+        // ── Load reported/locked items once per video for button state (#10) ─────
         if (page === 1 && _votesVideoId === videoId) {
             const reportedKey = `reported_items_${videoId}`;
             try {
@@ -277,6 +281,13 @@ async function loadCitations(page = 1, silent = false) {
                 }
             } catch (_) {
                 _reportedItems = {};
+            }
+            // Load items with pending reports so owners can't delete them
+            try {
+                const lockedIds = await apiGetLockedItems(videoId);
+                _lockedItems = new Set(lockedIds);
+            } catch (_) {
+                _lockedItems = new Set();
             }
         }
 
@@ -508,8 +519,9 @@ async function createCitationElement(citation, userVote, currentUsername = null)
     el.dataset.end    = parseTimestamp(citation.timestampEnd);
     el.dataset.category = citation.category || DEFAULT_CATEGORY;
 
-    const canDelete = _isOwner(currentUsername, citation.username);
-    const showCategorySelect = canDelete || _isExpertUser || !citation.categoryVerified;
+    const canDelete = _isOwner(currentUsername, citation.username) && !_lockedItems.has(citation.id);
+    const isLocked  = _isOwner(currentUsername, citation.username) && _lockedItems.has(citation.id);
+    const showCategorySelect = (canDelete || isLocked) || _isExpertUser || !citation.categoryVerified;
 
     // Use requestId field for response detection — more reliable than description prefix
     const isResponse       = !!citation.requestId;
@@ -564,7 +576,8 @@ async function createCitationElement(citation, userVote, currentUsername = null)
                         Reply
                     </button>` : ''}
                     ${canDelete ? `<button class="action-btn delete-btn" data-id="${citation.id}">Delete</button>` : ''}
-                    ${!canDelete ? `<button class="action-btn report-btn" data-id="${citation.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
+                    ${isLocked ? `<span class="action-btn reported-badge" title="Under review — cannot be deleted">Under Review</span>` : ''}
+                    ${!canDelete && !isLocked ? `<button class="action-btn report-btn" data-id="${citation.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
                 </div>
             </div>
         </div>
@@ -596,16 +609,12 @@ async function createCitationElement(citation, userVote, currentUsername = null)
         el.querySelector('.delete-btn').addEventListener('click', async () => {
             const confirmed = await showConfirm('Delete this citation?');
             if (!confirmed) return;
-
-            // Optimistic: remove from DOM and memory immediately
             el.remove();
             currentCitations = currentCitations.filter(c => c.id !== citation.id);
             try {
                 await apiDeleteCitation(citation.id, getCurrentVideoId(), currentUsername);
-                // Success — DOM already updated, no reload needed
             } catch (err) {
                 showToast('Failed to delete citation. Please try again.', 'error');
-                // Restore list on failure
                 _votesLoaded = false;
                 _votesVideoId = null;
                 _citationsLoading = false;
@@ -714,7 +723,8 @@ async function createCitationReplyGroupElement(parentCitation, replies, votes, c
     el.dataset.end   = parseTimestamp(parentCitation.timestampEnd);
     el.dataset.category = parentCitation.category || DEFAULT_CATEGORY;
 
-    const canDeleteParent = _isOwner(currentUsername, parentCitation.username);
+    const canDeleteParent = _isOwner(currentUsername, parentCitation.username) && !_lockedItems.has(parentCitation.id);
+    const isLockedParent  = _isOwner(currentUsername, parentCitation.username) && _lockedItems.has(parentCitation.id);
     const parentVote      = votes[parentCitation.id] || null;
     const alreadyReportedParent = !!_reportedItems[parentCitation.id];
     const showParentCategorySelect = canDeleteParent || _isExpertUser || !parentCitation.categoryVerified;
@@ -760,7 +770,8 @@ async function createCitationReplyGroupElement(parentCitation, replies, votes, c
                         Reply
                     </button>` : ''}
                     ${canDeleteParent ? `<button class="action-btn delete-btn" data-id="${parentCitation.id}">Delete</button>` : ''}
-                    ${!canDeleteParent ? `<button class="action-btn report-btn" data-id="${parentCitation.id}" ${alreadyReportedParent ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
+                    ${isLockedParent ? `<span class="action-btn reported-badge" title="Under review — cannot be deleted">Under Review</span>` : ''}
+                    ${!canDeleteParent && !isLockedParent ? `<button class="action-btn report-btn" data-id="${parentCitation.id}" ${alreadyReportedParent ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
                 </div>
             </div>
         </div>
@@ -857,7 +868,8 @@ function createRequestElement(request, userVote, currentUsername = null) {
     el.dataset.end   = parseTimestamp(request.timestampEnd);
     el.dataset.category = request.category || DEFAULT_CATEGORY;
 
-    const canDelete       = _isOwner(currentUsername, request.username);
+    const canDelete       = _isOwner(currentUsername, request.username) && !_lockedItems.has(request.id);
+    const isLocked        = _isOwner(currentUsername, request.username) && _lockedItems.has(request.id);
     const alreadyReported = !!_reportedItems[request.id];
     const showCategorySelect = canDelete || _isExpertUser || !request.categoryVerified;
 
@@ -902,7 +914,8 @@ function createRequestElement(request, userVote, currentUsername = null) {
                     </button>
                     ` : ''}
                     ${canDelete ? `<button class="action-btn delete-btn" data-id="${request.id}">Delete</button>` : ''}
-                    ${!canDelete ? `<button class="action-btn report-btn" data-id="${request.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
+                    ${isLocked ? `<span class="action-btn reported-badge" title="Under review — cannot be deleted">Under Review</span>` : ''}
+                    ${!canDelete && !isLocked ? `<button class="action-btn report-btn" data-id="${request.id}" ${alreadyReported ? 'disabled title="Already reported"' : ''}>Report</button>` : ''}
                 </div>
             </div>
         </div>

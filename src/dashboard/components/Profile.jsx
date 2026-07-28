@@ -195,62 +195,6 @@ function MyApplications({ username, refreshKey }) {
     );
 }
 
-function AdminPanel({ adminUsername, onReviewed }) {
-    const [apps, setApps] = useState(null); // null = not authorized / not loaded yet
-
-    const load = useCallback(async () => {
-        try {
-            const res = await window.apiGetPendingApplications(adminUsername);
-            setApps(res || []);
-        } catch (_) {
-            // Not an admin, or request failed — silently hide the section, same as
-            // the vanilla dashboard did (no error shown to non-admin experts).
-            setApps(null);
-        }
-    }, [adminUsername]);
-
-    useEffect(() => { load(); }, [load]);
-
-    async function review(id, status) {
-        const reason = status === 'rejected' ? prompt('Reason for rejection (optional):') : null;
-        try {
-            await window.apiReviewApplication(id, status, adminUsername, reason || null);
-            setApps(prev => prev.filter(a => a._id !== id));
-            onReviewed();
-        } catch (err) {
-            alert('Error: ' + err.message);
-        }
-    }
-
-    if (!apps) return null;
-
-    return (
-        <section className="dashboard-section" id="admin-section">
-            <h2>Admin: Pending Expert Applications</h2>
-            {apps.length === 0 ? (
-                <p className="empty-message">No pending applications.</p>
-            ) : (
-                <div id="admin-pending-list">
-                    {apps.map(app => (
-                        <div className="application-card admin-card" key={app._id}>
-                            <div className="app-header">
-                                <span className="app-username">{app.username}</span>
-                                <span className="app-category">{(app.topics || []).join(', ')}</span>
-                            </div>
-                            <p className="app-credentials">{app.credentials}</p>
-                            <span className="app-date">Submitted {new Date(app.submittedAt).toLocaleDateString()}</span>
-                            <div className="admin-actions">
-                                <button className="approve-btn" onClick={() => review(app._id, 'approved')}>Approve</button>
-                                <button className="reject-btn" onClick={() => review(app._id, 'rejected')}>Reject</button>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-        </section>
-    );
-}
-
 export default function Profile() {
     const { user, refreshUser } = useContext(UserContext);
     const [refreshKey, setRefreshKey] = useState(0);
@@ -262,11 +206,6 @@ export default function Profile() {
 
     function handleApplicationSubmitted() {
         setJustApplied(true);
-        setRefreshKey(k => k + 1);
-    }
-
-    function handleReviewed() {
-        refreshUser();
         setRefreshKey(k => k + 1);
     }
 
@@ -296,8 +235,6 @@ export default function Profile() {
                 )}
                 <MyApplications username={user.username} refreshKey={refreshKey} />
             </section>
-
-            <AdminPanel adminUsername={user.username} onReviewed={handleReviewed} />
         </div>
     );
 }
