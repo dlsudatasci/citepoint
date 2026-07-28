@@ -350,6 +350,11 @@ async function apiGetPendingApplications(adminUsername) {
     return data.applications || [];
 }
 
+async function apiCheckAdmin(username) {
+    const data = await _apiRequest(`/reports/admin-check?username=${encodeURIComponent(username || '')}`);
+    return data.isAdmin === true;
+}
+
 async function apiGetLockedItems(videoId) {
     const data = await _apiRequest(`/reports/locked?videoId=${encodeURIComponent(videoId)}`);
     return data.lockedIds || [];

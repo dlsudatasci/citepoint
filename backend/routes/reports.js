@@ -6,6 +6,11 @@ const Notification = require('../models/Notification');
 const asyncHandler = require('../middleware/asyncHandler');
 const { isAdmin }  = require('../config/admins');
 
+// GET /api/reports/admin-check?username=...
+router.get('/admin-check', asyncHandler(async (req, res) => {
+    res.json({ success: true, isAdmin: isAdmin(req.query.username) });
+}));
+
 // POST /api/reports
 router.post('/', asyncHandler(async (req, res) => {
     const { videoId, itemId, itemType, reason, additionalInfo, reporterUsername } = req.body;
