@@ -1,5 +1,6 @@
-const router     = require('express').Router();
-const Request    = require('../models/Request');
+const router       = require('express').Router();
+const Request      = require('../models/Request');
+const Notification = require('../models/Notification');
 const sseEmitter = require('../lib/sseEmitter');
 const { ALL_CATEGORIES, DEFAULT_CATEGORY, TOPICS } = require('../config/constants');
 const { isExpert } = require('../config/experts');
@@ -175,6 +176,14 @@ router.delete('/:videoId/:id', asyncHandler(async (req, res) => {
     if (!result) {
         return res.status(403).json({ success: false, error: 'Not found or permission denied' });
     }
+
+    // Remove all notifications tied to this request (direct item notifications + thread notifications)
+    await Notification.deleteMany({
+        $or: [
+            { itemId: req.params.id },
+            { rootItemId: req.params.id, rootItemType: 'request' },
+        ],
+    });
 
     sseEmitter.emit(req.params.videoId, {
         type:      'requestDeleted',
