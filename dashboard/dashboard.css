@@ -72,6 +72,16 @@ body {
     text-align: left;
 }
 
+/* ── Admin analytics group heading ─────────────────── */
+
+.analytics-group-title {
+    font-size: var(--cp-text-lg);
+    font-weight: var(--cp-weight-semibold);
+    margin: var(--cp-space-20) 0 var(--cp-space-12);
+    padding-bottom: var(--cp-space-8);
+    border-bottom: 2px solid var(--cp-border);
+}
+
 /* ── Bar Charts ─────────────────────────────────────── */
 
 .verification-group {

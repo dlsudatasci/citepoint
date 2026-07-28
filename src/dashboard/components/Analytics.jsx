@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
+import { UserContext } from '../context/UserContext';
 
 // window.categoryColor / window.CATEGORY_COLORS come from config/config.js, loaded
 // as a plain script in dashboard.html before this bundle — single source of truth
@@ -72,9 +73,39 @@ function StackedChart({ data }) {
     );
 }
 
+function StatsPanel({ stats }) {
+    return (
+        <>
+            <section className="dashboard-section">
+                <h2>Trending Requested Categories</h2>
+                <div className="bar-chart"><BarChart data={stats.requestsByCategory} /></div>
+            </section>
+
+            <section className="dashboard-section">
+                <h2>Citations by Category</h2>
+                <div className="bar-chart"><BarChart data={stats.citationsByCategory} /></div>
+            </section>
+
+            <section className="dashboard-section">
+                <h2>Expert Verification Activity</h2>
+                <div className="verification-group">
+                    <h3>Citations</h3>
+                    <div className="stacked-chart"><StackedChart data={stats.verificationStats.citations} /></div>
+                </div>
+                <div className="verification-group">
+                    <h3>Citation Requests</h3>
+                    <div className="stacked-chart"><StackedChart data={stats.verificationStats.requests} /></div>
+                </div>
+            </section>
+        </>
+    );
+}
+
 export default function Analytics() {
+    const { user } = useContext(UserContext);
     const [scope, setScope] = useState('video');
-    const [stats, setStats] = useState(null);
+    const [myStats, setMyStats] = useState(null);
+    const [allStats, setAllStats] = useState(null);
     const [error, setError] = useState(null);
     const [loading, setLoading] = useState(true);
 
@@ -83,14 +114,23 @@ export default function Analytics() {
         setLoading(true);
         try {
             const videoId = scope === 'video' ? await getActiveVideoId() : null;
-            const result = await window.apiGetDashboardStats(videoId);
-            setStats(result);
+            if (user.isAdmin) {
+                const [mine, all] = await Promise.all([
+                    window.apiGetDashboardStats(videoId, user.username || null),
+                    window.apiGetDashboardStats(videoId, null),
+                ]);
+                setMyStats(mine);
+                setAllStats(all);
+            } else {
+                const result = await window.apiGetDashboardStats(videoId, user.username || null);
+                setMyStats(result);
+            }
         } catch (err) {
             setError(err.message);
         } finally {
             setLoading(false);
         }
-    }, [scope]);
+    }, [scope, user.username, user.isAdmin]);
 
     useEffect(() => {
         loadStats();
@@ -116,29 +156,17 @@ export default function Analytics() {
                 </div>
             )}
 
-            {!loading && stats && (
+            {!loading && myStats && (
                 <>
-                    <section className="dashboard-section">
-                        <h2>Trending Requested Categories</h2>
-                        <div className="bar-chart"><BarChart data={stats.requestsByCategory} /></div>
-                    </section>
+                    {user.isAdmin && <h2 className="analytics-group-title">My Analytics</h2>}
+                    <StatsPanel stats={myStats} />
 
-                    <section className="dashboard-section">
-                        <h2>Citations by Category</h2>
-                        <div className="bar-chart"><BarChart data={stats.citationsByCategory} /></div>
-                    </section>
-
-                    <section className="dashboard-section">
-                        <h2>Expert Verification Activity</h2>
-                        <div className="verification-group">
-                            <h3>Citations</h3>
-                            <div className="stacked-chart"><StackedChart data={stats.verificationStats.citations} /></div>
-                        </div>
-                        <div className="verification-group">
-                            <h3>Citation Requests</h3>
-                            <div className="stacked-chart"><StackedChart data={stats.verificationStats.requests} /></div>
-                        </div>
-                    </section>
+                    {user.isAdmin && allStats && (
+                        <>
+                            <h2 className="analytics-group-title">All Users</h2>
+                            <StatsPanel stats={allStats} />
+                        </>
+                    )}
                 </>
             )}
         </div>

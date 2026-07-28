@@ -40,6 +40,9 @@ router.get('/trending', async (req, res) => {
             }
             filter.videoId = req.query.videoId;
         }
+        if (req.query.username) {
+            filter.username = req.query.username;
+        }
 
         const [requestsByCategory, citationsByCategory, citationVerification, requestVerification] = await Promise.all([
             countByCategory(Request, filter),

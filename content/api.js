@@ -416,8 +416,11 @@ async function apiMarkAllNotificationsRead(username) {
 
 // ── Dashboard ─────────────────────────────────
 
-async function apiGetDashboardStats(videoId) {
-    const query = videoId ? `?videoId=${encodeURIComponent(videoId)}` : '';
+async function apiGetDashboardStats(videoId, username) {
+    const params = new URLSearchParams();
+    if (videoId) params.set('videoId', videoId);
+    if (username) params.set('username', username);
+    const query = params.toString() ? `?${params.toString()}` : '';
     const result = await _apiRequest(`/dashboard/trending${query}`);
     return {
         requestsByCategory:  result.requestsByCategory  || [],
