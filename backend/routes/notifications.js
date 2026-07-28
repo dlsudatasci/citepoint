@@ -12,6 +12,7 @@ router.get('/:username', asyncHandler(async (req, res) => {
         username: req.params.username,
         itemId:   { $ne: null },
         itemType: { $in: ['citation', 'request'] },
+        type:     { $ne: 'content_removed' },  // keep these — item is gone by design
     }).select('_id itemId itemType').lean();
 
     if (candidates.length) {
