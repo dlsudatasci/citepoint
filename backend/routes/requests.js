@@ -178,13 +178,16 @@ router.delete('/:videoId/:id', asyncHandler(async (req, res) => {
         return res.status(403).json({ success: false, error: 'Not found or permission denied' });
     }
 
-    // Cascade-delete all citation responses to this request
+    // Cascade-delete all citation responses + their nested replies
     const responses = await Citation.find({ requestId: req.params.id }).select('_id').lean();
     if (responses.length) {
         const responseIds = responses.map(r => r._id.toString());
-        await Citation.deleteMany({ requestId: req.params.id });
-        // Clean up notifications for the deleted response citations too
-        await Notification.deleteMany({ itemId: { $in: responseIds } });
+        // rootId on a direct response = its own _id; nested replies share that same rootId
+        const nestedReplies = await Citation.find({ rootId: { $in: responseIds } }).select('_id').lean();
+        const allCitationIds = [...responseIds, ...nestedReplies.map(r => r._id.toString())];
+
+        await Citation.deleteMany({ _id: { $in: allCitationIds } });
+        await Notification.deleteMany({ itemId: { $in: allCitationIds } });
     }
 
     // Remove all notifications tied to this request (direct item notifications + thread notifications)

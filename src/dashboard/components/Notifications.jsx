@@ -8,6 +8,8 @@ const ICONS = {
     application_rejected: '❌',
     reply: '💬',
     mention: '📣',
+    expert_application: '📋',
+    content_removed: '🚫',
 };
 
 export default function Notifications({ onOpenDiscussion }) {
