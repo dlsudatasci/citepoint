@@ -208,6 +208,14 @@ router.delete('/:videoId/:id', asyncHandler(async (req, res) => {
         return res.status(403).json({ success: false, error: 'Not found or permission denied' });
     }
 
+    // Cascade-delete all nested replies to this citation (they share rootId = this citation's _id)
+    const nestedReplies = await Citation.find({ rootId: req.params.id }).select('_id').lean();
+    if (nestedReplies.length) {
+        const nestedIds = nestedReplies.map(r => r._id.toString());
+        await Citation.deleteMany({ _id: { $in: nestedIds } });
+        await Notification.deleteMany({ itemId: { $in: nestedIds } });
+    }
+
     // Remove all notifications tied to this citation (direct item + thread notifications)
     await Notification.deleteMany({
         $or: [
