@@ -8,14 +8,16 @@ function categoryColor(category) {
     return window.categoryColor(category);
 }
 
-function getActiveVideoId() {
+function getActiveVideoInfo() {
     return new Promise(resolve => {
         try {
             chrome.tabs.query({ url: ['*://www.youtube.com/watch*', '*://m.youtube.com/watch*'] }, tabs => {
                 if (chrome.runtime.lastError || !tabs || tabs.length === 0) return resolve(null);
                 try {
                     const url = new URL(tabs[0].url);
-                    resolve(url.searchParams.get('v'));
+                    const videoId = url.searchParams.get('v');
+                    const title = tabs[0].title || null;
+                    resolve(videoId ? { videoId, title } : null);
                 } catch (_) {
                     resolve(null);
                 }
@@ -104,6 +106,7 @@ function StatsPanel({ stats }) {
 export default function Analytics() {
     const { user } = useContext(UserContext);
     const [scope, setScope] = useState('video');
+    const [activeVideo, setActiveVideo] = useState(null);
     const [myStats, setMyStats] = useState(null);
     const [allStats, setAllStats] = useState(null);
     const [error, setError] = useState(null);
@@ -113,7 +116,14 @@ export default function Analytics() {
         setError(null);
         setLoading(true);
         try {
-            const videoId = scope === 'video' ? await getActiveVideoId() : null;
+            let videoId = null;
+            if (scope === 'video') {
+                const info = await getActiveVideoInfo();
+                setActiveVideo(info);
+                videoId = info ? info.videoId : null;
+            } else {
+                setActiveVideo(null);
+            }
             if (user.isAdmin) {
                 const [mine, all] = await Promise.all([
                     window.apiGetDashboardStats(videoId, user.username || null),
@@ -145,6 +155,12 @@ export default function Analytics() {
                     <option value="global">All videos</option>
                 </select>
             </div>
+
+            {scope === 'video' && !loading && (
+                activeVideo
+                    ? <p className="analytics-video-label">Video: {activeVideo.title || activeVideo.videoId}</p>
+                    : <p className="analytics-video-label analytics-video-none">No active YouTube video — open a video tab to filter by it.</p>
+            )}
 
             {error && <p className="error-message">Error loading dashboard stats: {error}</p>}
 
