@@ -109,7 +109,26 @@ router.post('/:id/takedown', asyncHandler(async (req, res) => {
     const item  = await Model.findById(report.itemId).select('username citationTitle title videoId').lean();
 
     if (item) {
-        await Model.findByIdAndDelete(report.itemId);
+        // Cascade-delete nested content before removing the item itself
+        if (report.itemType === 'citation') {
+            const nestedReplies = await Citation.find({ rootId: report.itemId }).select('_id').lean();
+            if (nestedReplies.length) {
+                const nestedIds = nestedReplies.map(r => r._id.toString());
+                await Citation.deleteMany({ _id: { $in: nestedIds } });
+                await Notification.deleteMany({ itemId: { $in: nestedIds } });
+            }
+            await Citation.findByIdAndDelete(report.itemId);
+        } else {
+            const responses = await Citation.find({ requestId: report.itemId }).select('_id').lean();
+            if (responses.length) {
+                const responseIds = responses.map(r => r._id.toString());
+                const nestedReplies = await Citation.find({ rootId: { $in: responseIds } }).select('_id').lean();
+                const allIds = [...responseIds, ...nestedReplies.map(r => r._id.toString())];
+                await Citation.deleteMany({ _id: { $in: allIds } });
+                await Notification.deleteMany({ itemId: { $in: allIds } });
+            }
+            await Request.findByIdAndDelete(report.itemId);
+        }
 
         // Notify the content owner
         const itemTitle = item.citationTitle || item.title || 'Your content';
