@@ -30,9 +30,7 @@ async function getYouTubeUsername() {
         if (onYouTube) {
             // Cheap, synchronous passive read — cross-checked against the cache
             // (not trusted blindly) so an account switch is picked up instead of
-            // sticking to whichever handle was cached first. chrome.storage.local
-            // survives account switches and browser restarts, so a cache hit
-            // alone doesn't mean it's still correct.
+            // sticking to whichever handle was cached first.
             const quick = _tryGetHandleFromDOM();
             if (quick) {
                 if (quick !== cached) _cacheUsername(quick);
@@ -85,33 +83,13 @@ async function getYouTubeUsername() {
 }
 
 /**
- * Return cached username.
- * Tries chrome.storage.local first, falls back to localStorage.
+ * Return cached username from localStorage.
  * @returns {Promise<string|null>}
  */
 async function getCachedUsername() {
-    // Try chrome.storage.local first
-    try {
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            const fromChromeStorage = await new Promise(resolve => {
-                chrome.storage.local.get(['youtubeUsername'], result => {
-                    resolve(result.youtubeUsername || null);
-                });
-            });
-            // Only short-circuit on an actual value -- chrome.storage.local
-            // being *available* isn't the same as it being *populated* (e.g.
-            // a content script always has the API, but nothing may have been
-            // written to it yet), so an empty result still falls through to
-            // the localStorage check below instead of resolving to null.
-            if (fromChromeStorage) return fromChromeStorage;
-        }
-    } catch (_) {}
-
-    // Fallback to localStorage
     try {
         return localStorage.getItem('youtubeUsername') || null;
     } catch (_) {}
-
     return null;
 }
 
@@ -279,21 +257,7 @@ function _waitForHandleInDOM(timeoutMs) {
     });
 }
 
-/**
- * Cache username.
- * Writes to chrome.storage.local and localStorage as fallback.
- */
 function _cacheUsername(handle) {
-    // chrome.storage.local — primary
-    try {
-        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-            chrome.storage.local.set({ youtubeUsername: handle }, () => {
-                console.log('[username] Cached:', handle);
-            });
-        }
-    } catch (_) {}
-
-    // localStorage — fallback for Firefox/Selenium environments
     try {
         localStorage.setItem('youtubeUsername', handle);
     } catch (_) {}

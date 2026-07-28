@@ -1,16 +1,11 @@
 // ─────────────────────────────────────────────
 // api.js
-// All communication with background.js lives here.
-// Every function returns a Promise that resolves
-// with the response data or rejects with an Error.
+// Direct HTTP fetch from the content-script context (youtube.com).
+// Bypasses background.js so Firefox's mixed-content block on the
+// moz-extension:// context does not apply — the request origin
+// becomes https://www.youtube.com, which the server already allows.
 // ─────────────────────────────────────────────
 
-// Derive the API base from manifest.json host_permissions so the URL is defined in
-// exactly one place. Update manifest.json for production deployments.
-//
-// The API host is identified by NOT being a known YouTube pattern, rather than by
-// trusting a fixed array position — host_permissions can be freely reordered without
-// silently repointing every API call at the wrong origin.
 const _CP_YOUTUBE_HOST_PATTERNS = [/^\*:\/\/(www\.)?youtube\.com\//, /^\*:\/\/m\.youtube\.com\//];
 
 function _deriveApiBasePermission(hostPermissions) {
@@ -26,144 +21,280 @@ function _deriveApiBasePermission(hostPermissions) {
 const _CP_API_BASE = (() => {
     try {
         const perm = _deriveApiBasePermission(chrome.runtime.getManifest().host_permissions);
-        return perm.replace(/\/\*$/, ''); // strip trailing /*
+        return perm.replace(/\/\*$/, '');
     } catch (_) {
-        return 'http://localhost:3000';   // safe fallback
+        return 'http://localhost:3000';
     }
 })();
 
-// ── Cross-browser runtime ─────────────────────
-// Firefox exposes `browser`, Chrome exposes `chrome`.
-// Both are available via the browser-polyfill, but guard anyway.
-const _runtime = (() => {
-    if (typeof browser !== 'undefined' && browser.runtime) return browser.runtime;
-    if (typeof chrome !== 'undefined' && chrome.runtime) return chrome.runtime;
+// ── TTL cache ─────────────────────────────────
+const _cache = new Map();
+const _CACHE_TTL_MS = 10_000;
+
+function _cacheGet(key) {
+    const entry = _cache.get(key);
+    if (!entry) return null;
+    if (Date.now() - entry.ts > _CACHE_TTL_MS) { _cache.delete(key); return null; }
+    return entry.data;
+}
+
+function _cacheSet(key, data) {
+    _cache.set(key, { data, ts: Date.now() });
+}
+
+function _cacheInvalidate(videoId) {
+    for (const key of _cache.keys()) {
+        if (key.startsWith(`citations:${videoId}`) || key.startsWith(`requests:${videoId}`)) {
+            _cache.delete(key);
+        }
+    }
+}
+
+function _cacheUpdateItemScore(videoId, itemType, itemId, newScore) {
+    const prefix = itemType === 'citation' ? 'citations' : 'requests';
+    const field  = itemType === 'citation' ? 'citations' : 'requests';
+    for (const [key, entry] of _cache.entries()) {
+        if (!key.startsWith(`${prefix}:${videoId}`)) continue;
+        const items = entry.data[field];
+        if (!Array.isArray(items)) continue;
+        const item = items.find(i => i.id === itemId);
+        if (item) item.voteScore = newScore;
+    }
+}
+
+// ── Vote storage ──────────────────────────────
+const _voteStore = (() => {
+    if (typeof browser !== 'undefined' && browser.storage?.local) return browser.storage.local;
+    if (typeof chrome !== 'undefined' && chrome.storage?.local) return chrome.storage.local;
     return null;
 })();
 
-/**
- * Internal wrapper — send a message to background.js and return the response.
- * Rejects if response.success is false.
- */
-async function _send(payload) {
-    return new Promise((resolve, reject) => {
-        try {
-            if (!_runtime) {
-                return reject(new Error('No runtime API available'));
-            }
-            _runtime.sendMessage(payload, (response) => {
-                const lastError = _runtime.lastError;
-                if (lastError) {
-                    return reject(new Error(lastError.message));
-                }
-                if (!response) {
-                    return reject(new Error('No response from background script'));
-                }
-                if (!response.success) {
-                    return reject(new Error(response.error || 'Unknown error from background'));
-                }
-                resolve(response);
-            });
-        } catch (err) {
-            reject(err);
-        }
+function _getVotes(key) {
+    if (!_voteStore) return Promise.resolve({});
+    return new Promise(resolve => _voteStore.get(key, r => resolve(r[key] || {})));
+}
+
+function _setVotes(key, data) {
+    if (!_voteStore) return Promise.resolve();
+    return new Promise(resolve => _voteStore.set({ [key]: data }, resolve));
+}
+
+// ── Browser / context detection ───────────────
+// browser-polyfill defines `browser` in Chrome too, so typeof browser is not
+// a reliable Firefox check. Use the extension URL scheme instead.
+const _isFirefox = (() => {
+    try { return chrome.runtime.getURL('').startsWith('moz-extension://'); }
+    catch (_) { return false; }
+})();
+const _isExtensionPage = (() => {
+    try {
+        const p = location.protocol;
+        return p === 'moz-extension:' || p === 'chrome-extension:';
+    } catch (_) { return false; }
+})();
+
+// ── Proxy helpers (Firefox dashboard → YouTube content script) ────────────
+// Firefox extension pages have a hardcoded upgrade-insecure-requests CSP that
+// forces HTTP → HTTPS. Route those fetches through a YouTube content script
+// (https://www.youtube.com context) where the about:config flag applies.
+// Requires a YouTube tab to be open.
+async function _proxyFetchViaContentScript(url, method, body) {
+    const rt = _isFirefox ? browser.runtime : chrome.runtime;
+    const attempt = () => new Promise((resolve, reject) => {
+        rt.sendMessage({ type: '_cpProxyFetch', url, method, body }, response => {
+            const err = rt.lastError;
+            if (err) return reject(new Error(err.message));
+            if (!response) return reject(new Error('no-response'));
+            if (!response.success) return reject(new Error(response.error || 'Proxy fetch failed'));
+            resolve(response.data);
+        });
     });
+    // Retry up to 3 times with 600ms gap — content script may still be initializing
+    for (let i = 0; i < 3; i++) {
+        try {
+            return await attempt();
+        } catch (err) {
+            const retryable = err.message === 'no-response' ||
+                err.message.includes('Could not establish connection') ||
+                err.message.includes('No YouTube tab');
+            if (!retryable || i === 2) {
+                if (err.message === 'no-response') throw new Error('No response from proxy — open YouTube in a tab first');
+                throw err;
+            }
+            await new Promise(r => setTimeout(r, 600));
+        }
+    }
+}
+
+// Chrome content scripts run in the youtube.com (HTTPS) context, so Chrome
+// blocks direct HTTP fetch as mixed content. Route through background.js which
+// runs in the chrome-extension:// context where Chrome allows HTTP.
+async function _sendToBackground(path, method, body) {
+    return new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({ type: '_genericFetch', path, method, body }, response => {
+            if (chrome.runtime.lastError) return reject(new Error(chrome.runtime.lastError.message));
+            if (!response || !response.success) return reject(new Error(response?.error || 'Background fetch failed'));
+            resolve(response.data);
+        });
+    });
+}
+
+// ── HTTP helper ───────────────────────────────
+async function _apiRequest(path, method = 'GET', body = null) {
+    const url = `${_CP_API_BASE}/api${path}`;
+
+    // Firefox dashboard (moz-extension://): proxy through YouTube content script
+    if (_isFirefox && _isExtensionPage) return _proxyFetchViaContentScript(url, method, body);
+
+    // Chrome content script (youtube.com): route through background.js
+    if (!_isFirefox && !_isExtensionPage) return _sendToBackground(path, method, body);
+
+    // Firefox content script OR Chrome extension page: direct fetch works
+    const options = { method, headers: { 'Content-Type': 'application/json' } };
+    if (body) options.body = JSON.stringify(body);
+    const response = await fetch(url, options);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Request failed');
+    return data;
+}
+
+function _mapId({ _id, ...rest }) {
+    return { id: _id, ...rest };
 }
 
 // ── Citations ────────────────────────────────
 
 async function apiGetCitations(videoId, page = 1, limit = 20) {
-    const res = await _send({ type: 'getCitations', videoId, page, limit });
-    return { citations: res.citations || [], pagination: res.pagination || null };
+    const key = `citations:${videoId}:${page}:${limit}`;
+    const cached = _cacheGet(key);
+    if (cached) return cached;
+    const data = await _apiRequest(`/citations/${videoId}?page=${page}&limit=${limit}`);
+    const result = { citations: data.citations.map(_mapId), pagination: data.pagination };
+    _cacheSet(key, result);
+    return result;
 }
 
 async function apiAddCitation(citationData) {
-    return _send({ type: 'addCitation', data: citationData });
+    const { videoId, ...fields } = citationData;
+    const result = await _apiRequest(`/citations/${videoId}`, 'POST', fields);
+    _cacheInvalidate(videoId);
+    return { success: true, id: result.id };
 }
 
-/**
- * @param {string} citationId
- * @param {string} videoId
- * @param {string} username  — must match the citation's owner for the delete to succeed
- */
 async function apiDeleteCitation(citationId, videoId, username) {
-    return _send({ type: 'deleteCitation', citationId, videoId, username });
+    await _apiRequest(`/citations/${videoId}/${citationId}`, 'DELETE', { username });
+    _cacheInvalidate(videoId);
+    return { success: true };
 }
 
 // ── Citation Requests ────────────────────────
 
 async function apiGetRequests(videoId, page = 1, limit = 20) {
-    const res = await _send({ type: 'getCitationRequests', videoId, page, limit });
-    return { requests: res.requests || [], pagination: res.pagination || null };
+    const key = `requests:${videoId}:${page}:${limit}`;
+    const cached = _cacheGet(key);
+    if (cached) return cached;
+    const data = await _apiRequest(`/requests/${videoId}?page=${page}&limit=${limit}`);
+    const result = { requests: data.requests.map(_mapId), pagination: data.pagination };
+    _cacheSet(key, result);
+    return result;
 }
 
-/**
- * Fetch a specific subset of requests by ID.
- */
 async function apiGetRequestsByIds(videoId, ids) {
     if (!ids || ids.length === 0) return { requests: [] };
-    const res = await _send({ type: 'getRequestsByIds', videoId, ids });
-    return { requests: res.requests || [] };
+    const uniqueIds = [...new Set(ids)].slice(0, 50);
+    const key = `requests:${videoId}:ids:${[...uniqueIds].sort().join(',')}`;
+    const cached = _cacheGet(key);
+    if (cached) return cached;
+    const data = await _apiRequest(`/requests/${videoId}/by-ids?ids=${uniqueIds.join(',')}`);
+    const result = { requests: data.requests.map(_mapId) };
+    _cacheSet(key, result);
+    return result;
 }
 
 async function apiAddRequest(requestData) {
-    return _send({ type: 'addRequest', data: requestData });
+    const { videoId, ...fields } = requestData;
+    const result = await _apiRequest(`/requests/${videoId}`, 'POST', fields);
+    _cacheInvalidate(videoId);
+    return { success: true, id: result.id };
 }
 
-/**
- * @param {string} requestId
- * @param {string} videoId
- * @param {string} username  — must match the request's owner for the delete to succeed
- */
 async function apiDeleteRequest(requestId, videoId, username) {
-    return _send({ type: 'deleteRequest', requestId, videoId, username });
+    await _apiRequest(`/requests/${videoId}/${requestId}`, 'DELETE', { username });
+    _cacheInvalidate(videoId);
+    return { success: true };
 }
 
 // ── Votes ────────────────────────────────────
 
+function _computeDelta(voteType, currentVote) {
+    if (voteType === currentVote) return voteType === 'up' ? -1 : 1;
+    let delta = voteType === 'up' ? 1 : -1;
+    if (currentVote) delta += currentVote === 'up' ? -1 : 1;
+    return delta;
+}
+
 async function apiUpdateVote(itemId, voteType, itemType, videoId, username) {
-    return _send({ type: 'updateVotes', itemId, voteType, itemType, videoId, username });
+    const storageKey = `${itemType}_votes_${videoId}`;
+    const userVotes  = await _getVotes(storageKey);
+    const currentVote = userVotes[itemId];
+    const delta = _computeDelta(voteType, currentVote);
+
+    const path = itemType === 'citation'
+        ? `/citations/${videoId}/${itemId}/vote`
+        : `/requests/${videoId}/${itemId}/vote`;
+    const result = await _apiRequest(path, 'PATCH', { delta, username });
+
+    if (voteType === currentVote) {
+        delete userVotes[itemId];
+    } else {
+        userVotes[itemId] = voteType;
+    }
+    await _setVotes(storageKey, userVotes);
+    _cacheUpdateItemScore(videoId, itemType, itemId, result.newScore);
+
+    return { success: true, newScore: result.newScore, newVote: userVotes[itemId] || null };
 }
 
 async function apiGetUserVotes(videoId, itemType = 'citation') {
-    const res = await _send({ type: 'getUserVotes', videoId, itemType });
-    return res.votes || {};
+    return _getVotes(`${itemType}_votes_${videoId}`);
 }
 
 // ── Reports ──────────────────────────────────
 
 async function apiReportItem({ videoId, itemId, itemType, reason, additionalInfo, username }) {
-    return _send({
-        type: 'reportItem',
-        data: { videoId, itemId, itemType, reason, additionalInfo, reporterUsername: username },
+    const result = await _apiRequest('/reports', 'POST', {
+        videoId, itemId, itemType, reason,
+        additionalInfo:   additionalInfo || '',
+        reporterUsername: username,
     });
+    return { success: true, reportId: result.reportId };
 }
 
 // ── Discussion / Replies ────────────────────
 
 async function apiGetDiscussionTree(id) {
-    return _send({ type: 'getDiscussionCitationTree', id });
+    const data = await _apiRequest(`/discussion/citation/${id}?tree=true`);
+    return { success: true, citation: data.citation, replies: data.replies || [] };
 }
 
 async function apiGetDiscussionRequest(id) {
-    return _send({ type: 'getDiscussionRequest', id });
+    const data = await _apiRequest(`/discussion/request/${id}`);
+    return { success: true, request: data.request, responses: data.responses || [] };
 }
 
 async function apiAddQuickReply(parentCitationId, description, videoId, username) {
-    return _send({ type: 'addQuickReply', parentCitationId, description, videoId, username });
+    const data = await _apiRequest('/discussion/reply', 'POST', {
+        parentCitationId, description, videoId, username,
+    });
+    return { success: true, id: data.id };
 }
 
 // ── My Discussions (dashboard hub) ──────────
 
-/**
- * @param {string} username
- * @param {'all'|'mine'|'requests'|'participated'|'unread'} filter
- * @param {number} page
- * @param {string} search
- */
 async function apiGetMyDiscussions(username, filter = 'all', page = 1, search = '') {
-    const res = await _send({ type: 'getMyDiscussions', username, filter, page, search });
-    return { discussions: res.discussions || [], pagination: res.pagination || null };
+    const query = new URLSearchParams({ username, filter, page, search: search || '' }).toString();
+    const result = await _apiRequest(`/discussions/mine?${query}`);
+    return { discussions: result.discussions || [], pagination: result.pagination || null };
 }
 
 // ── SSE ──────────────────────────────────────
@@ -174,144 +305,135 @@ function apiGetSSEUrl(videoId) {
 
 // ── Categories & Experts ──────────────────────
 
-/**
- * @param {string} itemId
- * @param {'citation'|'request'} itemType
- * @param {string} videoId
- * @param {string} category
- * @param {string} username
- */
 async function apiUpdateCategory(itemId, itemType, videoId, category, username) {
-    return _send({ type: 'updateCategory', itemId, itemType, videoId, category, username });
+    const path = itemType === 'citation' ? 'citations' : 'requests';
+    const result = await _apiRequest(`/${path}/${videoId}/${itemId}/category`, 'PATCH', { category, username });
+    _cacheInvalidate(videoId);
+    return { success: true, category: result.category, categoryVerified: result.categoryVerified, verifiedBy: result.verifiedBy };
 }
 
-/**
- * @param {string} itemId
- * @param {'citation'|'request'} itemType
- * @param {string} videoId
- * @param {boolean} resolved
- * @param {string} username  — must be the item's author or a recognized expert
- */
 async function apiUpdateResolved(itemId, itemType, videoId, resolved, username) {
-    return _send({ type: 'updateResolved', itemId, itemType, videoId, resolved, username });
+    const path = itemType === 'citation' ? 'citations' : 'requests';
+    const result = await _apiRequest(`/${path}/${videoId}/${itemId}/resolve`, 'PATCH', { resolved, username });
+    _cacheInvalidate(videoId);
+    return { success: true, resolved: result.resolved, resolvedBy: result.resolvedBy, resolvedAt: result.resolvedAt };
 }
 
-/**
- * @param {string} itemId
- * @param {'citation'|'request'} itemType
- * @param {string} username
- */
 async function apiGetFollowStatus(itemId, itemType, username) {
-    const res = await _send({ type: 'getFollowStatus', itemId, itemType, username });
-    return !!res.following;
+    const result = await _apiRequest(`/follows/${itemType}/${itemId}?username=${encodeURIComponent(username)}`);
+    return !!result.following;
 }
 
-/**
- * @param {string} itemId
- * @param {'citation'|'request'} itemType
- * @param {boolean} following
- * @param {string} username
- */
 async function apiUpdateFollow(itemId, itemType, following, username) {
-    const res = await _send({ type: 'updateFollow', itemId, itemType, following, username });
-    return !!res.following;
+    const result = await _apiRequest(`/follows/${itemType}/${itemId}`, 'PATCH', { following, username });
+    return !!result.following;
 }
 
 async function apiCheckExpert(username) {
-    const res = await _send({ type: 'checkExpert', username });
-    return {
-        isExpert: !!res.isExpert,
-        topics: res.topics || [],
-    };
+    const result = await _apiRequest(`/experts/${encodeURIComponent(username)}`);
+    return { isExpert: !!result.isExpert, topics: result.topics || [] };
 }
 
 async function apiApplyExpert(username, topics, credentials) {
-    return _send({ type: 'applyExpert', username, topics, credentials });
+    return _apiRequest('/experts/apply', 'POST', { username, topics, credentials });
 }
 
 async function apiGetMyApplications(username) {
-    const res = await _send({ type: 'getMyApplications', username });
-    return res.applications || [];
+    const data = await _apiRequest(`/experts/applications/${encodeURIComponent(username)}?requesterUsername=${encodeURIComponent(username)}`);
+    return data.applications || [];
 }
 
 async function apiGetPendingApplications(adminUsername) {
-    const res = await _send({ type: 'getPendingApplications', adminUsername });
-    return res.applications || [];
+    const data = await _apiRequest(`/experts/applications/pending?adminUsername=${encodeURIComponent(adminUsername || '')}`);
+    return data.applications || [];
 }
 
 async function apiReviewApplication(id, status, reviewedBy, reason) {
-    return _send({ type: 'reviewApplication', id, status, reviewedBy, reason });
+    return _apiRequest(`/experts/applications/${id}/review`, 'PATCH', { status, reviewedBy, reason });
 }
 
 // ── Profile ──────────────────────────────────
 
 async function apiGetProfile(username) {
-    return _send({ type: 'getProfile', username });
+    const data = await _apiRequest(`/profile/${encodeURIComponent(username)}`);
+    return { success: true, ...data };
 }
 
 async function apiUpdateProfile(username, data) {
-    return _send({ type: 'updateProfile', username, data });
+    const result = await _apiRequest(`/profile/${encodeURIComponent(username)}`, 'PUT', {
+        ...data,
+        requesterUsername: username,
+    });
+    return { success: true, profile: result.profile };
 }
 
 async function apiGetProfileHistory(username, page) {
-    return _send({ type: 'getProfileHistory', username, page });
+    const data = await _apiRequest(`/profile/${encodeURIComponent(username)}/history?page=${page}`);
+    return { success: true, citations: data.citations || [], requests: data.requests || [] };
 }
 
 // ── Notifications ────────────────────────────
 
 async function apiGetNotifications(username, page) {
-    return _send({ type: 'getNotifications', username, page });
+    const data = await _apiRequest(`/notifications/${encodeURIComponent(username)}?page=${page}`);
+    return { success: true, notifications: data.notifications || [], unreadCount: data.unreadCount || 0 };
 }
 
 async function apiMarkNotificationRead(id, username) {
-    return _send({ type: 'markNotificationRead', id, username });
+    await _apiRequest(`/notifications/${id}/read`, 'PATCH', { username });
+    return { success: true };
 }
 
 async function apiMarkAllNotificationsRead(username) {
-    return _send({ type: 'markAllNotificationsRead', username });
+    await _apiRequest(`/notifications/${encodeURIComponent(username)}/read-all`, 'PATCH', { username });
+    return { success: true };
 }
 
 // ── Dashboard ─────────────────────────────────
 
 async function apiGetDashboardStats(videoId) {
-    const res = await _send({ type: 'getDashboardStats', videoId });
+    const query = videoId ? `?videoId=${encodeURIComponent(videoId)}` : '';
+    const result = await _apiRequest(`/dashboard/trending${query}`);
     return {
-        requestsByCategory: res.requestsByCategory || [],
-        citationsByCategory: res.citationsByCategory || [],
-        verificationStats: res.verificationStats || { citations: [], requests: [] },
+        requestsByCategory:  result.requestsByCategory  || [],
+        citationsByCategory: result.citationsByCategory || [],
+        verificationStats:   result.verificationStats   || { citations: [], requests: [] },
     };
 }
 
 // ── Feeds & Video Metadata ───────────────────
 
-/**
- * Sends scraped YouTube metadata to the backend for caching/upserting.
- * @param {Object} metadata - { videoId, title, channelName, rawTags }
- */
 async function apiUpsertVideo(metadata) {
-    return _send({ type: 'upsertVideo', data: metadata });
+    const result = await _apiRequest('/videos/upsert', 'POST', metadata);
+    return { success: true, data: result.data };
 }
 
-/**
- * Fetches the personalized feed for an expert based on their assigned Topics.
- * @param {string} username
- */
 async function apiGetExpertFeed(username) {
-    const res = await _send({ type: 'getExpertFeed', username });
-    return res.data || [];
+    const result = await _apiRequest(`/feeds/expert?username=${encodeURIComponent(username)}`);
+    return result.data || [];
 }
 
-/**
- * Fetches the general browsable feed, optionally filtered by a video Topic
- * (backend/routes/feeds.js matches against the linked video's youtubeTopics).
- * @param {string} topic
- * @param {number} page
- * @param {number} limit
- */
 async function apiGetGeneralFeed(topic = 'All', page = 1, limit = 20) {
-    const res = await _send({ type: 'getGeneralFeed', topic, page, limit });
-    return {
-        feed: res.data || [],
-        pagination: res.pagination || null,
-    };
+    const query = new URLSearchParams({ topic, page, limit }).toString();
+    const result = await _apiRequest(`/feeds/general?${query}`);
+    return { feed: result.data || [], pagination: result.pagination || null };
+}
+
+// ── Proxy fetch listener (content script side) ─
+// Handles _cpProxyFetch messages forwarded by background.js on behalf of the
+// Firefox dashboard, which cannot make HTTP requests from moz-extension:// context.
+if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.type !== '_cpProxyFetch') return false;
+        const options = {
+            method: request.method || 'GET',
+            headers: { 'Content-Type': 'application/json' },
+        };
+        if (request.body) options.body = JSON.stringify(request.body);
+        fetch(request.url, options)
+            .then(r => r.json())
+            .then(data => sendResponse({ success: true, data }))
+            .catch(err => sendResponse({ success: false, error: err.message }));
+        return true; // keep message channel open for async response
+    });
 }
