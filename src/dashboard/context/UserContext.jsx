@@ -21,7 +21,7 @@ export const UserProvider = ({ children }) => {
             if (storedUsername) {
                 const [expertData, adminCheck] = await Promise.all([
                     window.apiCheckExpert(storedUsername),
-                    window.apiGetPendingReports(storedUsername).then(() => true).catch(() => false),
+                    window.apiGetPendingApplications(storedUsername).then(() => true).catch(() => false),
                 ]);
 
                 setUser({
