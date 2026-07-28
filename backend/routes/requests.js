@@ -120,15 +120,16 @@ router.post('/:videoId', asyncHandler(async (req, res) => {
         return res.status(400).json({ success: false, error: 'Invalid category' });
     }
 
+    const authorIsExpert = isExpert(username);
     const request = await Request.create({
         ...req.body,
         videoId:   req.params.videoId,
         dateAdded: new Date(),  // server-authoritative
         voteScore: 0,           // always start at zero
         category:  category || DEFAULT_CATEGORY,
-        categoryVerified: false,
-        verifiedBy: null,
-        verifiedAt: null,
+        categoryVerified: authorIsExpert,
+        verifiedBy: authorIsExpert ? username : null,
+        verifiedAt: authorIsExpert ? new Date() : null,
     });
 
     sseEmitter.emit(req.params.videoId, {

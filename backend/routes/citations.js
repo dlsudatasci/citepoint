@@ -124,15 +124,16 @@ router.post('/:videoId', asyncHandler(async (req, res) => {
         }
     }
 
+    const authorIsExpert = isExpert(username);
     const citation = new Citation({
         ...req.body,
         videoId:   req.params.videoId,
         dateAdded: new Date(),  // server-authoritative
         voteScore: 0,           // always start at zero
         category:  category || DEFAULT_CATEGORY,
-        categoryVerified: false,
-        verifiedBy: null,
-        verifiedAt: null,
+        categoryVerified: authorIsExpert,
+        verifiedBy: authorIsExpert ? username : null,
+        verifiedAt: authorIsExpert ? new Date() : null,
     });
     citation.rootId = parentCitation ? await resolveRootId(parentCitation) : citation._id.toString();
     await citation.save();
