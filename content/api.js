@@ -146,10 +146,12 @@ async function _apiRequest(path, method = 'GET', body = null) {
     // Firefox dashboard (moz-extension://): proxy through YouTube content script
     if (_isFirefox && _isExtensionPage) return _proxyFetchViaContentScript(url, method, body);
 
-    // Chrome content script (youtube.com): route through background.js
-    if (!_isFirefox && !_isExtensionPage) return _sendToBackground(path, method, body);
+    // Chrome (content script or extension page): route through background.js
+    // Direct fetch from a chrome-extension:// page can return unexpected HTML for
+    // some routes; background.js is the reliable path for all Chrome contexts.
+    if (!_isFirefox) return _sendToBackground(path, method, body);
 
-    // Firefox content script OR Chrome extension page: direct fetch works
+    // Firefox content script: direct fetch works (youtube.com context, no mixed content)
     const options = { method, headers: { 'Content-Type': 'application/json' } };
     if (body) options.body = JSON.stringify(body);
     const response = await fetch(url, options);
