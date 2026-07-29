@@ -8,6 +8,28 @@ const { TOPICS } = require('../config/constants');
 const asyncHandler = require('../middleware/asyncHandler');
 const { usernameMatches } = require('../lib/usernameMatches');
 
+// GET /api/experts/admin/list?adminUsername=... — admin: list all verified experts
+router.get('/admin/list', asyncHandler(async (req, res) => {
+    if (!isAdmin(req.query.adminUsername)) {
+        return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+    const experts = await Expert.find().sort({ grantedAt: -1 }).lean();
+    res.json({ success: true, experts });
+}));
+
+// DELETE /api/experts/admin/:username — admin: revoke expert status
+router.delete('/admin/:username', asyncHandler(async (req, res) => {
+    const { adminUsername } = req.body;
+    if (!isAdmin(adminUsername)) {
+        return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+    const result = await Expert.findOneAndDelete({ username: req.params.username });
+    if (!result) {
+        return res.status(404).json({ success: false, error: 'Expert not found' });
+    }
+    res.json({ success: true });
+}));
+
 // GET /api/experts/:username — check if user is an expert
 router.get('/:username', asyncHandler(async (req, res) => {
     if (isHardcodedExpert(req.params.username)) {
