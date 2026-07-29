@@ -1,0 +1,99 @@
+name: Playwright & Selenium Extension Tests
+on:
+  push:
+    branches: [ dev, main, ci-cd ]
+  pull_request:
+    branches: [ dev, main, ci-cd ]
+
+jobs:
+  test:
+    timeout-minutes: 90
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7
+        ports:
+          - 27017:27017
+
+    steps:
+    - uses: actions/checkout@v5
+
+    - uses: actions/setup-node@v5
+      with:
+        node-version: '22'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Install backend dependencies
+      run: npm ci --prefix backend
+
+    - name: Run backend tests
+      run: npm test --prefix backend
+      env:
+        NODE_ENV: test
+
+    - name: Install Playwright Browsers and System Dependencies
+      run: npx playwright install --with-deps
+
+    - name: Install Geckodriver (For Firefox Selenium)
+      run: npm install -g geckodriver
+
+    - name: Check Firefox and Geckodriver versions
+      run: |
+        firefox --version
+        geckodriver --version
+
+    - name: Start backend for Selenium
+      run: |
+        cd backend
+        # ALLOWED_ORIGINS=* opts into accepting any chrome-extension://moz-extension://
+        # origin -- needed here since Firefox assigns the temporary/unpacked test
+        # extension a fresh, unpredictable origin on every run. See backend/app.js.
+        MONGODB_URI=mongodb://localhost:27017/citepoint_test PORT=3000 NODE_ENV=test ALLOWED_ORIGINS='*' npm start &
+        echo "Backend PID: $!"
+        sleep 5
+
+    - name: Point extension at local test backend
+      run: |
+        # background.js / content/api.js derive the real runtime API base from
+        # manifest.json's host_permissions (first non-YouTube entry). Keep only
+        # localhost + YouTube here so CI can never resolve to a deployed/remote host.
+        jq '.host_permissions |= map(select(. == "http://localhost:3000/*" or test("youtube")))' manifest.json > manifest.json.tmp
+        mv manifest.json.tmp manifest.json
+        jq '.host_permissions' manifest.json
+
+    - name: Prepare clean extension for Firefox
+      run: |
+        mkdir -p /tmp/citepoint-ext
+        cp manifest.json /tmp/citepoint-ext/manifest.json
+        cp -r lib /tmp/citepoint-ext/
+        cp -r background /tmp/citepoint-ext/
+        cp -r content /tmp/citepoint-ext/
+        cp -r popup /tmp/citepoint-ext/
+        cp -r forms /tmp/citepoint-ext/
+        cp -r styles /tmp/citepoint-ext/
+        cp -r icons /tmp/citepoint-ext/
+        cp -r utils /tmp/citepoint-ext/
+        cp -r config /tmp/citepoint-ext/
+        echo "Extension files:"
+        ls /tmp/citepoint-ext/
+
+    - name: Run Selenium tests (Firefox)
+      run: xvfb-run --auto-servernum -- node selenium/firefox.test.js
+      env:
+        MONGODB_URI: mongodb://localhost:27017/citepoint_test
+        FIREFOX_EXT_DIR: /tmp/citepoint-ext
+
+    - name: Run Playwright tests (Chrome)
+      run: xvfb-run --auto-servernum -- npx playwright test
+      env:
+        MONGODB_URI: mongodb://localhost:27017/citepoint_test
+
+    - uses: actions/upload-artifact@v4
+      if: ${{ !cancelled() }}
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 30

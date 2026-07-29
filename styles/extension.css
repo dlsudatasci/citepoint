@@ -1,0 +1,1883 @@
+/* ══════════════════════════════════════════════
+   CitePoint Extension Stylesheet
+   Injected into YouTube pages via content_scripts.
+   Design tokens (styles/tokens.css) are injected as a separate,
+   earlier entry in manifest.json's content_scripts.css array —
+   NOT via @import, which Chrome does not resolve for CSS files
+   injected this way (custom properties silently fail to apply).
+   ══════════════════════════════════════════════ */
+
+/* ── Base Overrides (scoped to .citation-controls) ─── */
+
+body {
+    font-family: var(--cp-font, "Roboto", "Arial", sans-serif);
+    margin: 0;
+    padding: 0;
+}
+
+/* ── Panel Root ─────────────────────────────────────── */
+
+.citation-controls {
+    background-color: var(--cp-bg-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-lg);
+    padding: var(--cp-space-10, 10px);
+    margin-bottom: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 100%;
+    box-sizing: border-box;
+    font-family: var(--cp-font);
+    color: var(--cp-text-primary);
+}
+
+/* ── Panel Header (always visible) ──────────────────── */
+/* Border/background live on .citation-controls above so the header and the
+   expanded content below it read as one continuous card, not a bordered
+   header with a disconnected, unstyled list floating under it. */
+
+.extension-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 12px 16px 0;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.extension-header .minimized-logo {
+    font-family: var(--cp-font);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--cp-accent);
+    text-align: center;
+    margin-bottom: 12px;
+}
+
+.extension-header .button-container {
+    padding: 0;
+    margin: 0;
+    border-bottom: none;
+    width: 100%;
+    justify-content: center;
+}
+
+.extension-header .button-container button.disabled {
+    cursor: default;
+    pointer-events: none;
+}
+
+.extension-header .button-container button.disabled::after {
+    display: none;
+}
+
+.extension-header.expanded .button-container button {
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.extension-header.expanded .button-container {
+    border-bottom: 1px solid var(--cp-border);
+}
+
+.minimized-divider {
+    width: 100%;
+    border: none;
+    border-top: 1px solid var(--cp-border);
+    margin: 8px 0 0;
+}
+
+.extension-header.expanded .minimized-divider {
+    display: none;
+}
+
+.minimized-expand-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px 12px;
+    color: var(--cp-text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--cp-radius-sm);
+    transition: background-color var(--cp-transition), color var(--cp-transition);
+}
+
+.minimized-expand-btn:hover {
+    color: var(--cp-text-primary);
+    background-color: var(--cp-bg-hover);
+}
+
+.minimized-expand-btn .toggle-icon {
+    font-size: 14px;
+    transition: transform 0.2s ease;
+}
+
+/* ── Extension Content ──────────────────────────────── */
+
+.extension-content {
+    transition: max-height 0.3s ease-out;
+    overflow: hidden;
+}
+
+.extension-content.collapsed {
+    max-height: 0;
+    overflow: hidden;
+}
+
+/* ── Tab Buttons ────────────────────────────────────── */
+
+.button-container {
+    display: flex;
+    gap: 8px;
+    padding: 0 16px;
+    margin: 12px 0;
+    border-bottom: 1px solid var(--cp-border);
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+.button-container button {
+    background: none;
+    border: none;
+    color: var(--cp-text-secondary);
+    cursor: pointer;
+    font-family: var(--cp-font);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 8px 16px;
+    position: relative;
+    transition: color var(--cp-transition), background-color var(--cp-transition);
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    justify-content: center;
+    white-space: nowrap;
+}
+
+.button-container button:hover:not(.disabled) {
+    color: var(--cp-text-primary);
+}
+
+.button-container button.active:not(.disabled) {
+    color: var(--cp-text-primary);
+}
+
+.button-container button.disabled {
+    opacity: 1;
+    cursor: default;
+    color: var(--cp-text-secondary);
+}
+
+.button-container button.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--cp-text-primary);
+    border-radius: 3px 3px 0 0;
+}
+
+.tab-counter {
+    background-color: var(--cp-bg-active, #e0e0e0);
+    color: var(--cp-text-secondary);
+    font-size: 12px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 20px;
+    text-align: center;
+    display: inline-block;
+}
+
+.button-container button.active .tab-counter {
+    background-color: var(--cp-text-primary);
+    color: white;
+}
+
+#citation-requests-btn,
+#citations-btn {
+    border-radius: 0;
+    margin: 0;
+    min-width: auto;
+}
+
+/* ── Section Title & Header ─────────────────────────── */
+
+.header-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    gap: 10px;
+    padding: 0 16px;
+}
+
+.header-container h3 {
+    margin: 0;
+    flex-grow: 1;
+}
+
+
+.section-title {
+    font-family: var(--cp-font);
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--cp-text-primary);
+    margin: 16px 0;
+    padding: 0 16px;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--cp-border-input);
+}
+
+.section-header h3 {
+    margin: 0;
+    font-size: 16px;
+    color: var(--cp-text-primary);
+}
+
+/* ── Header Actions ─────────────────────────────────── */
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 8px 12px;
+    margin-bottom: 0;
+    flex-wrap: nowrap;
+}
+
+/* ── Buttons ────────────────────────────────────────── */
+
+#submit-btn {
+    background-color: var(--cp-accent);
+    border: none;
+    border-radius: var(--cp-radius-pill);
+    color: white;
+    cursor: pointer;
+    font-family: var(--cp-font);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 16px;
+    transition: background-color var(--cp-transition);
+    width: auto;
+    min-width: 120px;
+}
+
+#submit-btn:hover {
+    background-color: var(--cp-accent-hover);
+}
+
+#submit-btn:active {
+    background-color: var(--cp-accent-active);
+}
+
+.action-btn {
+    background-color: var(--cp-accent);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: var(--cp-radius-pill);
+    cursor: pointer;
+    font-family: var(--cp-font);
+    font-size: 13px;
+    font-weight: 500;
+    transition: background-color var(--cp-transition);
+}
+
+.action-btn:hover {
+    background-color: var(--cp-accent-hover);
+}
+
+.action-btn:active {
+    background-color: var(--cp-accent-active);
+}
+
+.add-btn {
+    background: none;
+    border: none;
+    color: var(--cp-accent);
+    cursor: pointer;
+    font-family: var(--cp-font);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 10px;
+    border-radius: var(--cp-radius-pill);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: background-color var(--cp-transition);
+    min-width: auto;
+    margin: 0;
+    text-transform: none;
+    white-space: nowrap;
+    margin-right: auto;
+}
+
+.add-btn:hover {
+    background-color: rgba(6, 95, 212, 0.1);
+}
+
+.add-btn:active {
+    background-color: rgba(6, 95, 212, 0.2);
+}
+
+.secondary-btn {
+    background-color: var(--cp-bg-input);
+    border: none;
+    border-radius: var(--cp-radius-pill);
+    color: var(--cp-text-primary);
+    cursor: pointer;
+    font-family: var(--cp-font);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 16px;
+    transition: background-color var(--cp-transition);
+}
+
+.secondary-btn:hover {
+    background-color: var(--cp-bg-input-hover);
+}
+
+.secondary-btn:active {
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+.respond-btn {
+    background-color: var(--cp-accent);
+    border: none;
+    border-radius: var(--cp-radius-pill);
+    color: white;
+    cursor: pointer;
+    font-family: var(--cp-font);
+    font-size: 14px;
+    font-weight: 500;
+    padding: 8px 16px;
+    transition: background-color var(--cp-transition);
+}
+
+.respond-btn:hover {
+    background-color: var(--cp-accent-hover);
+}
+
+/* ── Dashboard Button ───────────────────────────────── */
+
+.dashboard-btn {
+    background: none;
+    border: none;
+    color: var(--cp-text-secondary);
+    cursor: pointer;
+    padding: 6px;
+    border-radius: var(--cp-radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background-color var(--cp-transition), color var(--cp-transition);
+}
+
+.dashboard-btn:hover {
+    background-color: var(--cp-bg-hover);
+    color: var(--cp-accent);
+}
+
+/* ── Sort Controls ──────────────────────────────────── */
+
+.sort-container {
+    position: relative;
+    display: inline-block;
+}
+
+.sort-button {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    border-radius: var(--cp-radius-pill);
+    color: var(--cp-text-secondary);
+    cursor: pointer;
+    font-family: var(--cp-font);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 8px;
+    transition: background-color var(--cp-transition);
+}
+
+.sort-button:hover {
+    background-color: rgba(6, 95, 212, 0.1);
+}
+
+.sort-button:active {
+    background-color: rgba(6, 95, 212, 0.2);
+}
+
+.sort-icon,
+.sort-caret {
+    display: flex;
+    align-items: center;
+    height: 18px;
+    width: 18px;
+    opacity: 0.7;
+}
+
+.sort-text {
+    margin-right: 4px;
+}
+
+.sort-menu {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 4px;
+    background: var(--cp-bg-card, white);
+    border-radius: var(--cp-radius-lg);
+    box-shadow: var(--cp-shadow-md);
+    min-width: 180px;
+    z-index: var(--cp-z-dropdown);
+    padding: 8px 0;
+}
+
+.sort-menu-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--cp-text-primary);
+    cursor: pointer;
+    font-family: var(--cp-font);
+    font-size: 14px;
+    padding: 8px 16px;
+    text-align: left;
+    transition: background-color var(--cp-transition);
+}
+
+.sort-menu-item:hover {
+    background-color: var(--cp-bg-hover);
+}
+
+.sort-menu-text {
+    flex-grow: 1;
+}
+
+.sort-check {
+    color: var(--cp-accent);
+    font-size: 18px;
+    margin-left: 8px;
+}
+
+/* ── Category Filter ────────────────────────────────── */
+
+.category-filter-container {
+    position: relative;
+    display: inline-block;
+}
+
+.category-filter-button {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    border-radius: var(--cp-radius-pill);
+    color: var(--cp-text-secondary);
+    cursor: pointer;
+    font-family: var(--cp-font);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 8px;
+    transition: background-color var(--cp-transition);
+}
+
+.category-filter-button:hover {
+    background-color: rgba(6, 95, 212, 0.1);
+}
+
+.category-filter-button.active {
+    background-color: rgba(6, 95, 212, 0.2);
+}
+
+.category-filter-caret {
+    display: flex;
+    align-items: center;
+    height: 18px;
+    width: 18px;
+    opacity: 0.7;
+}
+
+.category-filter-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    margin-top: 4px;
+    background: var(--cp-bg-card, white);
+    border-radius: var(--cp-radius-lg);
+    box-shadow: var(--cp-shadow-md);
+    min-width: 200px;
+    max-height: 320px;
+    overflow-y: auto;
+    z-index: var(--cp-z-dropdown);
+    padding: 8px 0;
+}
+
+.category-filter-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--cp-text-primary);
+    cursor: pointer;
+    font-family: var(--cp-font);
+    font-size: 14px;
+    padding: 8px 16px;
+    text-align: left;
+    transition: background-color var(--cp-transition);
+}
+
+.category-filter-item:hover {
+    background-color: var(--cp-bg-hover);
+}
+
+.category-filter-item-text {
+    flex-grow: 1;
+}
+
+.category-filter-check {
+    color: var(--cp-accent);
+    font-size: 18px;
+    margin-left: 8px;
+}
+
+/* ── Forms ──────────────────────────────────────────── */
+
+#citation-form {
+    width: 100%;
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    box-shadow: none;
+    background-color: transparent;
+}
+
+#citation-form h2 {
+    grid-column: span 2;
+    text-align: center;
+    margin-bottom: 10px;
+    color: var(--cp-text-primary);
+}
+
+h2 {
+    text-align: center;
+    margin-top: 20px;
+    color: var(--cp-text-primary);
+}
+
+h3 {
+    color: var(--cp-text-primary);
+}
+
+.form-container {
+    background-color: var(--cp-bg-card, white);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-lg);
+    margin-top: 16px;
+    padding: 16px;
+}
+
+.form-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.form-group-half {
+    flex: 1;
+    min-width: 0;
+}
+
+.form-group-half label {
+    margin-bottom: 6px;
+}
+
+.form-group {
+    margin-bottom: 16px;
+}
+
+.form-group label {
+    color: var(--cp-text-primary);
+    display: block;
+    font-family: var(--cp-font);
+    font-size: 13px;
+    font-weight: 500;
+    margin-bottom: 8px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="url"],
+.form-group input[type="date"],
+.form-group select {
+    background-color: var(--cp-bg-input);
+    border: 1px solid transparent;
+    border-radius: var(--cp-radius-sm);
+    color: var(--cp-text-primary);
+    font-family: var(--cp-font);
+    font-size: 14px;
+    line-height: 20px;
+    padding: 8px 12px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: all var(--cp-transition);
+}
+
+.form-group input[type="text"]:hover,
+.form-group input[type="url"]:hover,
+.form-group input[type="date"]:hover,
+.form-group select:hover {
+    background-color: var(--cp-bg-input-hover);
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="url"]:focus,
+.form-group input[type="date"]:focus,
+.form-group select:focus {
+    background-color: var(--cp-bg-card, white);
+    border-color: var(--cp-accent);
+    outline: none;
+    box-shadow: var(--cp-focus-ring);
+}
+
+.form-group textarea {
+    background-color: var(--cp-bg-input);
+    border: 1px solid transparent;
+    border-radius: var(--cp-radius-sm);
+    color: var(--cp-text-primary);
+    font-family: var(--cp-font);
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 8px 12px;
+    width: 100%;
+    box-sizing: border-box;
+    min-height: 100px;
+    resize: vertical;
+    transition: all var(--cp-transition);
+}
+
+.form-group textarea:hover {
+    background-color: var(--cp-bg-input-hover);
+}
+
+.form-group textarea:focus {
+    background-color: var(--cp-bg-card, white);
+    border-color: var(--cp-accent);
+    outline: none;
+    box-shadow: var(--cp-focus-ring);
+}
+
+.form-buttons {
+    display: flex;
+    gap: 8px;
+    margin-top: 4px;
+}
+
+.form-buttons .submit-btn,
+.form-buttons button[type="submit"] {
+    flex: 1;
+}
+
+.cancel-btn {
+    flex: 1;
+    padding: 8px 16px;
+    border: 1px solid var(--cp-border-input);
+    border-radius: var(--cp-radius-pill);
+    background: var(--cp-bg-card, white);
+    color: var(--cp-text-secondary);
+    font-family: var(--cp-font);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--cp-transition);
+}
+
+.cancel-btn:hover {
+    background: var(--cp-bg-hover, #f1f3f4);
+}
+
+#add-form-container {
+    background-color: var(--cp-bg-card, white);
+    padding: 15px;
+    border-radius: var(--cp-radius-md);
+    border: 1px solid var(--cp-border);
+    margin-bottom: 10px;
+}
+
+/* ── Recording Controls ─────────────────────────────── */
+
+.recording-row {
+    margin-bottom: 12px;
+}
+
+.record-control-btn {
+    flex: 1;
+    padding: 7px 12px;
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-md);
+    font-family: var(--cp-font);
+    font-size: var(--cp-text-base, 13px);
+    font-weight: var(--cp-weight-medium, 500);
+    cursor: pointer;
+    transition: all var(--cp-transition);
+    background-color: var(--cp-bg-card, white);
+    color: var(--cp-text-primary);
+}
+
+.record-start-active {
+    border-color: var(--cp-record, #cc0000);
+    color: var(--cp-record, #cc0000);
+    background: var(--cp-record-bg, rgba(255, 68, 68, 0.06));
+}
+
+.record-start-active:hover {
+    background: var(--cp-record-bg-hover, rgba(255, 68, 68, 0.12));
+}
+
+.record-stop-disabled {
+    background-color: var(--cp-bg-input, rgba(0, 0, 0, 0.05));
+    color: var(--cp-text-tertiary, #6e6e6e);
+    cursor: not-allowed;
+    border-color: transparent;
+}
+
+.record-stop-disabled:not([disabled]) {
+    border-color: var(--cp-record, #cc0000);
+    color: var(--cp-record, #cc0000);
+    background: var(--cp-record-bg, rgba(255, 68, 68, 0.06));
+    cursor: pointer;
+}
+
+.record-stop-disabled:not([disabled]):hover {
+    background: var(--cp-record-bg-hover, rgba(255, 68, 68, 0.12));
+}
+
+.record-start-active[disabled] {
+    background-color: var(--cp-bg-input, rgba(0, 0, 0, 0.05));
+    color: var(--cp-text-tertiary, #6e6e6e);
+    cursor: not-allowed;
+    border-color: transparent;
+}
+
+
+/* ── Description & Response Sections ────────────────── */
+
+.description-label {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--cp-text-primary);
+    margin-bottom: 8px;
+}
+
+.original-request {
+    font-style: italic;
+    color: var(--cp-text-primary);
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: var(--cp-bg-surface);
+    border-radius: var(--cp-radius-sm);
+    font-size: 14px;
+    line-height: 1.6;
+    border-left: 4px solid var(--cp-accent);
+    box-shadow: var(--cp-shadow-sm);
+}
+
+.original-request::before {
+    content: "Original Request:";
+    display: block;
+    font-weight: 600;
+    color: var(--cp-accent);
+    margin-bottom: 8px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.response-section {
+    margin-top: 25px;
+}
+
+.response-label {
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--cp-text-primary);
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.citation-description {
+    font-size: 13px;
+    line-height: 1.5;
+    margin: 6px 0;
+    padding: 8px 10px;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-radius: var(--cp-radius-sm);
+    border: 1px solid var(--cp-divider);
+}
+
+.citation-description .original-request {
+    margin-bottom: 20px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid var(--cp-border-input);
+}
+
+.citation-description .response {
+    color: var(--cp-text-primary);
+    font-size: 14px;
+    line-height: 1.6;
+    padding-top: 15px;
+}
+
+.citation-description .response::before {
+    content: "Response:";
+    display: block;
+    font-weight: 600;
+    color: var(--cp-accent);
+    margin-bottom: 8px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ── Citation & Request Cards ───────────────────────── */
+
+.citation-item,
+.citation-request {
+    background-color: var(--cp-bg-surface);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-lg);
+    margin: 8px 0;
+    padding: 12px;
+    border-left: 4px solid transparent;
+    transition: background-color var(--cp-transition), border-left-color var(--cp-transition);
+}
+
+.citation-item:hover,
+.citation-request:hover {
+    background-color: var(--cp-bg-hover, #eef1f5);
+}
+
+.citation-item.active-citation,
+.citation-request.active-citation,
+.citation-item.highlighted,
+.citation-request.highlighted {
+    background-color: var(--cp-accent-bg);
+    border-color: var(--cp-border);
+    border-left-color: var(--cp-accent);
+    transition: background-color 0.2s ease;
+}
+
+.citation-item.active-citation:hover,
+.citation-request.active-citation:hover {
+    background-color: var(--cp-accent-bg) !important;
+    border-left: 4px solid var(--cp-accent);
+}
+
+.citation-content {
+    display: grid;
+    gap: 8px;
+}
+
+.citation-title {
+    color: var(--cp-text-primary);
+    font-family: var(--cp-font);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    margin: 0;
+}
+
+.citation-content p {
+    color: var(--cp-text-secondary);
+    font-family: var(--cp-font);
+    font-size: 13px;
+    line-height: 18px;
+    margin: 0;
+}
+
+.citation-content strong {
+    color: var(--cp-text-secondary);
+    font-weight: 500;
+}
+
+.description-area {
+    color: var(--cp-text-primary);
+    font-family: var(--cp-font);
+    font-size: 14px;
+    line-height: 20px;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--cp-border);
+}
+
+/* ── Citation Card Meta ─────────────────────────────── */
+
+.citation-timestamp {
+    display: block;
+    margin: 4px 0;
+    font-size: 13px;
+}
+
+.citation-timestamp .timestamp-btn {
+    background: none;
+    border: none;
+    color: var(--cp-accent);
+    cursor: pointer;
+    font-family: var(--cp-font);
+    font-size: 12px;
+    padding: 2px 4px;
+    border-radius: var(--cp-radius-sm);
+    transition: background-color var(--cp-transition);
+}
+
+.citation-timestamp .timestamp-btn:hover {
+    background-color: rgba(6, 95, 212, 0.1);
+    text-decoration: underline;
+}
+
+.citation-meta {
+    display: flex;
+    gap: 8px;
+    color: var(--cp-text-secondary);
+    font-size: 12px;
+    margin: 2px 0 8px 0;
+}
+
+.citation-author {
+    color: var(--cp-accent);
+    font-weight: 500;
+    text-decoration: none;
+    font-size: 13px;
+}
+
+.citation-author:hover {
+    text-decoration: underline;
+}
+
+.citation-source {
+    display: inline-flex;
+    align-items: center;
+    color: var(--cp-accent);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    margin: 0;
+}
+
+.citation-source:hover {
+    text-decoration: underline;
+}
+
+.citation-source-url {
+    font-size: 13px;
+    color: var(--cp-accent);
+    word-break: break-all;
+    margin: 4px 0;
+}
+
+.timestamp-link {
+    color: var(--cp-accent);
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.timestamp-link:hover {
+    text-decoration: underline;
+}
+
+/* ── Citation Actions ───────────────────────────────── */
+
+.citation-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-top: 8px;
+    padding-top: 8px;
+    border-top: 1px solid var(--cp-divider);
+}
+
+.citation-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: auto;
+}
+
+.action-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* ── Vote Controls ──────────────────────────────────── */
+
+.vote-controls {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+/* Base .vote-btn reset (background/border/radius/color/cursor/transition/display)
+   and :hover come from styles/components.css, loaded earlier in manifest.json's
+   content_scripts.css array — only the panel-specific padding lives here. */
+.vote-btn {
+    padding: 6px 8px;
+}
+
+.vote-btn.active {
+    color: var(--cp-accent);
+}
+
+.vote-icon {
+    font-size: 16px;
+    line-height: 1;
+}
+
+.vote-score {
+    color: var(--cp-text-secondary);
+    font-family: var(--cp-font);
+    font-size: 13px;
+    font-weight: 500;
+    margin: 0 4px;
+}
+
+.upvote-btn.voted {
+    color: var(--cp-success);
+    background-color: var(--cp-success-bg);
+}
+
+.upvote-btn.voted:hover {
+    background-color: rgba(39, 174, 96, 0.2);
+    color: var(--cp-success-hover);
+}
+
+.downvote-btn.voted {
+    color: var(--cp-error);
+    background-color: var(--cp-error-bg);
+}
+
+.downvote-btn.voted:hover {
+    background-color: rgba(211, 47, 47, 0.2);
+    color: var(--cp-error-hover);
+}
+
+/* ── Categories ─────────────────────────────────────── */
+
+.category-row {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 8px 0;
+}
+
+.category-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-family: var(--cp-font);
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    border-radius: var(--cp-radius-pill);
+    line-height: 1.4;
+}
+
+.category-verified {
+    font-weight: 700;
+}
+
+.expert-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: var(--cp-radius-pill);
+    background: var(--cp-success-bg, #d1fae5);
+    color: var(--cp-success, #065f46);
+}
+
+.category-select-label {
+    display: inline-flex;
+}
+
+.category-select {
+    font-family: var(--cp-font);
+    font-size: 12px;
+    color: var(--cp-text-secondary);
+    background-color: var(--cp-bg-card, white);
+    border: 1px solid var(--cp-border-input);
+    border-radius: var(--cp-radius-lg);
+    padding: 3px 8px;
+    cursor: pointer;
+}
+
+.category-select:hover {
+    border-color: var(--cp-accent);
+}
+
+.category-select:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+/* ── Badges ─────────────────────────────────────────── */
+
+.reported-badge {
+    display: inline-flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 4px;
+    background-color: rgba(192, 57, 43, 0.12);
+    color: #c0392b;
+    cursor: default;
+}
+
+.response-badge,
+.request-badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.response-badge {
+    background-color: rgba(6, 95, 212, 0.1);
+    color: var(--cp-accent);
+}
+
+.request-badge {
+    background-color: rgba(0, 0, 0, 0.07);
+    color: var(--cp-text-secondary);
+}
+
+/* ── Request-Response Group ─────────────────────────── */
+
+.rg-divider {
+    border: none;
+    border-top: 1px solid var(--cp-border);
+    margin: 12px 0 8px;
+}
+
+.rg-responses-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--cp-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.rg-response-entry {
+    padding: 8px 0;
+}
+
+.rg-response-entry + .rg-response-entry {
+    border-top: 1px solid var(--cp-divider);
+}
+
+.rg-see-all-link {
+    display: block;
+    color: var(--cp-accent);
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    padding: 8px 0 4px;
+    cursor: pointer;
+}
+
+.rg-see-all-link:hover {
+    text-decoration: underline;
+}
+
+.rg-response-entry .citation-description {
+    background: none;
+    box-shadow: none;
+    padding: 0;
+    margin: 4px 0 6px;
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* ── Inline Reply Form (extension panel) ────────────── */
+
+.inline-reply-form {
+    margin: 8px 0 4px;
+    padding-top: 8px;
+    border-top: 1px solid var(--cp-divider, rgba(0,0,0,0.08));
+}
+
+.inline-reply-form textarea {
+    width: 100%;
+    min-height: 48px;
+    resize: vertical;
+    border: 1px solid var(--cp-border-input, #dadce0);
+    border-radius: var(--cp-radius-md, 8px);
+    padding: 8px 10px;
+    font-family: var(--cp-font, "Roboto", "Arial", sans-serif);
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--cp-text-primary, #0f0f0f);
+    box-sizing: border-box;
+    transition: border-color 0.15s;
+}
+
+.inline-reply-form textarea:focus {
+    outline: none;
+    border-color: var(--cp-accent, #065fd4);
+    box-shadow: var(--cp-focus-ring, 0 0 0 3px rgba(6, 95, 212, 0.12));
+}
+
+.inline-reply-actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.inline-reply-submit {
+    background: var(--cp-accent, #065fd4);
+    color: white;
+    border: none;
+    border-radius: 18px;
+    padding: 5px 14px;
+    font-family: var(--cp-font, "Roboto", "Arial", sans-serif);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.inline-reply-submit:hover {
+    background: var(--cp-accent-hover, #0356c6);
+}
+
+.inline-reply-submit:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.inline-reply-cancel {
+    background: none;
+    border: 1px solid var(--cp-border-input, #dadce0);
+    border-radius: 18px;
+    padding: 5px 14px;
+    font-family: var(--cp-font, "Roboto", "Arial", sans-serif);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--cp-text-secondary, #606060);
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.inline-reply-cancel:hover {
+    background: rgba(0, 0, 0, 0.04);
+}
+
+/* ── Containers ─────────────────────────────────────── */
+
+#citation-requests-container,
+#citations-container {
+    max-height: 400px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    padding: 0 8px;
+    margin-top: 0;
+}
+
+#citation-requests-container::-webkit-scrollbar,
+#citations-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+#citation-requests-container::-webkit-scrollbar-track,
+#citations-container::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#citation-requests-container::-webkit-scrollbar-thumb,
+#citations-container::-webkit-scrollbar-thumb {
+    background: #c0c0c0;
+    border-radius: 3px;
+}
+
+#citation-requests-container::-webkit-scrollbar-thumb:hover,
+#citations-container::-webkit-scrollbar-thumb:hover {
+    background: #999;
+}
+
+.citations-scroll-container {
+    padding: 0 4px 8px;
+}
+
+.items-container {
+    margin-bottom: 15px;
+}
+
+.citations-section,
+.requests-section {
+    margin-bottom: 20px;
+}
+
+/* Empty/error states and the loading skeleton now live in
+   styles/components.css (.empty-state/.error-message/.cp-loading/
+   .cp-skeleton) — same class names, centralized definition. */
+
+/* ── Previously-Unstyled Gaps ────────────────────────── */
+
+.citation-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cp-space-8);
+    margin-bottom: var(--cp-space-4);
+}
+
+.category-filter-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.field-locked {
+    background-color: var(--cp-bg-input);
+    color: var(--cp-text-tertiary);
+    cursor: not-allowed;
+}
+
+.cp-load-more-btn {
+    width: 100%;
+    margin-top: var(--cp-space-8);
+}
+
+/* ── Recorded Segments Panel ─────────────────────────── */
+
+.recorded-segments-panel {
+    position: fixed;
+    z-index: var(--cp-z-panel-modal);
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--cp-bg-page);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-lg);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+    width: 320px;
+    max-width: 90vw;
+    max-height: 70vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    font-family: var(--cp-font);
+    color: var(--cp-text-primary);
+}
+
+.recorded-segments-panel .panel-content {
+    padding: 0;
+    width: 100%;
+    overflow-y: auto;
+}
+
+.segments-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 16px;
+    background: var(--cp-bg-card, white);
+    border-bottom: 1px solid var(--cp-border);
+}
+
+.segments-panel-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--cp-accent);
+}
+
+.segments-close-btn {
+    background: none;
+    border: none;
+    color: var(--cp-text-secondary);
+    cursor: pointer;
+    /* 24px+ touch target (WCAG 2.5.8). */
+    padding: 6px 8px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, color 0.15s;
+}
+
+.segments-close-btn:hover {
+    background: rgba(0, 0, 0, 0.06);
+    color: var(--cp-text-primary);
+}
+
+.segments-container {
+    padding: 10px;
+}
+
+.recorded-segment {
+    padding: 12px;
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-lg);
+    margin-bottom: 8px;
+    background-color: var(--cp-bg-card, white);
+    border-left: 4px solid var(--cp-accent);
+}
+
+.recorded-segment:last-child {
+    margin-bottom: 0;
+}
+
+.segment-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.segment-time-range {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--cp-accent);
+    cursor: pointer;
+    padding: 3px 8px;
+    border-radius: 6px;
+    transition: background 0.15s;
+    text-decoration: none;
+}
+
+.segment-time-range:hover {
+    background: rgba(6, 95, 212, 0.08);
+}
+
+.segment-time-range svg {
+    flex-shrink: 0;
+    opacity: 0.7;
+}
+
+.segment-delete-btn {
+    background: none;
+    border: none;
+    color: #bbb;
+    cursor: pointer;
+    /* 24px+ touch target (WCAG 2.5.8): 14px icon + 5px padding = 24px. */
+    padding: 5px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s, background 0.15s;
+}
+
+.segment-delete-btn:hover {
+    color: var(--cp-error);
+    background: rgba(211, 47, 47, 0.08);
+}
+
+.segment-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.segment-actions button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border: none;
+    border-radius: 18px;
+    font-family: var(--cp-font);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, box-shadow 0.15s;
+    white-space: nowrap;
+}
+
+.segment-actions button svg {
+    flex-shrink: 0;
+}
+
+.segment-actions .cite-btn {
+    background-color: var(--cp-accent);
+    color: white;
+}
+
+.segment-actions .cite-btn:hover {
+    background-color: var(--cp-accent-hover);
+    box-shadow: 0 2px 8px rgba(6, 95, 212, 0.25);
+}
+
+.segment-actions .request-btn {
+    background-color: rgba(0, 0, 0, 0.05);
+    color: var(--cp-text-primary);
+    border: 1px solid var(--cp-border);
+}
+
+.segment-actions .request-btn:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+}
+
+/* ── Record Buttons (player controls) ───────────────── */
+
+.record-start-btn,
+.record-end-btn {
+    position: relative;
+}
+
+.citation-record-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border-radius: 50%;
+    background: rgba(255, 68, 68, 0.15);
+    margin: 0 6px;
+    border: none;
+    transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.citation-record-btn:hover {
+    transform: scale(1.2);
+    background: rgba(255, 68, 68, 0.3);
+}
+
+.record-end-btn .citation-record-btn {
+    background: rgba(255, 68, 68, 0.25);
+    animation: cp-rec-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes cp-rec-pulse {
+    0%   { transform: scale(1);   background: rgba(255, 68, 68, 0.2);  }
+    50%  { transform: scale(1.1); background: rgba(255, 68, 68, 0.4);  }
+    100% { transform: scale(1);   background: rgba(255, 68, 68, 0.2);  }
+}
+
+/* ── Video Player Recording Overlay ─────────────────── */
+
+.cp-recording-overlay {
+    position: absolute;
+    inset: 0;
+    border: 3px solid #ff0000;
+    border-radius: 0;
+    pointer-events: none;
+    z-index: var(--cp-z-player-overlay);
+    animation: cp-overlay-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes cp-overlay-pulse {
+    0%, 100% { border-color: rgba(255, 0, 0, 0.9); }
+    50%      { border-color: rgba(255, 0, 0, 0.4); }
+}
+
+.cp-recording-badge {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.75);
+    border-radius: 6px;
+    padding: 5px 10px;
+    z-index: var(--cp-z-player-overlay-top);
+    pointer-events: auto;
+    cursor: default;
+}
+
+.cp-badge-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ff0000;
+    animation: cp-badge-dot-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes cp-badge-dot-pulse {
+    0%   { opacity: 1;   transform: scale(1);   }
+    50%  { opacity: 0.4; transform: scale(0.8); }
+    100% { opacity: 1;   transform: scale(1);   }
+}
+
+.cp-badge-time {
+    font-family: var(--cp-font, "Roboto", "Arial", sans-serif);
+    font-size: 12px;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+/* ── Timeline Bars ──────────────────────────────────── */
+
+.cp-timeline-bar {
+    position: absolute;
+    top: 0;
+    width: 3px;
+    height: 100%;
+    transform: translateX(-50%);
+    cursor: ew-resize;
+    z-index: var(--cp-z-timeline-bar);
+    border-radius: 2px;
+    box-shadow: 0 -6px 0 0 currentColor;
+}
+
+.cp-timeline-bar:focus-visible {
+    outline: none;
+    box-shadow: 0 -6px 0 0 currentColor, var(--cp-focus-ring);
+}
+
+.cp-timeline-bar::before {
+    content: '';
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    background: currentColor;
+    rotate: 45deg;
+}
+
+.cp-bar-start {
+    background: var(--cp-record);
+    color: var(--cp-record);
+}
+
+.cp-bar-end {
+    background: var(--cp-record);
+    color: var(--cp-record);
+    animation: cp-bar-pulse 1.2s ease-in-out infinite;
+}
+
+.cp-bar-end.cp-bar-frozen {
+    animation: none;
+}
+
+.cp-timeline-bar.cp-bar-ad-paused {
+    border-color: #ff9800;
+    opacity: 0.5;
+}
+
+@keyframes cp-bar-pulse {
+    0%   { opacity: 1;   }
+    50%  { opacity: 0.5; }
+    100% { opacity: 1;   }
+}
+
+.cp-timeline-range {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    background: rgba(255, 68, 68, 0.3);
+    pointer-events: none;
+    z-index: var(--cp-z-timeline-range);
+}
+
+/* ── Theater Mode ───────────────────────────────────── */
+
+.citation-controls.theater-mode {
+    position: relative;
+    top: auto;
+    z-index: var(--cp-z-theater);
+    background-color: var(--cp-bg-card, white);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.15);
+}
+
+ytd-watch-flexy[theater] #secondary,
+ytd-watch-flexy[theater] div#secondary {
+    overflow-y: auto;
+    max-height: 100vh;
+    position: relative;
+}
+
+/* Toast notifications now live in styles/components.css (.cp-toast*) —
+   same class names, centralized definition. */
+
+/* ── Confirm Dialog ─────────────────────────────────── */
+
+.cp-confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: var(--cp-z-confirm-overlay);
+}
+
+.cp-confirm-box {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #323232;
+    color: #ffffff;
+    border-radius: 6px;
+    padding: 16px 20px;
+    font-size: 13px;
+    z-index: var(--cp-z-confirm-box);
+    min-width: 280px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    font-family: var(--cp-font);
+}
+
+.cp-confirm-message {
+    margin: 0;
+    line-height: 1.5;
+}
+
+.cp-confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+}
+
+.cp-confirm-actions button {
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 8px 12px;
+    border-radius: 4px;
+    transition: background 0.2s ease, opacity 0.2s ease;
+}
+
+.cp-confirm-cancel {
+    opacity: 0.75;
+}
+
+.cp-confirm-cancel:hover {
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 1;
+}
+
+.cp-confirm-ok {
+    background: #c62828 !important;
+}
+
+.cp-confirm-ok:hover {
+    background: #b71c1c !important;
+}
+
+/* ── Placeholder Page ───────────────────────────────── */
+
+#list-view-page {
+    width: 90%;
+    max-width: 800px;
+    margin: 20px auto;
+    background-color: var(--cp-bg-card, white);
+    padding: 20px;
+    border-radius: var(--cp-radius-md);
+    box-shadow: var(--cp-shadow-md);
+    text-align: center;
+    color: var(--cp-text-primary);
+}
+
+#list-view-page p {
+    color: var(--cp-text-primary);
+}
+
+/* ── Responsive ─────────────────────────────────────── */
+
+@media (max-width: 600px) {
+    #citation-form {
+        grid-template-columns: 1fr;
+    }
+
+    #submit-btn {
+        width: 100%;
+    }
+
+    .recorded-segments-panel {
+        width: 90vw;
+    }
+
+    .form-row {
+        flex-direction: column;
+    }
+
+    .extension-header .button-container button {
+        font-size: 11px;
+        padding: 8px 8px;
+    }
+}
+
+/* ── Hidden Utility Classes ─────────────────────────── */
+#custom-extension-element,
+.custom-extension-element {
+    display: none;
+}
+
+/* ── Reduced Motion ──────────────────────────────────── */
+/* Applies globally within the panel — every transition/animation in this file
+   collapses to effectively-instant instead of being individually disabled. */
+@media (prefers-reduced-motion: reduce) {
+    .citation-controls,
+    .citation-controls *,
+    .citation-controls *::before,
+    .citation-controls *::after,
+    .recorded-segments-panel,
+    .recorded-segments-panel * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
+
+/* ── Dark Mode: the handful of colors that don't route through
+   styles/tokens.css's [data-cp-theme="dark"] block ─── */
+[data-cp-theme="dark"] #citation-requests-container::-webkit-scrollbar-thumb,
+[data-cp-theme="dark"] #citations-container::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22);
+}
+
+[data-cp-theme="dark"] #citation-requests-container::-webkit-scrollbar-thumb:hover,
+[data-cp-theme="dark"] #citations-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.34);
+}
+
+[data-cp-theme="dark"] .segment-delete-btn {
+    color: rgba(255, 255, 255, 0.45);
+}

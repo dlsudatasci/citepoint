@@ -1,0 +1,209 @@
+/* ══════════════════════════════════════════════
+   CitePoint Design Tokens
+   Shared variables for all pages and components.
+   ══════════════════════════════════════════════ */
+
+:root {
+    /* ── Typography ─────────────────────────────── */
+    --cp-font:           "Roboto", "Arial", sans-serif;
+    --cp-font-mono:      "Roboto Mono", monospace;
+
+    --cp-text-xs:        11px;
+    --cp-text-sm:        12px;
+    --cp-text-base:      13px;
+    --cp-text-md:        14px;
+    --cp-text-lg:        16px;
+    --cp-text-xl:        18px;
+    --cp-text-2xl:       22px;
+    --cp-text-3xl:       24px;
+
+    --cp-weight-regular: 400;
+    --cp-weight-medium:  500;
+    --cp-weight-semi:    600;
+    --cp-weight-bold:    700;
+
+    --cp-leading-tight:  1.3;
+    --cp-leading-normal: 1.5;
+    --cp-leading-loose:  1.6;
+
+    /* ── Colors: Brand ──────────────────────────── */
+    --cp-accent:         #065fd4;
+    --cp-accent-hover:   #0356c6;
+    --cp-accent-active:  #024fb1;
+    --cp-accent-bg:      rgba(6, 95, 212, 0.08);
+    --cp-accent-bg-hover:rgba(6, 95, 212, 0.12);
+
+    /* ── Colors: Semantic ───────────────────────── */
+    --cp-success:        #27ae60;
+    --cp-success-hover:  #219a52;
+    --cp-success-bg:     rgba(39, 174, 96, 0.1);
+    --cp-success-border: rgba(39, 174, 96, 0.3);
+
+    --cp-error:          #d32f2f;
+    --cp-error-hover:    #b71c1c;
+    --cp-error-bg:       rgba(211, 47, 47, 0.1);
+
+    --cp-warning:        #b34000;
+    --cp-warning-bg:     rgba(230, 81, 0, 0.12);
+
+    --cp-record:         #cc0000;
+    --cp-record-hover:   #a30000;
+    --cp-record-bg:      rgba(255, 68, 68, 0.06);
+    --cp-record-bg-hover:rgba(255, 68, 68, 0.12);
+
+    /* ── Colors: Neutral ────────────────────────── */
+    --cp-text-primary:   #0f0f0f;
+    --cp-text-secondary: #606060;
+    --cp-text-tertiary:  #6e6e6e;
+    --cp-text-on-accent: #ffffff;
+
+    --cp-bg-page:        #eef3f8;
+    --cp-bg-surface:     #f7f9fc;
+    --cp-bg-card:        #ffffff;
+    --cp-bg-input:       rgba(0, 0, 0, 0.05);
+    --cp-bg-input-hover: rgba(0, 0, 0, 0.08);
+    --cp-bg-hover:       rgba(0, 0, 0, 0.04);
+    --cp-bg-active:      rgba(0, 0, 0, 0.06);
+
+    --cp-border:         rgba(0, 0, 0, 0.10);
+    --cp-border-strong:  rgba(0, 0, 0, 0.15);
+    --cp-border-input:   #dadce0;
+    --cp-divider:        rgba(0, 0, 0, 0.08);
+
+    /* ── Category Colors ────────────────────────── */
+    --cp-cat-statistics: #651fff;
+    --cp-cat-quote:      #b34000;
+    --cp-cat-historical: #00897b;
+    --cp-cat-scientific: #065fd4;
+    --cp-cat-context:    #c2185b;
+    --cp-cat-other:      #606060;
+
+    /* ── Spacing ────────────────────────────────── */
+    --cp-space-2:        2px;
+    --cp-space-4:        4px;
+    --cp-space-6:        6px;
+    --cp-space-8:        8px;
+    --cp-space-10:       10px;
+    --cp-space-12:       12px;
+    --cp-space-16:       16px;
+    --cp-space-20:       20px;
+    --cp-space-24:       24px;
+    --cp-space-32:       32px;
+    --cp-space-48:       48px;
+
+    /* ── Radii ──────────────────────────────────── */
+    --cp-radius-sm:      4px;
+    --cp-radius-md:      8px;
+    --cp-radius-lg:      12px;
+    --cp-radius-pill:    18px;
+    --cp-radius-full:    50%;
+
+    /* ── Shadows ────────────────────────────────── */
+    --cp-shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.08);
+    --cp-shadow-md:      0 2px 8px rgba(0, 0, 0, 0.12);
+    --cp-shadow-lg:      0 4px 24px rgba(0, 0, 0, 0.16);
+
+    /* ── Transitions ────────────────────────────── */
+    --cp-transition:     0.15s ease;
+
+    /* ── Focus ──────────────────────────────────── */
+    --cp-focus-ring:     0 0 0 3px var(--cp-accent-bg-hover);
+
+    /* ── Overlay ────────────────────────────────── */
+    --cp-overlay-scrim:  rgba(0, 0, 0, 0.5);
+
+    /* ── Z-Index Scale ──────────────────────────── */
+    --cp-z-player-overlay:     60;
+    --cp-z-player-overlay-top: 61;
+    --cp-z-timeline-range:     99;
+    --cp-z-timeline-bar:       101;
+    --cp-z-theater:            999;
+    --cp-z-dropdown:           1000;
+    --cp-z-panel-modal:        2000;
+    --cp-z-confirm-overlay:    99998;
+    --cp-z-toast:              99999;
+    --cp-z-confirm-box:        99999;
+}
+
+/* ── Theme: Dark ────────────────────────────── */
+/* text/bg/border/accent values are the theme picker's own choices; the
+   semantic/category/shadow/overlay tokens below (not covered by the picker's
+   original palette) are carried over from the old prefers-color-scheme dark
+   mode work, each verified >= 5:1 contrast against --cp-bg-card/--cp-bg-page. */
+[data-cp-theme="dark"] {
+    --cp-text-primary:   #f1f1f1;
+    --cp-text-secondary: #aaaaaa;
+    --cp-text-tertiary:  #888888;
+    --cp-text-on-accent: #ffffff;
+
+    --cp-bg-page:        #121212;
+    --cp-bg-surface:     #1e1e1e;
+    --cp-bg-card:        #2a2a2a;
+    --cp-bg-input:       rgba(255, 255, 255, 0.05);
+    --cp-bg-input-hover: rgba(255, 255, 255, 0.1);
+    --cp-bg-hover:       rgba(255, 255, 255, 0.08);
+    --cp-bg-active:      rgba(255, 255, 255, 0.12);
+
+    --cp-border:         rgba(255, 255, 255, 0.15);
+    --cp-border-strong:  rgba(255, 255, 255, 0.25);
+    --cp-border-input:   #444444;
+    --cp-divider:        rgba(255, 255, 255, 0.1);
+
+    --cp-accent:         #3ea6ff;
+    --cp-accent-hover:   #6ebcff;
+    --cp-accent-active:  #2d88ff;
+    --cp-accent-bg:      rgba(62, 166, 255, 0.15);
+    --cp-accent-bg-hover:rgba(62, 166, 255, 0.25);
+
+    /* ── Colors: Semantic ───────────────────────── */
+    --cp-success:        #5fd489;
+    --cp-success-hover:  #7ade9c;
+    --cp-success-bg:     rgba(95, 212, 137, 0.14);
+    --cp-success-border: rgba(95, 212, 137, 0.35);
+
+    --cp-error:          #f27070;
+    --cp-error-hover:    #f58888;
+    --cp-error-bg:       rgba(242, 112, 112, 0.14);
+
+    --cp-warning:        #e8a154;
+    --cp-warning-bg:     rgba(232, 161, 84, 0.16);
+
+    --cp-record:         #ff5f5f;
+    --cp-record-hover:   #ff7a7a;
+    --cp-record-bg:      rgba(255, 95, 95, 0.10);
+    --cp-record-bg-hover:rgba(255, 95, 95, 0.18);
+
+    /* ── Category Colors ────────────────────────── */
+    --cp-cat-statistics: #a07bff;
+    --cp-cat-quote:      #e8a154;
+    --cp-cat-historical: #4fd6c0;
+    --cp-cat-scientific: #7ba7f0;
+    --cp-cat-context:    #e878ab;
+    --cp-cat-other:      #b7bcc2;
+
+    /* ── Shadows ────────────────────────────────── */
+    --cp-shadow-sm:      0 1px 2px rgba(0, 0, 0, 0.4);
+    --cp-shadow-md:      0 2px 10px rgba(0, 0, 0, 0.5);
+    --cp-shadow-lg:      0 6px 28px rgba(0, 0, 0, 0.6);
+
+    /* ── Overlay ────────────────────────────────── */
+    --cp-overlay-scrim:  rgba(0, 0, 0, 0.65);
+}
+
+/* ── Theme: DLSU Green ──────────────────────── */
+[data-cp-theme="dlsu"] {
+    --cp-accent:         #009639; /* Pantone 355U */
+    --cp-accent-hover:   #007a2d;
+    --cp-accent-active:  #006023;
+    --cp-accent-bg:      rgba(0, 150, 57, 0.08);
+    --cp-accent-bg-hover:rgba(0, 150, 57, 0.12);
+
+    --cp-success:        #009639;
+    --cp-success-hover:  #007a2d;
+
+    --cp-bg-page:        #f2f9f4; /* Very light green hint */
+    --cp-bg-surface:     #ffffff;
+    --cp-bg-card:        #ffffff;
+
+    --cp-focus-ring:     0 0 0 3px var(--cp-accent-bg-hover);
+}

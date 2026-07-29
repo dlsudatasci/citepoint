@@ -2,9 +2,35 @@
   "name": "youtube-citation-extension",
   "version": "1.0.0",
   "description": "Chrome extension for managing citations on YouTube videos",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "test:e2e": "playwright test --project=chrome-extension",
+    "test:e2e:firefox": "node selenium/firefox.test.js",
+    "test:e2e:all": "playwright test --project=chrome-extension && node selenium/firefox.test.js",
+    "watch": "vite build --watch",
+    "build": "vite build",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@playwright/test": "^1.50.0",
+    "@vitejs/plugin-react": "^6.0.3",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^9.1.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "globals": "^15.15.0",
+    "prettier": "^3.9.5",
+    "selenium-webdriver": "^4.44.0",
+    "vite": "^8.1.1"
+  },
   "dependencies": {
-    "firebase": "^10.8.0",
-    "@firebase/app": "^0.9.28",
-    "@firebase/firestore": "^4.4.3"
+    "mongoose": "^8.4.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   }
 }

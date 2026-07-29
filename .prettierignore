@@ -1,0 +1,9 @@
+node_modules
+backend/node_modules
+dashboard/dist
+lib
+playwright-report
+test-results
+backend/coverage
+package-lock.json
+backend/package-lock.json

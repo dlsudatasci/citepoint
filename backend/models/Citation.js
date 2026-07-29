@@ -1,0 +1,63 @@
+const mongoose = require('mongoose');
+const { ALL_CATEGORIES, DEFAULT_CATEGORY } = require('../config/constants');
+
+const citationSchema = new mongoose.Schema({
+    videoId:        { type: String, required: true },
+    citationTitle:  { type: String, required: true },
+    timestampStart: { type: String, default: '' },
+    timestampEnd:   { type: String, default: '' },
+    description:    { type: String, default: '' },
+    source:         { type: String, default: '' },
+    username:       { type: String, required: true },
+    dateAdded:      { type: Date, default: Date.now },
+    voteScore:      { type: Number, default: 0 },
+    requestId:         { type: String, default: null },
+    parentCitationId:  { type: String, default: null },
+    // Denormalized pointer to the top of this citation's reply thread: equal to its own
+    // _id when it's a root citation, or copied from the parent's rootId when it's a
+    // reply. Resolved once at write time so "which thread is this reply in" is O(1)
+    // instead of walking parentCitationId recursively (see buildTree() in discussion.js).
+    rootId:            { type: String, default: null },
+    category:         { type: String, enum: ALL_CATEGORIES, default: DEFAULT_CATEGORY },
+    categoryVerified: { type: Boolean, default: false },
+    topics:           { type: [String], default: [] },
+    verifiedBy:       { type: String, default: null },
+    verifiedAt:       { type: Date, default: null },
+
+    resolved:         { type: Boolean, default: false },
+    resolvedBy:       { type: String, default: null },
+    resolvedAt:       { type: Date, default: null },
+});
+
+// ── Indexes ───────────────────────────────────
+
+// Primary sort index: all list queries filter by videoId then sort by date.
+// This is the most frequently used index.
+citationSchema.index({ videoId: 1, dateAdded: -1 });
+
+// Compound sort index: covers sort-by-voteScore with dateAdded as tiebreak.
+// Replaces the old single-field { videoId, voteScore } index.
+// Also enables future server-side sort-by-score endpoint without a new index.
+citationSchema.index({ videoId: 1, voteScore: -1, dateAdded: -1 });
+
+// Ownership index: speeds up findOneAndDelete({ videoId, username, _id })
+// used for author-only deletion checks.
+citationSchema.index({ videoId: 1, username: 1 });
+
+// Category filter/aggregation index for the panel filter and dashboard.
+citationSchema.index({ videoId: 1, category: 1 });
+
+// Filter within given topic
+citationSchema.index({ topics: 1, verifiedBy: 1 });
+
+// Thread index: speeds up nested reply queries.
+citationSchema.index({ parentCitationId: 1, dateAdded: 1 });
+
+// "Threads I've replied in" — used by the My Discussions aggregation to find a user's
+// reply activity without a per-row parentCitationId walk.
+citationSchema.index({ username: 1, rootId: 1 });
+
+// "Latest reply per thread" — used by the My Discussions aggregation's $group.
+citationSchema.index({ rootId: 1, dateAdded: -1 });
+
+module.exports = mongoose.model('Citation', citationSchema);

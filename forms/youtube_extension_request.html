@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Request for Citation</title>
+
+</head>
+<body>
+    <h2>Request for Citation</h2>
+    <form id="request-form">
+        <div class="form-group">
+            <label for="title">Title:</label>
+            <input type="text" id="title" name="title" placeholder="Enter title for citation request..." required>
+        </div>
+
+        <div class="form-row timestamp-row">
+            <div class="form-group form-group-half">
+                <label for="timestampStart">Start Timestamp</label>
+                <input type="text" id="timestampStart" name="timestampStart" placeholder="00:00:00" required>
+            </div>
+            <div class="form-group form-group-half">
+                <label for="timestampEnd">End Timestamp</label>
+                <input type="text" id="timestampEnd" name="timestampEnd" placeholder="––:––" required>
+            </div>
+        </div>
+        <div class="form-row recording-row">
+            <button type="button" id="form-record-start" class="record-control-btn record-start-active">Start Recording</button>
+            <button type="button" id="form-record-stop" class="record-control-btn record-stop-disabled" disabled>Stop Recording</button>
+        </div>
+
+        <div class="form-group">
+            <label for="reason">Reason for Citation:</label>
+            <textarea id="reason" name="reason" placeholder="Enter reason for citation..." required></textarea>
+        </div>
+
+        <div class="form-group">
+            <label for="category">Category:</label>
+            <select id="category" name="category">
+                <option value="Uncategorized">Uncategorized</option>
+                <option value="Statistics & Data">Statistics &amp; Data</option>
+                <option value="Quote / Misattribution">Quote / Misattribution</option>
+                <option value="Historical Claim">Historical Claim</option>
+                <option value="Scientific Claim">Scientific Claim</option>
+                <option value="Context / Methodology">Context / Methodology</option>
+                <option value="Other">Other</option>
+            </select>
+        </div>
+
+        <div class="form-group" id="anonymous-group" style="display: none;">
+            <label class="checkbox-label">
+                <input type="checkbox" id="anonymous" name="anonymous">
+                Post Anonymously
+            </label>
+        </div>
+
+        <div class="form-buttons">
+            <button type="submit" id="submit-btn">Submit Request</button>
+            <button type="button" class="cancel-btn" id="cancel-btn">Cancel</button>
+        </div>
+    </form>
+</body>
+</html>

@@ -1,14 +1,20 @@
 {
     "manifest_version": 3,
-    "name": "YouTube Citation Extension",
-    "version": "1.0",
-    "description": "Add and manage citations for YouTube videos",
+    "name": "CitePoint - Youtube Citation Extension",
+    "version": "1.1",
+    "description": "Attach timestamped citations, citation requests, and threaded discussion to claims made in YouTube videos.",
     "action": {
-        "default_popup": "popup.html",
+        "default_popup": "popup/popup.html",
         "default_icon": {
-            "16": "icon16.png",
-            "48": "icon48.png"
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
         }
+    },
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
     },
     "permissions": [
         "activeTab",
@@ -16,29 +22,63 @@
         "tabs"
     ],
     "host_permissions": [
-        "https://firestore.googleapis.com/*",
-        "https://*.firebaseio.com/*",
-        "https://*.firebase.com/*"
+        "http://altdsidccf.dlsu.edu.ph:13020/*",
+        "http://localhost:3000/*",
+        "*://www.youtube.com/*",
+        "*://m.youtube.com/*"
     ],
+    "browser_specific_settings": {
+        "gecko": {
+            "id": "citepoint@altdsi.internal",
+            "strict_min_version": "121.0"
+        }
+    },
     "content_scripts": [
         {
-            "matches": ["*://www.youtube.com/*"],
-            "js": ["content.js"],
-            "css": ["youtube_extension_style.css"]
+            "matches": [
+                "*://www.youtube.com/*",
+                "*://m.youtube.com/*"
+            ],
+            "js": [
+                "lib/browser-polyfill.js",
+                "utils/utils.js",
+                "config/config.js",
+                "content/api.js",
+                "content/username.js",
+                "content/citations.js",
+                "content/voting.js",
+                "content/forms.js",
+                "content/recording.js",
+                "content/report.js",
+                "content/panel.js",
+                "content/player.js",
+                "content/content.js"
+            ],
+            "css": ["styles/tokens.css", "styles/components.css", "styles/extension.css"]
         }
     ],
     "background": {
-        "service_worker": "background.js"
+        "service_worker": "background/background.js",
+        "scripts": ["background/background.js"]
     },
     "web_accessible_resources": [{
         "resources": [
-            "youtube_extension_citation.html",
-            "youtube_extension_request.html",
-            "youtube_extension_style.css",
-            "config.js",
-            "popup.js",
-            "popup.html"
+            "forms/youtube_extension_citation.html",
+            "forms/youtube_extension_request.html",
+            "styles/extension.css",
+            "styles/tokens.css",
+            "styles/components.css",
+            "config/config.js",
+            "dashboard/dashboard.html",
+            "dashboard/dashboard.css",
+            "dashboard/dist/dashboard.bundle.js",
+            "dashboard/dist/dashboard.bundle.css",
+            "content/username.js",
+            "utils/utils.js"
         ],
-        "matches": ["*://www.youtube.com/*"]
+        "matches": [
+            "*://www.youtube.com/*",
+            "*://m.youtube.com/*"
+        ]
     }]
 }

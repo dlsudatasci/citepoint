@@ -1,0 +1,382 @@
+/* ══════════════════════════════════════════════
+   CitePoint Shared Components
+   Canonical building blocks (buttons, cards, badges,
+   inputs, menus, modals, toasts, states) used across
+   every surface: popup, YouTube panel, dashboard
+   (including the Discussions module), and forms.
+
+   Consumed via a normal @import when a page is loaded
+   through HTML (dashboard.css, popup.html).
+   For the YouTube-panel content-script context, Chrome does
+   not resolve @import in manifest-injected CSS, so this file
+   is instead listed as its own entry in manifest.json's
+   content_scripts.css array, after tokens.css.
+   ══════════════════════════════════════════════ */
+
+@import url('tokens.css');
+
+/* ── Focus ──────────────────────────────────────────── */
+
+.cp-btn:focus-visible,
+.cp-tab:focus-visible,
+.cp-input:focus-visible,
+.cp-textarea:focus-visible,
+.cp-select:focus-visible,
+.cp-menu-item:focus-visible {
+    outline: none;
+    box-shadow: var(--cp-focus-ring);
+}
+
+/* ── Buttons ────────────────────────────────────────── */
+
+.cp-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cp-space-6);
+    font-family: var(--cp-font);
+    font-size: var(--cp-text-md);
+    font-weight: var(--cp-weight-medium);
+    border-radius: var(--cp-radius-pill);
+    padding: var(--cp-space-8) var(--cp-space-16);
+    border: none;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background-color var(--cp-transition), color var(--cp-transition), border-color var(--cp-transition);
+}
+
+.cp-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.cp-btn--primary {
+    background: var(--cp-accent);
+    color: var(--cp-text-on-accent);
+}
+
+.cp-btn--primary:hover:not(:disabled) { background: var(--cp-accent-hover); }
+.cp-btn--primary:active:not(:disabled) { background: var(--cp-accent-active); }
+
+.cp-btn--secondary {
+    background: transparent;
+    color: var(--cp-text-secondary);
+    border: 1px solid var(--cp-border-input);
+}
+
+.cp-btn--secondary:hover:not(:disabled) {
+    background: var(--cp-bg-hover);
+    color: var(--cp-text-primary);
+}
+
+.cp-btn--ghost {
+    background: none;
+    color: var(--cp-text-secondary);
+    padding: var(--cp-space-4) var(--cp-space-8);
+    border-radius: var(--cp-radius-sm);
+}
+
+.cp-btn--ghost:hover:not(:disabled) {
+    color: var(--cp-accent);
+    background: var(--cp-bg-hover);
+}
+
+.cp-btn--danger {
+    background: transparent;
+    color: var(--cp-error);
+    border: 1px solid transparent;
+}
+
+.cp-btn--danger:hover:not(:disabled) {
+    background: var(--cp-error-bg);
+    border-color: var(--cp-error);
+}
+
+/* ── Tabs ───────────────────────────────────────────── */
+
+.cp-tab {
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cp-space-6);
+    flex: 1;
+    position: relative;
+    font-family: var(--cp-font);
+    font-size: var(--cp-text-base);
+    font-weight: var(--cp-weight-medium);
+    color: var(--cp-text-secondary);
+    text-transform: uppercase;
+    white-space: nowrap;
+    padding: var(--cp-space-8) var(--cp-space-16);
+    cursor: pointer;
+    transition: color var(--cp-transition), background-color var(--cp-transition);
+}
+
+.cp-tab:hover:not(.disabled) { color: var(--cp-text-primary); }
+.cp-tab.active { color: var(--cp-text-primary); }
+
+.cp-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background-color: var(--cp-text-primary);
+    border-radius: 3px 3px 0 0;
+}
+
+.cp-tab.disabled {
+    cursor: default;
+    pointer-events: none;
+}
+
+/* ── Cards ──────────────────────────────────────────── */
+
+.cp-card {
+    background: var(--cp-bg-card);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-lg);
+    box-shadow: var(--cp-shadow-sm);
+    transition: box-shadow var(--cp-transition), border-color var(--cp-transition);
+}
+
+.cp-card:hover { box-shadow: var(--cp-shadow-md); }
+
+.cp-card--compact { padding: var(--cp-space-12); }
+.cp-card--comfortable { padding: var(--cp-space-20); }
+
+/* ── Badges ─────────────────────────────────────────── */
+
+.cp-badge {
+    display: inline-block;
+    font-size: var(--cp-text-xs);
+    font-weight: var(--cp-weight-medium);
+    padding: 2px var(--cp-space-8);
+    border-radius: var(--cp-radius-pill);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+}
+
+.cp-badge--cat-statistics { background: color-mix(in srgb, var(--cp-cat-statistics) 12%, transparent); color: var(--cp-cat-statistics); }
+.cp-badge--cat-quote      { background: color-mix(in srgb, var(--cp-cat-quote) 12%, transparent);      color: var(--cp-cat-quote); }
+.cp-badge--cat-historical { background: color-mix(in srgb, var(--cp-cat-historical) 12%, transparent); color: var(--cp-cat-historical); }
+.cp-badge--cat-scientific { background: color-mix(in srgb, var(--cp-cat-scientific) 12%, transparent); color: var(--cp-cat-scientific); }
+.cp-badge--cat-context    { background: color-mix(in srgb, var(--cp-cat-context) 12%, transparent);    color: var(--cp-cat-context); }
+.cp-badge--cat-other      { background: color-mix(in srgb, var(--cp-cat-other) 12%, transparent);      color: var(--cp-cat-other); }
+
+/* ── Inputs ─────────────────────────────────────────── */
+
+.cp-input,
+.cp-textarea,
+.cp-select {
+    border: 1px solid var(--cp-border-input);
+    border-radius: var(--cp-radius-md);
+    padding: var(--cp-space-8) var(--cp-space-12);
+    font-family: var(--cp-font);
+    font-size: var(--cp-text-md);
+    color: var(--cp-text-primary);
+    background: var(--cp-bg-card);
+    transition: border-color var(--cp-transition);
+}
+
+.cp-input:hover,
+.cp-textarea:hover,
+.cp-select:hover {
+    border-color: var(--cp-border-strong);
+}
+
+.cp-input:focus,
+.cp-textarea:focus,
+.cp-select:focus {
+    outline: none;
+    border-color: var(--cp-accent);
+    box-shadow: var(--cp-focus-ring);
+}
+
+.cp-input:disabled,
+.cp-textarea:disabled,
+.cp-select:disabled {
+    background: var(--cp-bg-input);
+    color: var(--cp-text-tertiary);
+    cursor: not-allowed;
+}
+
+.cp-textarea {
+    resize: vertical;
+    min-height: 60px;
+    line-height: var(--cp-leading-normal);
+}
+
+/* ── Menus / Dropdowns ──────────────────────────────── */
+
+.cp-menu {
+    position: absolute;
+    background: var(--cp-bg-card);
+    border: 1px solid var(--cp-border);
+    border-radius: var(--cp-radius-md);
+    box-shadow: var(--cp-shadow-md);
+    z-index: var(--cp-z-dropdown);
+    padding: var(--cp-space-4);
+    min-width: 160px;
+}
+
+.cp-menu-item {
+    display: flex;
+    align-items: center;
+    gap: var(--cp-space-8);
+    width: 100%;
+    padding: var(--cp-space-8) var(--cp-space-12);
+    font-family: var(--cp-font);
+    font-size: var(--cp-text-base);
+    color: var(--cp-text-primary);
+    background: none;
+    border: none;
+    border-radius: var(--cp-radius-sm);
+    cursor: pointer;
+    text-align: left;
+}
+
+.cp-menu-item:hover { background: var(--cp-bg-hover); }
+
+.cp-menu-item.active {
+    color: var(--cp-accent);
+    background: var(--cp-accent-bg);
+}
+
+/* ── Modal / Overlay ─────────────────────────────────
+   Dialogs in this codebase are built as two elements appended as
+   SIBLINGS of document.body (see utils.js's showConfirm, report.js's
+   showReportDialog) rather than nested overlay > modal — so .cp-modal
+   positions itself independently (matching the existing, working
+   .cp-confirm-box pattern) instead of relying on a flex-centering
+   parent. ───────────────────────────────────────────── */
+
+.cp-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--cp-overlay-scrim);
+    z-index: var(--cp-z-confirm-overlay);
+}
+
+.cp-modal {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--cp-bg-card);
+    border-radius: var(--cp-radius-lg);
+    box-shadow: var(--cp-shadow-lg);
+    padding: var(--cp-space-24);
+    max-width: 420px;
+    width: calc(100% - var(--cp-space-32));
+    max-height: calc(100vh - var(--cp-space-32));
+    overflow-y: auto;
+    z-index: var(--cp-z-confirm-box);
+    font-family: var(--cp-font);
+    color: var(--cp-text-primary);
+}
+
+/* ── Toast Notifications ────────────────────────────── */
+
+.cp-toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(16px);
+    padding: 10px 20px;
+    border-radius: var(--cp-radius-md);
+    font-family: var(--cp-font);
+    font-size: var(--cp-text-base);
+    font-weight: var(--cp-weight-medium);
+    color: var(--cp-text-on-accent);
+    opacity: 0;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: var(--cp-z-toast);
+    pointer-events: none;
+}
+
+.cp-toast--visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+.cp-toast--success { background: var(--cp-success); }
+.cp-toast--error    { background: var(--cp-error); }
+.cp-toast--warning  { background: var(--cp-warning); }
+.cp-toast--info     { background: var(--cp-accent); }
+
+/* ── Loading Skeleton ───────────────────────────────── */
+
+.cp-loading {
+    display: flex;
+    flex-direction: column;
+    gap: var(--cp-space-8);
+    padding: var(--cp-space-4) 0;
+}
+
+.cp-skeleton {
+    height: 48px;
+    border-radius: var(--cp-radius-lg);
+    background: linear-gradient(90deg, var(--cp-bg-surface) 25%, var(--cp-border) 50%, var(--cp-bg-surface) 75%);
+    background-size: 200% 100%;
+    animation: cp-skeleton-shimmer 1.4s ease infinite;
+}
+
+.cp-skeleton--short { height: 32px; }
+
+@keyframes cp-skeleton-shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* ── Empty & Error States ───────────────────────────── */
+
+.cp-empty-state,
+.empty-state {
+    color: var(--cp-text-secondary);
+    font-size: var(--cp-text-base);
+    text-align: center;
+    padding: var(--cp-space-16) 0;
+    font-style: italic;
+}
+
+.cp-error-state,
+.error-message {
+    color: var(--cp-error);
+    font-size: var(--cp-text-md);
+    text-align: center;
+    padding: var(--cp-space-16) 0;
+}
+
+/* ── Vote button base ─────────────────────────────────
+   Shared reset between the YouTube panel (styles/extension.css) and the
+   dashboard thread view (src/dashboard/styles/discussion.css) — this file loads
+   before both, so each only needs to declare its own padding/gap/font-size and
+   active-state coloring on top of this instead of redeclaring the whole reset. */
+
+.vote-btn {
+    background: none;
+    border: none;
+    border-radius: var(--cp-radius-pill);
+    color: var(--cp-text-secondary);
+    cursor: pointer;
+    transition: all var(--cp-transition);
+    display: flex;
+    align-items: center;
+}
+
+.vote-btn:hover {
+    background: var(--cp-bg-hover);
+    color: var(--cp-text-primary);
+}
+
+/* ── Reduced Motion ──────────────────────────────────── */
+/* Shared across every surface this file styles — popup, panel, dashboard, forms. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

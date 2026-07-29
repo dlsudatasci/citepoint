@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CitePoint — Help</title>
+    <link rel="stylesheet" href="../styles/tokens.css">
+    <link rel="stylesheet" href="../styles/components.css">
+    <style>
+        body {
+            font-family: var(--cp-font);
+            margin: 0;
+            padding: 0;
+            width: 350px;
+            color: var(--cp-text-primary);
+            background-color: var(--cp-bg-page);
+        }
+        .container {
+            padding: var(--cp-space-16);
+        }
+        h1 {
+            margin-top: 0;
+            color: var(--cp-accent);
+            font-size: var(--cp-text-xl);
+            font-weight: var(--cp-weight-medium);
+            border-bottom: 1px solid var(--cp-border-input);
+            padding-bottom: var(--cp-space-8);
+        }
+        h2 {
+            font-size: var(--cp-text-lg);
+            margin-top: var(--cp-space-16);
+            margin-bottom: var(--cp-space-8);
+            color: var(--cp-text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        h2::after {
+            content: "\25BE";
+            margin-left: auto;
+            font-size: 12px;
+            color: var(--cp-text-secondary);
+        }
+        p {
+            margin: var(--cp-space-8) 0;
+            font-size: var(--cp-text-md);
+            line-height: var(--cp-leading-normal);
+        }
+        ol, ul {
+            padding-left: 20px;
+            margin: var(--cp-space-8) 0;
+        }
+        li {
+            font-size: var(--cp-text-md);
+            margin-bottom: var(--cp-space-8);
+            line-height: var(--cp-leading-normal);
+        }
+        .tip {
+            background-color: var(--cp-accent-bg);
+            padding: var(--cp-space-8) var(--cp-space-12);
+            border-radius: var(--cp-radius-sm);
+            border-left: 4px solid var(--cp-accent);
+            margin: var(--cp-space-12) 0;
+        }
+        .feature {
+            margin-bottom: var(--cp-space-16);
+        }
+        .icon {
+            margin-right: 6px;
+            color: var(--cp-accent);
+        }
+        .timestamp {
+            background: var(--cp-accent-bg);
+            color: var(--cp-accent);
+            padding: 1px 4px;
+            border-radius: 2px;
+            font-family: var(--cp-font-mono);
+        }
+        .steps {
+            background-color: var(--cp-bg-surface);
+            padding: var(--cp-space-12);
+            border-radius: var(--cp-radius-md);
+            margin-top: var(--cp-space-8);
+        }
+        .footer {
+            margin-top: var(--cp-space-20);
+            font-size: var(--cp-text-sm);
+            color: var(--cp-text-secondary);
+            text-align: center;
+            border-top: 1px solid var(--cp-border-input);
+            padding-top: var(--cp-space-12);
+        }
+        #not-on-youtube {
+            display: none;
+            background-color: var(--cp-error-bg, rgba(211, 47, 47, 0.1));
+            border-left: 4px solid var(--cp-error);
+            padding: var(--cp-space-8) var(--cp-space-12);
+            border-radius: var(--cp-radius-sm);
+            margin: var(--cp-space-12) 0;
+            font-size: var(--cp-text-md);
+        }
+        .btn {
+            margin-top: var(--cp-space-8);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CitePoint</h1>
+
+        <p>This extension helps you create, manage, and share citations for YouTube videos. It adds a citation panel to the right side of YouTube videos.</p>
+
+        <button id="open-dashboard" class="btn cp-btn cp-btn--primary">Open Dashboard</button>
+
+        <div class="theme-selector-container" style="margin-top: var(--cp-space-12); margin-bottom: var(--cp-space-12); display: flex; align-items: center;">
+            <label for="theme-selector" style="font-size: var(--cp-text-md); margin-right: var(--cp-space-8);">Theme:</label>
+            <select id="theme-selector" class="cp-input" style="padding: 4px 8px; font-size: var(--cp-text-sm); border-radius: var(--cp-radius-sm); border: 1px solid var(--cp-border-input); background: var(--cp-bg-surface); color: var(--cp-text-primary);">
+            </select>
+        </div>
+        <div id="not-on-youtube">
+            <p><strong>Notice:</strong> You're not currently on a YouTube video page.</p>
+            <p>Go to a YouTube video to use the citation features.</p>
+            <button id="open-youtube" class="btn cp-btn cp-btn--primary">Open YouTube</button>
+        </div>
+
+        <div class="feature">
+            <h2><span class="icon" aria-hidden="true">🎬</span>Creating Citation Segments</h2>
+            <div class="steps">
+                <ol>
+                    <li>Navigate to any YouTube video.</li>
+                    <li>Look for the red record button in the video player controls next to the video timestamp.</li>
+                    <li>Click the button to start creating a segment.</li>
+                    <li>Click the button again when you reach the end of your desired segment.</li>
+                    <li>A sidebar should appear. You can now use the segment to add or request a citation for that timestamp.</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="feature">
+            <h2><span class="icon" aria-hidden="true">📝</span>Adding Citations</h2>
+            <div class="steps">
+                <ol>
+                    <li>Open the Citations tab in the extension panel.</li>
+                    <li>Click "+ Add Citation".</li>
+                    <li>Fill out the form with:
+                        <ul>
+                            <li>Citation title</li>
+                            <li>Timestamp range (e.g., <span class="timestamp">00:15:30</span>)</li>
+                            <li>Description</li>
+                            <li>Source URL</li>
+                        </ul>
+                    </li>
+                    <li>Choose to post anonymously or with your YouTube identity.</li>
+                    <li>Submit your citation.</li>
+                </ol>
+            </div>
+        </div>
+
+        <div class="feature">
+            <h2><span class="icon" aria-hidden="true">🔍</span>Requesting Citations</h2>
+            <div class="steps">
+                <ol>
+                    <li>Open the Citation Requests tab in the extension panel.</li>
+                    <li>Click "+ Add Request".</li>
+                    <li>Specify the timestamp range and explain what needs citation in both the title and description.</li>
+                    <li>Submit your request.</li>
+                </ol>
+            </div>
+            <p>Other users can view and respond to your citation requests.</p>
+        </div>
+
+        <div class="feature">
+            <h2><span class="icon" aria-hidden="true">👍</span>Voting on Citations</h2>
+            <p>You can upvote or downvote citations and requests to help the most accurate and helpful ones rise to the top.</p>
+        </div>
+
+        <div class="feature">
+            <h2><span class="icon" aria-hidden="true">💡</span>Responding to Requests</h2>
+            <p>Click the "Respond" button on any citation request to create a citation that addresses it.</p>
+        </div>
+
+        <div class="footer">
+            CitePoint v1.0
+        </div>
+    </div>
+
+    <script src="../lib/browser-polyfill.js"></script>
+    <script src="../utils/utils.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>
