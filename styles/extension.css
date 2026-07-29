@@ -1112,6 +1112,16 @@ h3 {
     font-weight: 700;
 }
 
+.expert-badge {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: var(--cp-radius-pill);
+    background: var(--cp-success-bg, #d1fae5);
+    color: var(--cp-success, #065f46);
+}
+
 .category-select-label {
     display: inline-flex;
 }

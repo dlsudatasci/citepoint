@@ -549,6 +549,7 @@ async function createCitationElement(citation, userVote, currentUsername = null)
         </div>
         <div class="citation-meta">
             ${authorLink}
+            ${_isVerifiedExpertAuthor(citation) ? '<span class="expert-badge">✓ Verified Expert</span>' : ''}
             <span class="citation-date"> · ${_formatDate(citation.dateAdded)}</span>
         </div>
         <div class="category-row">
@@ -744,6 +745,7 @@ async function createCitationReplyGroupElement(parentCitation, replies, votes, c
         </div>
         <div class="citation-meta">
             ${_buildAuthorLink(parentCitation.username)}
+            ${_isVerifiedExpertAuthor(parentCitation) ? '<span class="expert-badge">✓ Verified Expert</span>' : ''}
             <span class="citation-date"> · ${_formatDate(parentCitation.dateAdded)}</span>
         </div>
         <div class="category-row">
@@ -889,6 +891,7 @@ function createRequestElement(request, userVote, currentUsername = null) {
         ${_buildDescription(request.reason)}
         <div class="citation-meta">
             ${_buildAuthorLink(request.username)}
+            ${_isVerifiedExpertAuthor(request) ? '<span class="expert-badge">✓ Verified Expert</span>' : ''}
             <span class="citation-date">${_formatDate(request.dateAdded)}</span>
         </div>
         <div class="category-row">
@@ -1407,6 +1410,10 @@ function _formatDate(dateStr) {
     return isNaN(d.getTime()) ? '' : d.toLocaleDateString();
 }
 
+function _isVerifiedExpertAuthor(item) {
+    return !!(item.categoryVerified && item.verifiedBy && item.verifiedBy === item.username);
+}
+
 /**
  * Build a safe YouTube author link.
  * Only renders an <a> if the username is a valid YouTube handle (@word chars).
@@ -1456,6 +1463,7 @@ async function _buildResponseEntry(citation, votes, currentUsername) {
         ${_buildDescription(responseText)}
         <div class="citation-meta">
             <span class="citation-author">${_escapeHtml(citation.username || 'Anonymous')}</span>
+            ${_isVerifiedExpertAuthor(citation) ? '<span class="expert-badge">✓ Verified Expert</span>' : ''}
             <span class="citation-date">${_formatDate(citation.dateAdded)}</span>
         </div>
         <div class="citation-actions">
