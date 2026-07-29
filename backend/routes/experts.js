@@ -2,11 +2,43 @@ const router            = require('express').Router();
 const Expert            = require('../models/Expert');
 const ExpertApplication = require('../models/ExpertApplication');
 const Notification      = require('../models/Notification');
+const Citation          = require('../models/Citation');
+const Request           = require('../models/Request');
 const { isExpert: isHardcodedExpert } = require('../config/experts');
 const { isAdmin, ADMIN_USERNAMES_CANONICAL } = require('../config/admins');
 const { TOPICS } = require('../config/constants');
 const asyncHandler = require('../middleware/asyncHandler');
 const { usernameMatches } = require('../lib/usernameMatches');
+
+// GET /api/experts/admin/list?adminUsername=... — admin: list all verified experts
+router.get('/admin/list', asyncHandler(async (req, res) => {
+    if (!isAdmin(req.query.adminUsername)) {
+        return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+    const experts = await Expert.find().sort({ grantedAt: -1 }).lean();
+    res.json({ success: true, experts });
+}));
+
+// DELETE /api/experts/admin/:username — admin: revoke expert status
+router.delete('/admin/:username', asyncHandler(async (req, res) => {
+    const { adminUsername } = req.body;
+    if (!isAdmin(adminUsername)) {
+        return res.status(403).json({ success: false, error: 'Admin access required' });
+    }
+    const result = await Expert.findOneAndDelete({ username: req.params.username });
+    if (!result) {
+        return res.status(404).json({ success: false, error: 'Expert not found' });
+    }
+
+    // Strip expert verification from all their existing content
+    const unverify = { categoryVerified: false, verifiedBy: null, verifiedAt: null };
+    await Promise.all([
+        Citation.updateMany({ username: req.params.username, categoryVerified: true }, unverify),
+        Request.updateMany({ username: req.params.username, categoryVerified: true }, unverify),
+    ]);
+
+    res.json({ success: true });
+}));
 
 // GET /api/experts/:username — check if user is an expert
 router.get('/:username', asyncHandler(async (req, res) => {

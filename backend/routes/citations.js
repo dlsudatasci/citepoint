@@ -1,6 +1,7 @@
 const router       = require('express').Router();
 const Citation     = require('../models/Citation');
 const Request      = require('../models/Request');
+const Expert       = require('../models/Expert');
 const Notification = require('../models/Notification');
 const Vote         = require('../models/Vote');
 const Follow       = require('../models/Follow');
@@ -124,15 +125,16 @@ router.post('/:videoId', asyncHandler(async (req, res) => {
         }
     }
 
+    const authorIsExpert = isExpert(username) || !!(await Expert.findOne({ username }).lean());
     const citation = new Citation({
         ...req.body,
         videoId:   req.params.videoId,
         dateAdded: new Date(),  // server-authoritative
         voteScore: 0,           // always start at zero
         category:  category || DEFAULT_CATEGORY,
-        categoryVerified: false,
-        verifiedBy: null,
-        verifiedAt: null,
+        categoryVerified: authorIsExpert,
+        verifiedBy: authorIsExpert ? username : null,
+        verifiedAt: authorIsExpert ? new Date() : null,
     });
     citation.rootId = parentCitation ? await resolveRootId(parentCitation) : citation._id.toString();
     await citation.save();

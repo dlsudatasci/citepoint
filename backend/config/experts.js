@@ -1,38 +1,39 @@
 // config/experts.js
 
-// Hardcoded expert domain mapping. 
-// Instead of a simple array, we map usernames to their specialized Topics.
+const { TOPICS } = require('./constants');
+
+const _normalize = u => typeof u === 'string' ? u.replace(/^@/, '').toLowerCase() : '';
+
+// Hardcoded expert domain mapping — keys are normalized (no @, lowercase).
 const DEFAULT_EXPERTS = {
+    'andreidominicviguilla': TOPICS,
 };
 
+const expertRegistry = {};
 
-const expertRegistry = { ...DEFAULT_EXPERTS };
+Object.entries(DEFAULT_EXPERTS).forEach(([u, topics]) => {
+    expertRegistry[u] = topics;
+});
 
 if (process.env.EXPERT_CONFIG) {
     const entries = process.env.EXPERT_CONFIG.split('|');
     entries.forEach(entry => {
         const [username, topicsStr] = entry.split(':');
         if (username && topicsStr) {
-            expertRegistry[username.trim()] = topicsStr.split(',').map(t => t.trim());
+            expertRegistry[_normalize(username)] = topicsStr.split(',').map(t => t.trim());
         }
     });
 }
 
-
 function isExpert(username, topic = null) {
-    if (typeof username !== 'string' || !expertRegistry[username]) {
-        return false;
-    }
-    
-    if (topic) {
-        return expertRegistry[username].includes(topic);
-    }
-    
-    return true; 
+    const key = _normalize(username);
+    if (!key || !expertRegistry[key]) return false;
+    if (topic) return expertRegistry[key].includes(topic);
+    return true;
 }
 
 function getExpertTopics(username) {
-    return expertRegistry[username] || [];
+    return expertRegistry[_normalize(username)] || [];
 }
 
 module.exports = { isExpert, getExpertTopics, expertRegistry };

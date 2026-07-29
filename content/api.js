@@ -377,6 +377,15 @@ async function apiReviewApplication(id, status, reviewedBy, reason) {
     return _apiRequest(`/experts/applications/${id}/review`, 'PATCH', { status, reviewedBy, reason });
 }
 
+async function apiGetVerifiedExperts(adminUsername) {
+    const data = await _apiRequest(`/experts/admin/list?adminUsername=${encodeURIComponent(adminUsername || '')}`);
+    return data.experts || [];
+}
+
+async function apiRevokeExpert(username, adminUsername) {
+    return _apiRequest(`/experts/admin/${encodeURIComponent(username)}`, 'DELETE', { adminUsername });
+}
+
 // ── Profile ──────────────────────────────────
 
 async function apiGetProfile(username) {

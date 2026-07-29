@@ -1,6 +1,7 @@
 const router       = require('express').Router();
 const Request      = require('../models/Request');
 const Citation     = require('../models/Citation');
+const Expert       = require('../models/Expert');
 const Notification = require('../models/Notification');
 const Vote         = require('../models/Vote');
 const Follow       = require('../models/Follow');
@@ -120,15 +121,16 @@ router.post('/:videoId', asyncHandler(async (req, res) => {
         return res.status(400).json({ success: false, error: 'Invalid category' });
     }
 
+    const authorIsExpert = isExpert(username) || !!(await Expert.findOne({ username }).lean());
     const request = await Request.create({
         ...req.body,
         videoId:   req.params.videoId,
         dateAdded: new Date(),  // server-authoritative
         voteScore: 0,           // always start at zero
         category:  category || DEFAULT_CATEGORY,
-        categoryVerified: false,
-        verifiedBy: null,
-        verifiedAt: null,
+        categoryVerified: authorIsExpert,
+        verifiedBy: authorIsExpert ? username : null,
+        verifiedAt: authorIsExpert ? new Date() : null,
     });
 
     sseEmitter.emit(req.params.videoId, {
