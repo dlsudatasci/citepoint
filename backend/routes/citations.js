@@ -1,6 +1,7 @@
 const router       = require('express').Router();
 const Citation     = require('../models/Citation');
 const Request      = require('../models/Request');
+const Expert       = require('../models/Expert');
 const Notification = require('../models/Notification');
 const Vote         = require('../models/Vote');
 const Follow       = require('../models/Follow');
@@ -124,7 +125,7 @@ router.post('/:videoId', asyncHandler(async (req, res) => {
         }
     }
 
-    const authorIsExpert = isExpert(username);
+    const authorIsExpert = isExpert(username) || !!(await Expert.findOne({ username }).lean());
     const citation = new Citation({
         ...req.body,
         videoId:   req.params.videoId,
